@@ -13,7 +13,6 @@
 
 * install the recommended extensions (amodio.tsl-problem-matcher, ms-vscode.extension-test-runner, and dbaeumer.vscode-eslint)
 
-
 ## Get up and running straight away
 
 * Press `F5` to open a new window with your extension loaded.
@@ -25,7 +24,6 @@
 
 * You can relaunch the extension from the debug toolbar after changing code in `src/extension.ts`.
 * You can also reload (`Ctrl+R` or `Cmd+R` on Mac) the VS Code window with your extension to load your changes.
-
 
 ## Explore the API
 
@@ -46,3 +44,11 @@
 * Reduce the extension size and improve the startup time by [bundling your extension](https://code.visualstudio.com/api/working-with-extensions/bundling-extension).
 * [Publish your extension](https://code.visualstudio.com/api/working-with-extensions/publishing-extension) on the VS Code extension marketplace.
 * Automate builds by setting up [Continuous Integration](https://code.visualstudio.com/api/working-with-extensions/continuous-integration).
+* Deploy the plugin throw web interface : [Marketplace VS Code](https://marketplace.visualstudio.com/manage/publishers/sguisse)
+* Portal developer : [AEX](https://aex.dev.azure.com/)
+* Define Personal Access Token (PAT) : [Azure DevOps](https://dev.azure.com/sebguisse/_usersSettings/tokens)
+  * ❯ vsce login sguisse
+    <https://marketplace.visualstudio.com/manage/publishers/>
+    Personal Access Token for publisher 'sguisse': ************************************************************************************
+
+    The Personal Access Token verification succeeded for the publisher 'sguisse'.
