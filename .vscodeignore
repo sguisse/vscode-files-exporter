@@ -1,14 +1,19 @@
+# Ignore VS Code and Node environment files
 .vscode/**
 .vscode-test/**
-out/**
 node_modules/**
-src/**
 .gitignore
-.yarnrc
+yarn.lock
+
+# Ignore source TypeScript files (Webpack bundles these into dist/extension.js)
+src/**/*.ts
+
+# Explicitly KEEP Webview HTML/JS/CSS assets and Python Scripts
+!src/webview/**
+!scripts/**
+
+# Ignore config and build maps
 webpack.config.js
-vsc-extension-quickstart.md
-**/tsconfig.json
-**/eslint.config.mjs
+tsconfig.json
 **/*.map
-**/*.ts
-**/.vscode-test.*
+*.vsix
