@@ -3,7 +3,7 @@
     "license": "MIT",
     "displayName": "Files Exporter",
     "description": "This tool scans selected directories and files to exports the contents into a single file in various structured formats (TXT, XML, JSON, YAML, TOML) for LLM",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "publisher": "sguisse",
     "engines": {
         "vscode": "^1.80.0"
