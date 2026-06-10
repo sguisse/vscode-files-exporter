@@ -6,6 +6,7 @@ import { HistoryService } from '../services/history.service';
 import { ConfigService } from '../services/config.service';
 import { ExportOrchestratorService } from '../services/export-orchestrator.service';
 import { ExtensionState } from '../interfaces/export.interface';
+import { ProcessRunnerService } from '../services/process-runner.service';
 
 export class MessageRouter {
     constructor(
@@ -13,7 +14,8 @@ export class MessageRouter {
         private historyService: HistoryService,
         private configService: ConfigService,
         private orchestrator: ExportOrchestratorService,
-        private state: ExtensionState
+        private state: ExtensionState,
+        private processRunner: ProcessRunnerService // ✨ Added dependency injection hook here
     ) {}
 
     public async handleMessage(message: any) {
@@ -180,46 +182,13 @@ export class MessageRouter {
                 return;
             }
 
-            await this.copyFilesToOSClipboard(latestFiles);
+            // ✨ Calling the centralized utility function method instead of the duplicate one
+            await this.processRunner.copyFilesToClipboard(latestFiles);
             this.panel.webview.postMessage({ command: 'terminalLog', text: `\n📋 Copied ${latestFiles.length} file(s) to OS clipboard.\n` });
             vscode.window.showInformationMessage(`Copied ${latestFiles.length} file(s) to clipboard.`);
         } catch (err: any) {
             vscode.window.showErrorMessage(`Failed to copy files: ${err.message}`);
         }
-    }
-
-    private async copyFilesToOSClipboard(filePaths: string[]) {
-        return new Promise<void>((resolve, reject) => {
-            const platform = process.platform;
-            if (platform === 'darwin') {
-                // Ensure proper escaping of paths and native macOS Finder compatibility using JXA
-                const jxaScript = `
-ObjC.import('AppKit');
-var pb = $.NSPasteboard.generalPasteboard;
-pb.clearContents;
-var arr = $.NSMutableArray.alloc.init;
-var paths = ${JSON.stringify(filePaths)};
-paths.forEach(p => arr.addObject($.NSURL.fileURLWithPath(p)));
-pb.writeObjects(arr);
-                `.trim().replace(/'/g, "'\\''");
-
-                exec(`osascript -l JavaScript -e '${jxaScript}'`, (err) => {
-                    if (err) reject(err); else resolve();
-                });
-            } else if (platform === 'win32') {
-                const pathsStr = filePaths.map(p => `'${p}'`).join(',');
-                exec(`powershell.exe -command "Set-Clipboard -Path ${pathsStr}"`, (err) => {
-                    if (err) reject(err); else resolve();
-                });
-            } else {
-                const uriList = filePaths.map(p => `file://${p}`).join('\n');
-                const proc = exec(`xclip -selection clipboard -t text/uri-list -i`, (err) => {
-                    if (err) reject(err); else resolve();
-                });
-                proc.stdin?.write(uriList);
-                proc.stdin?.end();
-            }
-        });
     }
 
     private async handleClearDestDirectory(message: any) {

@@ -19,7 +19,7 @@ export class HelpTab {
                     <strong>Welcome to Files Exporter!</strong> This tool aggregates and serializes multiple workspace files into unified multi-format text structures (chunks) ideal for LLM context injection, compliance auditing, or static code reviews.
                 </div>
 
-                <h3 style="margin: 5px 0 0 0; color: #00bcd4; font-size: 14px;">🛠️ Prerequisites</h3>
+                <h3 style="margin: 5px 0 0 0; color: #00bcd4; font-size: 14px;">🛑 Prerequisites</h3>
                 <ul style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px;">
                     <li><strong>Python3:</strong> You must have python 3 installed on your system. It is needed to run the local Python scripts for file processing.</li>
                 </ul>
@@ -27,7 +27,7 @@ export class HelpTab {
                 <h3 style="margin: 5px 0 0 0; color: #00bcd4; font-size: 14px;">➡️ Core Workflows</h3>
                 <ul style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px;">
                     <li><strong>Source Specification:</strong> Paste multi-line absolute or relative folders/files paths inside the <em>Source Paths</em> text area. You can drop paths separated by commas, semicolons, or newlines.</li>
-                    <li><strong>Adaptive Configuration Profiles:</strong> Profiles are auto-saved on execution. Use 🔒/🔓 (Freeze/Unfreeze) to lock a stable configuration against modifications or dynamic variable overwrites.</li>
+                    <li><strong>Adaptive Configuration Profiles:</strong> Profiles are auto-saved on execution. Use <span class="codicon codicon-lock"></span>/<span class="codicon codicon-unlock"></span> (Freeze/Unfreeze) to lock a stable configuration against modifications or dynamic variable overwrites.</li>
                     <li><strong>Verification:</strong> The workspace background engine checks for invalid locations and values, which will instantly flash in pastel red to block broken build runs.</li>
                 </ul>
 

@@ -126,7 +126,8 @@ export class ExportOrchestratorService {
         }
 
         try {
-            await this.copyFilesToOSClipboard(filePaths);
+            // ✨ Redirecting to the centralized process runner utility service
+            await this.processRunner.copyFilesToClipboard(filePaths);
             this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\n📋 Auto-copied ${filePaths.length} generated file(s) to OS clipboard.\n` });
             vscode.window.showInformationMessage(`Copied ${filePaths.length} generated file(s) to clipboard.`);
         } catch (err: any) {
@@ -135,36 +136,4 @@ export class ExportOrchestratorService {
         }
     }
 
-    private async copyFilesToOSClipboard(filePaths: string[]) {
-        return new Promise<void>((resolve, reject) => {
-            const platform = process.platform;
-            if (platform === 'darwin') {
-                const jxaScript = `
-ObjC.import('AppKit');
-var pb = $.NSPasteboard.generalPasteboard;
-pb.clearContents;
-var arr = $.NSMutableArray.alloc.init;
-var paths = ${JSON.stringify(filePaths)};
-paths.forEach(p => arr.addObject($.NSURL.fileURLWithPath(p)));
-pb.writeObjects(arr);
-                `.trim().replace(/'/g, "'\\''");
-
-                exec(`osascript -l JavaScript -e '${jxaScript}'`, (err) => {
-                    if (err) reject(err); else resolve();
-                });
-            } else if (platform === 'win32') {
-                const pathsStr = filePaths.map(p => `'${p}'`).join(',');
-                exec(`powershell.exe -command "Set-Clipboard -Path ${pathsStr}"`, (err) => {
-                    if (err) reject(err); else resolve();
-                });
-            } else {
-                const uriList = filePaths.map(p => `file://${p}`).join('\n');
-                const proc = exec(`xclip -selection clipboard -t text/uri-list -i`, (err) => {
-                    if (err) reject(err); else resolve();
-                });
-                proc.stdin?.write(uriList);
-                proc.stdin?.end();
-            }
-        });
-    }
 }
