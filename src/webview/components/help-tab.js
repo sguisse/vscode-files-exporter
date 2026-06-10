@@ -19,7 +19,12 @@ export class HelpTab {
                     <strong>Welcome to Files Exporter!</strong> This tool aggregates and serializes multiple workspace files into unified multi-format text structures (chunks) ideal for LLM context injection, compliance auditing, or static code reviews.
                 </div>
 
-                <h3 style="margin: 5px 0 0 0; color: #00bcd4; font-size: 14px;">🛠️ Core Workflows</h3>
+                <h3 style="margin: 5px 0 0 0; color: #00bcd4; font-size: 14px;">🛠️ Prerequisites</h3>
+                <ul style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px;">
+                    <li><strong>Python3:</strong> You must have python 3 installed on your system. It is needed to run the local Python scripts for file processing.</li>
+                </ul>
+
+                <h3 style="margin: 5px 0 0 0; color: #00bcd4; font-size: 14px;">➡️ Core Workflows</h3>
                 <ul style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px;">
                     <li><strong>Source Specification:</strong> Paste multi-line absolute or relative folders/files paths inside the <em>Source Paths</em> text area. You can drop paths separated by commas, semicolons, or newlines.</li>
                     <li><strong>Adaptive Configuration Profiles:</strong> Profiles are auto-saved on execution. Use 🔒/🔓 (Freeze/Unfreeze) to lock a stable configuration against modifications or dynamic variable overwrites.</li>
@@ -75,11 +80,11 @@ export class HelpTab {
                             <td style="padding: 5px; border: 1px solid var(--vscode-panel-border);"><strong>Split by Ext</strong></td>
                             <td style="padding: 5px; border: 1px solid var(--vscode-panel-border);">Isolates data streams and forces discrete output files whenever the underlying source code type transitions.
                                 <ul>
-                                    <li>export-2026-06-08_12-28-10_<strong>java</strong>_01.xml</li>
-                                    <li>export-2026-06-08_12-28-10_<strong>java</strong>_02.xml</li>
-                                    <li>export-2026-06-08_12-28-10_<strong>properties</strong>_01.xml</li>
-                                    <li>export-2026-06-08_12-28-10_<strong>md</strong>_01.xml</li>
-                                    <li>export-2026-06-08_12-28-10_<strong>md</strong>_02.xml</li>
+                                    <li style="color: var(--vscode-charts-orange); font-size: 12px; font-family: var(--vscode-editor-font-family); font-weight: 500; text-decoration: none;">export-2026-06-08_12-28-10_<strong>java</strong>_01.xml</li>
+                                    <li style="color: var(--vscode-charts-orange); font-size: 12px; font-family: var(--vscode-editor-font-family); font-weight: 500; text-decoration: none;">export-2026-06-08_12-28-10_<strong>java</strong>_02.xml</li>
+                                    <li style="color: var(--vscode-charts-blue); font-size: 12px; font-family: var(--vscode-editor-font-family); font-weight: 500; text-decoration: none;">export-2026-06-08_12-28-10_<strong>properties</strong>_01.xml</li>
+                                    <li style="color: var(--vscode-charts-green); font-size: 12px; font-family: var(--vscode-editor-font-family); font-weight: 500; text-decoration: none;">export-2026-06-08_12-28-10_<strong>md</strong>_01.xml</li>
+                                    <li style="color: var(--vscode-charts-green); font-size: 12px; font-family: var(--vscode-editor-font-family); font-weight: 500; text-decoration: none;">export-2026-06-08_12-28-10_<strong>md</strong>_02.xml</li>
                                 </ul>
                             </td>
                         </tr>
@@ -132,7 +137,7 @@ export class HelpTab {
                                         <li>Ensure that the script is 100% compliant, without concessions, and directly executable locally in workspace root after a '<em>chmod +x</em>'.</li>
                                     </ul>
                             </ul>
-                            <li>Then <strong>copy/paste</strong> the generated Bash script into a file named '<strong><em>update-code.sh</em></strong>' in workspace root and execute it!</li>
+                            <li>Then <strong>copy/paste</strong> the generated Bash script into a file named '<strong><em>patch.sh</em></strong>' in workspace root and execute it!</li>
                             <li>Refresh the workspace if needed to see the changes.</li>
                         </ul>
                     </div>
@@ -144,10 +149,33 @@ export class HelpTab {
                         <ul>
                             <li>Select only folders/files needed. To limit the context size (tokens 💰/🌱) and improve performance.</li>
                             <li>Enable ☑️ <strong>Split by Ext</strong> to force automatic file splitting based on file extensions.</li>
-                            <li>Select '<strong>XML</strong>' as <strong>Output Format</strong> for better compatibility with NotebookLM.</li>
+                            <li>Select '<strong>TXT</strong>' as <strong>Output Format</strong> for compatibility with NotebookLM.</li>
                             <li>After '<strong>Run Export</strong>', click on 📂 at right of <strong>Destination Directory</strong> to open the OS file explorer directly in the folder containing the generated files.</li>
                             <li>D&D the files in NotebookLM to be in the context (attachment).</li>
                             <li>Then you can apply any prompt and use available tools on injected files content.</li>
+                        </ul>
+
+                        <ul>
+                            <li>For reminder actually (2026/06/10), only the following file types are supported by NotebookLM</li>
+                            <ul>
+                                <li><strong>Text & Data : TXT, md, csv</strong></li>
+                                <li><strong>Documents & Presentations</strong> : pdf, docx, pptx, epub</li>
+                                <li><strong>Audio</strong> : aac, aif, aifc, aiff, amr, au, cda, m4a, mid, mp3, ogg, opus, ra, ram, snd, wav, wma</li>
+                                <li><strong>Video</strong> : 3g2, 3gp, avi, mp4, mpeg</li>
+                                <li><strong>Images</strong> : avif, bmp, gif, ico, jp2, png, webp, tif, tiff, heic, heif, jpeg, jpg, jpe</li>
+                            </ul>
+                        </ul>
+
+                    </div>
+                  </div>
+
+                  <div style="background: var(--vscode-editor-background); border: 1px solid var(--vscode-panel-border); padding: 10px; border-radius: 4px; font-size: 12px;">
+                    <div>
+                        💡 <strong>Other information resources</strong>
+                        <ul>
+                            <li><a href="https://github.com/sguisse/vscode-files-exporter/blob/main/user-guide.md" target="_blank">Files Exporter - User Guide</a></li>
+                            <li><a href="https://github.com/sguisse/vscode-files-exporter/blob/main/scenario.md" target="_blank">Sample complete Use-Case: How to add a new feature to your application</a></li>
+                            <li><a href="https://github.com/sguisse/vscode-files-exporter/blob/main/faq.md" target="_blank">FAQ</a></li>
                         </ul>
                     </div>
                   </div>

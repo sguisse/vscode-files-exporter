@@ -69,7 +69,40 @@ Create a completely separate class component module named `tokens-tab.js` inside
 1. Do not write any structural text introductions, conversational chat explanations, or text conclusions.
 2. Provide your complete resolution as a single, valid Bash shell script (`patch.sh`) that can be executed at the root of my workspace.
 3. Use clean 'cat << 'EOF' > path/to/file' code blocks to completely overwrite webview.html, main.js, and create the new tokens-tab.js file. Do not truncate code, do not write comments like "... keep previous code here ...", and do not emit partial snippets.
-4. Ensure zero regressions on existing theme configurations, CSS rules, or background messaging bindings.
+4. Triple backticks (```) in Markdown blocks conflict resolution : All internal triple backticks are replaced with single markers (!!!B3_BASH!!!, !!!B3_MERMAID!!!, !!!B3_CLOSE!!!, etc.). At the end of execution, the script automatically uses a local Python interpreter to restore the real Markdown symbols without any syntax alteration, guaranteeing absolute compatibility on macOS and Linux.
+5. Ensure zero regressions on existing theme configurations, CSS rules, or background messaging bindings.
+```
+
+#### 🐍 Sample python script for restoring backticks (to be included at the end of the generated patch.sh)
+
+If the AI model correctly follows the instructions, it will include a Python script at the end of the generated `patch.sh` that looks like this. <br/>
+This script is crucial for restoring the original Markdown backticks in all modified files, ensuring that code blocks render correctly in your documentation and UI.<br/>
+If the output script is corrupted, provide this script as sample to the AI in a follow-up prompt to ensure it is included correctly.
+
+```python
+# ───────────────────────────────────────────────────────────────────────────────────────────────────
+# Last Step : EXECUTING CROSS-PLATFORM PYTHON CONVERSION (RESTORING LITERAL CODE BLOCKS)
+# ───────────────────────────────────────────────────────────────────────────────────────────────────
+# This atomic block translates placeholder tokens back into pure markdown backtick wrappers
+# bypassing all platform discrepancies between macOS (BSD) and Linux (GNU) sed environments.
+
+python3 -c "
+import os
+
+files_to_fix = ['scripts/user-guide.md', 'README.md', 'user-guide.md', 'architecture.md', 'scenario.md', ...]
+
+for target in files_to_fix:
+    if os.path.exists(target):
+        with open(target, 'r', encoding='utf-8') as f:
+            text = f.read()
+
+        text = text.replace('!!!B3_BASH!!!', '```bash')
+        text = text.replace('!!!B3_MARKDOWN!!!', '```markdown')
+        text = text.replace('!!!B3_MERMAID!!!', '```mermaid')
+        text = text.replace('!!!B3_CLOSE!!!', '```')
+
+        with open(target, 'w', encoding='utf-8') as f:
+            f.write(text)
 ```
 
 ---
