@@ -136,6 +136,9 @@
 
                 <div class="vertical-divider"></div>
 
+                <vscode-button id="btn-open-history-file" appearance="secondary" class="tooltip-right icon-btn"
+                    data-tooltip="Open history log file config directly in VS Code"><span
+                        class="codicon codicon-file"></span></vscode-button>
                 <vscode-button id="btn-reveal-history-folder" appearance="secondary" class="tooltip-right icon-btn"
                     data-tooltip="Reveal the physical history log file database in OS Finder / Explorer"><span
                         class="codicon codicon-folder-opened"></span></vscode-button>
@@ -205,6 +208,9 @@
             <div style="display: flex; gap: 5px; align-items: center;">
                 <vscode-text-field id="destDir" class="full-width"
                     placeholder="/absolute/path/to/output"></vscode-text-field>
+                <vscode-button id="btn-copy-latest-files" appearance="secondary" class="tooltip-right icon-btn"
+                    data-tooltip="Copy last exported files to OS clipboard"><span
+                        class="codicon codicon-clippy"></span></vscode-button>
                 <vscode-button id="btn-open-finder-dest" appearance="secondary" class="tooltip-right icon-btn"
                     data-tooltip="Open destination directory in OS Finder / Explorer"><span
                         class="codicon codicon-folder-opened"></span></vscode-button>

@@ -17,7 +17,6 @@ export class HistoryService {
         }
     }
 
-    // CORRECTION : Double lecture sécurisée pour assurer la migration fluide sans perte de session
     public async getLastRunConfigId(): Promise<string> {
         try {
             if (!existsSync(this.historyFilePath)) return 'default';
@@ -96,7 +95,7 @@ export class HistoryService {
         return { history, newId };
     }
 
-    public async addNewEntry(defaultConfig: ExportConfig): Promise<{ history: HistoryEntry[], newId: string }> {
+    public async addNewEntry(defaultConfig: ExportConfig, workspaceName: string = 'Workspace'): Promise<{ history: HistoryEntry[], newId: string }> {
         let fullWrapper: any = { config: {}, history: [] };
         if (existsSync(this.historyFilePath)) {
             try {
@@ -108,7 +107,7 @@ export class HistoryService {
 
         const now = new Date();
         const pad = (n: number) => n.toString().padStart(2, '0');
-        const displayName = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}-${pad(now.getHours())}:${pad(now.getMinutes())} : New config`;
+        const displayName = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}-${pad(now.getHours())}:${pad(now.getMinutes())} --> ${workspaceName} --> ⚙️ New config`;
 
         const newId = now.toISOString() + "-new";
         const newEntry: HistoryEntry = {
@@ -215,12 +214,5 @@ export class HistoryService {
             inc_ext: formData.incExts,
             exc_ext: formData.excExts
         };
-    }
-
-    private generateDisplayString(cfg: ExportConfig): string {
-        const now = new Date();
-        const shortPath = (p: string) => p.length > 30 ? `...${p.substring(p.length - 27)}` : p;
-        const pad = (n: number) => n.toString().padStart(2, '0');
-        return `${pad(now.getMonth() + 1)}/${pad(now.getDate())}-${pad(now.getHours())}:${pad(now.getMinutes())} : ${shortPath(cfg.src)} --> ${shortPath(cfg.dest)}`;
     }
 }

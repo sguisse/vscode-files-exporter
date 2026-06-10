@@ -33,7 +33,9 @@ export class MessageRouter {
                 break;
             case 'addNewConfigProfile':
                 const defaultSettingsObj = this.getDefaultSettings();
-                const fresh = await this.historyService.addNewEntry(defaultSettingsObj);
+                const wsPath = this.configService.getWorkspaceRootPath();
+                const wsName = path.basename(wsPath);
+                const fresh = await this.historyService.addNewEntry(defaultSettingsObj, wsName);
                 this.panel.webview.postMessage({ command: 'updateHistory', history: fresh.history, selectedId: fresh.newId });
                 break;
             case 'toggleFreezeHistory':
@@ -42,6 +44,7 @@ export class MessageRouter {
                     this.panel.webview.postMessage({ command: 'updateHistory', history: modifiedHistory, selectedId: message.id, skipFieldSync: true });
                 }
                 break;
+            case 'openHistoryInVSCode': await this.handleOpenHistoryInVSCode(); break;
             case 'revealHistoryInOS': await this.handleRevealHistory(); break;
             case 'applyFileFilter': await this.handleApplyFileFilter(message); break;
             case 'editHistoryName': await this.handleEditHistoryName(message); break;
@@ -49,6 +52,7 @@ export class MessageRouter {
             case 'clearPaths': this.state.selectedPaths = []; break;
             case 'addOpenFiles': await this.handleAddOpenFiles(message); break;
             case 'addGitDiffFiles': await this.handleAddGitDiffFiles(message); break;
+            case 'copyLatestExportedFiles': await this.handleCopyLatestExportedFiles(message); break;
             case 'clearDestDirectory': await this.handleClearDestDirectory(message); break;
             case 'openFile':
                 try {
@@ -147,6 +151,77 @@ export class MessageRouter {
         this.panel.webview.postMessage({ command: 'terminalLog', text: `\n🌿 [Git Diff Sync Complete]: Injected ${additionsCount} remote delta file(s) into Source Manifest layout.\n` });
     }
 
+    private async handleCopyLatestExportedFiles(message: any) {
+        try {
+            const destDir = message.path;
+            if (!destDir || !fs.existsSync(destDir)) {
+                vscode.window.showWarningMessage("⚠️ No files to copy, do an export before !");
+                return;
+            }
+
+            const files = fs.readdirSync(destDir);
+            let maxTimestamp = '';
+            const fileTimestamps: { file: string, timestamp: string }[] = [];
+
+            for (const file of files) {
+                if (file.endsWith('.log') || file.endsWith('-report.json') || file.endsWith('-tree.json')) continue;
+                const match = file.match(/^export-(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})/);
+                if (match) {
+                    const ts = match[1];
+                    fileTimestamps.push({ file, timestamp: ts });
+                    if (ts > maxTimestamp) maxTimestamp = ts;
+                }
+            }
+
+            const latestFiles = fileTimestamps.filter(f => f.timestamp === maxTimestamp).map(f => path.join(destDir, f.file));
+
+            if (latestFiles.length === 0) {
+                vscode.window.showWarningMessage("⚠️ No files to copy, do an export before !");
+                return;
+            }
+
+            await this.copyFilesToOSClipboard(latestFiles);
+            this.panel.webview.postMessage({ command: 'terminalLog', text: `\n📋 Copied ${latestFiles.length} file(s) to OS clipboard.\n` });
+            vscode.window.showInformationMessage(`Copied ${latestFiles.length} file(s) to clipboard.`);
+        } catch (err: any) {
+            vscode.window.showErrorMessage(`Failed to copy files: ${err.message}`);
+        }
+    }
+
+    private async copyFilesToOSClipboard(filePaths: string[]) {
+        return new Promise<void>((resolve, reject) => {
+            const platform = process.platform;
+            if (platform === 'darwin') {
+                // Ensure proper escaping of paths and native macOS Finder compatibility using JXA
+                const jxaScript = `
+ObjC.import('AppKit');
+var pb = $.NSPasteboard.generalPasteboard;
+pb.clearContents;
+var arr = $.NSMutableArray.alloc.init;
+var paths = ${JSON.stringify(filePaths)};
+paths.forEach(p => arr.addObject($.NSURL.fileURLWithPath(p)));
+pb.writeObjects(arr);
+                `.trim().replace(/'/g, "'\\''");
+
+                exec(`osascript -l JavaScript -e '${jxaScript}'`, (err) => {
+                    if (err) reject(err); else resolve();
+                });
+            } else if (platform === 'win32') {
+                const pathsStr = filePaths.map(p => `'${p}'`).join(',');
+                exec(`powershell.exe -command "Set-Clipboard -Path ${pathsStr}"`, (err) => {
+                    if (err) reject(err); else resolve();
+                });
+            } else {
+                const uriList = filePaths.map(p => `file://${p}`).join('\n');
+                const proc = exec(`xclip -selection clipboard -t text/uri-list -i`, (err) => {
+                    if (err) reject(err); else resolve();
+                });
+                proc.stdin?.write(uriList);
+                proc.stdin?.end();
+            }
+        });
+    }
+
     private async handleClearDestDirectory(message: any) {
         try {
             const destDir = message.path;
@@ -184,6 +259,18 @@ export class MessageRouter {
             inc_ext: extensionConfig.get<string>('includeExtensionsRegex') || '',
             exc_ext: extensionConfig.get<string>('excludeExtensionsRegex') || ''
         };
+    }
+
+    private async handleOpenHistoryInVSCode() {
+        try {
+            const historyPath = this.configService.getHistoryFilePath();
+            if (fs.existsSync(historyPath)) {
+                const doc = await vscode.workspace.openTextDocument(historyPath);
+                await vscode.window.showTextDocument(doc);
+            } else {
+                vscode.window.showWarningMessage("History log file does not exist yet.");
+            }
+        } catch (err: any) { vscode.window.showErrorMessage(`Unable to open history file: ${err.message}`); }
     }
 
     private async handleRevealHistory() {

@@ -1,3 +1,5 @@
+import { bridge } from '../js/core/vscode.bridge.js';
+
 export class ReportTab {
     constructor() {
         this.myChart = null;
@@ -120,10 +122,9 @@ export class ReportTab {
             else if (r > 0 && e === 0 && x === 0) rowStyle = "color: #ffc107; background: rgba(255, 193, 7, 0.1);";
             row.setAttribute('style', rowStyle);
 
-            const rejText = r > 0 ? `${r} (${m.size_rejected.min}/${m.size_rejected.max})` : '-';
+            const rejText = r > 0 ? `${r} (<a href="#" class="rej-size-link tooltip-bottom" data-size="${m.size_rejected.min}" data-tooltip="Click to set Max File to ${m.size_rejected.min}" style="color: inherit; text-decoration: underline;">${m.size_rejected.min}</a> / <a href="#" class="rej-size-link tooltip-bottom" data-size="${m.size_rejected.max}" data-tooltip="Click to set Max File to ${m.size_rejected.max}" style="color: inherit; text-decoration: underline;">${m.size_rejected.max}</a>)` : '-';
             const excText = x > 0 ? x : '-';
 
-            // Linked with updated dynamic innerHTML tooltip framework specifications
             row.innerHTML = `<td style="padding: 1px 5px; border: 1px solid var(--vscode-panel-border); font-size: 12px; font-weight: 500;">
                                 <a href="#" class="ext-action-link" data-ext="${ext}" data-tooltip="Simple click add extension to &lt;strong&gt;&amp;quot;Include Exts&amp;quot;&lt;/strong&gt;&lt;br\/&gt; Press Cmd/Ctrl + click add extension to &lt;strong&gt;&amp;quot;Exclude Exts&amp;quot;&lt;/strong&gt;" style="color: var(--vscode-textLink-foreground); text-decoration: underline; cursor: pointer;">${ext === 'no_ext' ? 'No Extension' : ext}</a>
                              </td>
@@ -134,11 +135,31 @@ export class ReportTab {
             row.querySelector('.ext-action-link')?.addEventListener('click', (event) => {
                 event.preventDefault();
                 event.stopPropagation();
-
                 const isExcludeRoute = event.metaKey || event.ctrlKey;
                 const targetMode = isExcludeRoute ? 'exc' : 'inc';
-
                 this.evaluateAndAppendExtension(ext, targetMode);
+            });
+
+            row.querySelectorAll('.rej-size-link').forEach(link => {
+                link.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const sizeStr = link.getAttribute('data-size');
+                    let valKb = 0;
+                    if (sizeStr.endsWith('MB')) {
+                        valKb = parseFloat(sizeStr) * 1024;
+                    } else if (sizeStr.endsWith('KB')) {
+                        valKb = parseFloat(sizeStr);
+                    }
+                    const maxFileEl = document.getElementById('maxFile');
+                    if (maxFileEl) {
+                        const valStr = Math.ceil(valKb).toString();
+                        maxFileEl.value = valStr;
+                        maxFileEl.dispatchEvent(new Event('input', { bubbles: true }));
+                        maxFileEl.dispatchEvent(new Event('change', { bubbles: true }));
+                        bridge.postMessage('showNotification', { type: 'info', text: `Max File Size has changed to ${valStr} (KB)` });
+                    }
+                });
             });
 
             if (tbody) tbody.appendChild(row);
@@ -182,7 +203,6 @@ export class ReportTab {
 
         if (existsInInc || existsInExc) {
             const conflictSource = existsInInc ? 'Include Exts' : 'Exclude Exts';
-
             const backdrop = document.createElement('div');
             backdrop.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.45); z-index: 21000; display: flex; align-items: center; justify-content: center;';
 

@@ -64,6 +64,7 @@ const init = () => {
     });
 
     document.getElementById('btn-add-history')?.addEventListener('click', () => bridge.postMessage('addNewConfigProfile'));
+    document.getElementById('btn-open-history-file')?.addEventListener('click', () => bridge.postMessage('openHistoryInVSCode'));
     document.getElementById('btn-reveal-history-folder')?.addEventListener('click', () => bridge.postMessage('revealHistoryInOS'));
     document.getElementById('btn-clear-history')?.addEventListener('click', () => bridge.postMessage('clearHistory', { selectedId: state.currentSelectedId }));
 
@@ -87,6 +88,11 @@ const init = () => {
 
     document.getElementById('btn-run')?.addEventListener('click', runExport);
     document.getElementById('btn-copy-cmd')?.addEventListener('click', () => terminalTab.copyCommand());
+
+    document.getElementById('btn-copy-latest-files')?.addEventListener('click', () => {
+        const destDir = document.getElementById('destDir').value;
+        if (destDir) bridge.postMessage('copyLatestExportedFiles', { path: destDir });
+    });
 
     document.getElementById('btn-open-finder-dest')?.addEventListener('click', () => {
         const destDir = document.getElementById('destDir').value;
