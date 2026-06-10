@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { exec } from 'child_process';
 import { ConfigService } from './config.service';
 import { ProcessRunnerService } from './process-runner.service';
 
@@ -27,7 +28,7 @@ export class ExportOrchestratorService {
         });
 
         try {
-            const { code, stdout } = await this.processRunner.executePython(
+            const { code, stdout, stderr } = await this.processRunner.executePython(
                 script, execArgs,
                 (out) => this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: out }),
                 (err) => this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\x1b[91mERROR: ${err}\x1b[0m` })
@@ -36,9 +37,15 @@ export class ExportOrchestratorService {
             if (code === 0) {
                 this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\n✅ Process exited safely.\n` });
                 vscode.window.showInformationMessage("Export Complete!");
-                this.parseAndSendReport(stdout, formData.destDir);
+                const generatedFiles = this.parseAndSendReport(stdout, formData.destDir);
+                if (formData.copyGeneratedFilesToClipboard) {
+                    await this.copyGeneratedFilesToClipboard(generatedFiles);
+                }
             } else {
-                vscode.window.showErrorMessage(`Export engine failed with exit code ${code}`);
+                const lastErrorLine = stderr.trim().split(/\r?\n/).filter(Boolean).pop();
+                const detail = lastErrorLine ? `: ${lastErrorLine}` : '';
+                this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\n❌ Process exited with code ${code}${detail}\n` });
+                vscode.window.showErrorMessage(`Export engine failed with exit code ${code}${detail}`);
             }
         } catch (e: any) {
             vscode.window.showErrorMessage(`Engine Error : ${e.message}`);
@@ -79,7 +86,7 @@ export class ExportOrchestratorService {
         return args;
     }
 
-    private parseAndSendReport(stdout: string, destDirOverride: string) {
+    private parseAndSendReport(stdout: string, destDirOverride: string): string[] {
         const lines = stdout.split('\n');
         let timestamp: string | undefined;
         for (let i = lines.length - 1; i >= 0; i--) {
@@ -106,7 +113,58 @@ export class ExportOrchestratorService {
                 }
 
                 this.webviewPanel.webview.postMessage({ command: 'updateExportReport', data: reportData.results });
+                return (reportData.results.generated_files.exports || []).filter((filePath: string) => fs.existsSync(filePath));
             }
         }
+        return [];
+    }
+
+    private async copyGeneratedFilesToClipboard(filePaths: string[]) {
+        if (filePaths.length === 0) {
+            this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\n⚠️ Clipboard auto-copy skipped: no generated export files found.\n` });
+            return;
+        }
+
+        try {
+            await this.copyFilesToOSClipboard(filePaths);
+            this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\n📋 Auto-copied ${filePaths.length} generated file(s) to OS clipboard.\n` });
+            vscode.window.showInformationMessage(`Copied ${filePaths.length} generated file(s) to clipboard.`);
+        } catch (err: any) {
+            this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\n⚠️ Clipboard auto-copy failed: ${err.message}\n` });
+            vscode.window.showWarningMessage(`Clipboard auto-copy failed: ${err.message}`);
+        }
+    }
+
+    private async copyFilesToOSClipboard(filePaths: string[]) {
+        return new Promise<void>((resolve, reject) => {
+            const platform = process.platform;
+            if (platform === 'darwin') {
+                const jxaScript = `
+ObjC.import('AppKit');
+var pb = $.NSPasteboard.generalPasteboard;
+pb.clearContents;
+var arr = $.NSMutableArray.alloc.init;
+var paths = ${JSON.stringify(filePaths)};
+paths.forEach(p => arr.addObject($.NSURL.fileURLWithPath(p)));
+pb.writeObjects(arr);
+                `.trim().replace(/'/g, "'\\''");
+
+                exec(`osascript -l JavaScript -e '${jxaScript}'`, (err) => {
+                    if (err) reject(err); else resolve();
+                });
+            } else if (platform === 'win32') {
+                const pathsStr = filePaths.map(p => `'${p}'`).join(',');
+                exec(`powershell.exe -command "Set-Clipboard -Path ${pathsStr}"`, (err) => {
+                    if (err) reject(err); else resolve();
+                });
+            } else {
+                const uriList = filePaths.map(p => `file://${p}`).join('\n');
+                const proc = exec(`xclip -selection clipboard -t text/uri-list -i`, (err) => {
+                    if (err) reject(err); else resolve();
+                });
+                proc.stdin?.write(uriList);
+                proc.stdin?.end();
+            }
+        });
     }
 }

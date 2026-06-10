@@ -7,6 +7,10 @@ import sys
 from collections import defaultdict
 from datetime import datetime, timezone
 
+for stream in (sys.stdout, sys.stderr):
+    if hasattr(stream, "reconfigure"):
+        stream.reconfigure(encoding="utf-8", errors="replace")
+
 # ─── Environment & Global Variables ───────────────────────────────────────────
 
 DIRS_TO_PARSE = []

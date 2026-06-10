@@ -43,9 +43,10 @@ export const UIController = {
         else tooltipEl.style.left = `${mouseX + offset}px`;
     },
     checkSyncStatus() {
-        if (state.isInitializing) return;
+        if (state.isInitializing) return true;
         const combo = document.getElementById('historyCombo');
-        if (!combo) return;
+        const resetBtn = document.getElementById('btn-reset-config');
+        if (!combo) return true;
         let currentConfig = state.defaultSettings;
         if (state.currentSelectedId !== 'default') {
             const selected = state.historyList.find(h => h.id === state.currentSelectedId);
@@ -59,6 +60,8 @@ export const UIController = {
             src: pathsStr, dest: getVal('destDir'), format: getVal('format'),
             max_file: getVal('maxFile'), max_chunk: getVal('maxChunk'),
             groupByExt: getCheck('splitChunkByFileExtension'),
+            copyGeneratedFilesToClipboard: getCheck('copyGeneratedFilesToClipboard'),
+            generateTreeView: getCheck('generateTreeView'),
             logConsole: getCheck('generateLogConsole'), logFile: getCheck('generateLogFile'),
             inc_paths: getVal('incPaths'), exc_paths: getVal('excPaths'),
             inc_ext: getVal('incExts'), exc_ext: getVal('excExts')
@@ -67,6 +70,8 @@ export const UIController = {
             src: currentConfig.src || '', dest: currentConfig.dest || '',
             format: currentConfig.format || 'yaml', max_file: currentConfig.max_file || '50',
             max_chunk: currentConfig.max_chunk || '0', groupByExt: !!currentConfig.groupByExt,
+            copyGeneratedFilesToClipboard: !!currentConfig.copyGeneratedFilesToClipboard,
+            generateTreeView: currentConfig.generateTreeView !== false,
             logConsole: currentConfig.logConsole !== false, logFile: !!currentConfig.logFile,
             inc_paths: currentConfig.inc_paths || '', exc_paths: currentConfig.exc_paths || '',
             inc_ext: currentConfig.inc_ext || '', exc_ext: currentConfig.exc_ext || ''
@@ -80,6 +85,8 @@ export const UIController = {
             combo.classList.remove('combo-warning');
             combo.removeAttribute('data-tooltip');
         }
+        if (resetBtn) resetBtn.disabled = isSync;
+        return isSync;
     },
     syncButtonsState(val) {
         const btnFreeze = document.getElementById('btn-freeze-history'), btnEdit = document.getElementById('btn-edit-history'), btnDup = document.getElementById('btn-duplicate-history');

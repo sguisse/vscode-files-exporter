@@ -62,9 +62,11 @@ export class ExporterWebviewPanel {
             format: extensionConfig.get<string>('defaultFormat') || 'yaml',
             max_file: (extensionConfig.get<number>('maxFileSizeKb') ?? 50).toString(),
             max_chunk: (extensionConfig.get<number>('maxChunkSizeKb') ?? 0).toString(),
-            groupByExt: false,
-            logConsole: true,
-            logFile: false,
+            groupByExt: extensionConfig.get<boolean>('splitChunkByFileExtension') ?? false,
+            copyGeneratedFilesToClipboard: extensionConfig.get<boolean>('copyGeneratedFilesToClipboard') ?? true,
+            generateTreeView: extensionConfig.get<boolean>('generateTreeView') ?? true,
+            logConsole: extensionConfig.get<boolean>('generateLogConsole') ?? true,
+            logFile: extensionConfig.get<boolean>('generateLogFile') ?? false,
             inc_paths: extensionConfig.get<string>('includePathsRegex') || '.*',
             exc_paths: extensionConfig.get<string>('excludePathsRegex') || '',
             inc_ext: extensionConfig.get<string>('includeExtensionsRegex') || '',
@@ -82,13 +84,15 @@ export class ExporterWebviewPanel {
             }
         }
 
+        const initialPaths = launchType === 'add' ? this.state.selectedPaths : [];
+
         this._panel?.webview.postMessage({
             command: 'initSettings',
             defaultSettings,
             currentSettings: targetSettings,
             history,
             selectedId: targetSelectedId,
-            paths: this.state.selectedPaths,
+            paths: initialPaths,
             tooltipDelay
         });
     }

@@ -55,6 +55,10 @@ const init = () => {
         }
     });
 
+    document.getElementById('btn-reset-config')?.addEventListener('click', () => {
+        resetCurrentConfigFields();
+    });
+
     document.getElementById('btn-edit-history')?.addEventListener('click', () => {
         if (state.currentSelectedId && state.currentSelectedId !== 'default') bridge.postMessage('editHistoryName', { id: state.currentSelectedId });
     });
@@ -136,8 +140,10 @@ const init = () => {
     }, true);
 
     document.addEventListener('input', (e) => {
-        if (e.target && e.target.id && ValidatorService.validators[e.target.id]) {
-            ValidatorService.executeFieldValidation(e.target.id, true);
+        if (e.target && e.target.id) {
+            if (ValidatorService.validators[e.target.id]) {
+                ValidatorService.executeFieldValidation(e.target.id, true);
+            }
             if (e.target.id === 'pathList') {
                 state.selectedPaths = e.target.value.split('\n').map(p => p.trim()).filter(p => p);
                 bridge.postMessage('syncPaths', { paths: state.selectedPaths });
@@ -147,8 +153,10 @@ const init = () => {
     }, true);
 
     document.addEventListener('change', (e) => {
-        if (e.target && e.target.id && ValidatorService.validators[e.target.id]) {
-            ValidatorService.executeFieldValidation(e.target.id);
+        if (e.target && e.target.id) {
+            if (ValidatorService.validators[e.target.id]) {
+                ValidatorService.executeFieldValidation(e.target.id);
+            }
             if (e.target.id === 'pathList') {
                 state.selectedPaths = e.target.value.split('\n').map(p => p.trim()).filter(p => p);
                 bridge.postMessage('syncPaths', { paths: state.selectedPaths });
@@ -185,6 +193,7 @@ const runExport = () => {
             maxFile: document.getElementById('maxFile')?.value || '50',
             maxChunk: document.getElementById('maxChunk')?.value || '0',
             groupByExt: !!document.getElementById('splitChunkByFileExtension')?.checked,
+            copyGeneratedFilesToClipboard: !!document.getElementById('copyGeneratedFilesToClipboard')?.checked,
             logConsole: !!document.getElementById('generateLogConsole')?.checked,
             logFile: !!document.getElementById('generateLogFile')?.checked,
             generateTreeView: !!document.getElementById('generateTreeView')?.checked,
@@ -203,6 +212,19 @@ const applyHistorySelection = (val) => {
     setTimeout(() => ValidatorService.executeFieldValidation('pathList'), 10);
 };
 
+const resetCurrentConfigFields = () => {
+    const targetConfig = state.currentSelectedId === 'default'
+        ? state.defaultSettings
+        : state.historyList.find(h => h.id === state.currentSelectedId)?.config;
+
+    applyFormFields(targetConfig);
+    ValidatorService.clearAllValidationStyles();
+    setTimeout(() => {
+        ValidatorService.executeFieldValidation('pathList');
+        UIController.checkSyncStatus();
+    }, 10);
+};
+
 const applyFormFields = (cfg) => {
     if (!cfg) return;
     state.selectedPaths = cfg.src ? cfg.src.split(/[\n,;]/).map(p => p.trim()).filter(p => p) : [];
@@ -214,6 +236,7 @@ const applyFormFields = (cfg) => {
     setVal('destDir', cfg.dest); setVal('format', cfg.format || 'yaml');
     setVal('maxFile', cfg.max_file || '50'); setVal('maxChunk', cfg.max_chunk || '0');
     setCheck('splitChunkByFileExtension', !!cfg.groupByExt);
+    setCheck('copyGeneratedFilesToClipboard', !!cfg.copyGeneratedFilesToClipboard);
     setCheck('generateLogConsole', cfg.logConsole !== false);
     setCheck('generateLogFile', !!cfg.logFile);
     setCheck('generateTreeView', cfg.generateTreeView !== false);

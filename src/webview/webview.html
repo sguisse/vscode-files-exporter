@@ -125,6 +125,9 @@
                 <vscode-button id="btn-freeze-history" appearance="secondary" class="tooltip-right icon-btn"
                     data-tooltip="Freeze or unfreeze profile. Unfreezing allows overwriting and re-naming configurations"
                     disabled><span class="codicon codicon-unlock"></span></vscode-button>
+                <vscode-button id="btn-reset-config" appearance="secondary" class="tooltip-right icon-btn"
+                    data-tooltip="Reset configuration to last saved values."
+                    disabled><span class="codicon codicon-debug-restart"></span></vscode-button>    
                 <vscode-button id="btn-edit-history" appearance="secondary" class="tooltip-right icon-btn"
                     data-tooltip="Rename the selected profile item display name" disabled><span
                         class="codicon codicon-edit"></span></vscode-button>
@@ -222,7 +225,7 @@
         </div>
 
         <div
-            style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; align-items: end; margin-bottom: 10px;">
+            style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; align-items: end; margin-bottom: 10px;">
             <div>
                 <span class="field-label"
                     data-tooltip="Structured file format schema template applied to aggregate the files contents.">Output
@@ -244,6 +247,9 @@
             <vscode-checkbox id="splitChunkByFileExtension"
                 data-tooltip="Force the export runner to partition output chunks whenever a change of file extension occurs.">Split
                 by Ext</vscode-checkbox>
+            <vscode-checkbox id="copyGeneratedFilesToClipboard"
+                data-tooltip="Automatically copy generated export files to the OS clipboard after each successful run, making them easy to paste into Finder, Explorer, LLM chat interfaces, and other tools.">Copy
+                to clipboard</vscode-checkbox>
             <vscode-checkbox id="generateTreeView"
                 data-tooltip="Instruct the backend engine to build an isolated hierarchical JSON manifest describing all processed source components."
                 checked>Tree View</vscode-checkbox>

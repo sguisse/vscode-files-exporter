@@ -89,6 +89,31 @@
                     "default": 50,
                     "description": "Split output files into individual chunks <= than this (in KB)."
                 },
+                "filesExporter.splitChunkByFileExtension": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Default value for grouping generated chunks by file extension."
+                },
+                "filesExporter.copyGeneratedFilesToClipboard": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Default value for copying generated export files to the OS clipboard after export."
+                },
+                "filesExporter.generateTreeView": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Default value for generating the tree view manifest."
+                },
+                "filesExporter.generateLogConsole": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Default value for streaming exporter logs to the webview terminal."
+                },
+                "filesExporter.generateLogFile": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Default value for writing exporter logs to a log file."
+                },
                 "filesExporter.tooltipDelay": {
                     "type": "number",
                     "default": 2000,
@@ -106,7 +131,7 @@
                 },
                 "filesExporter.excludePathsRegex": {
                     "type": "string",
-                    "default": ".*/node_modules/.*|.*/target/.*|.*/\\.git/.*|.*/dist/.*|.*/.idea/.*|.*/.vscode/.*|.*/.history/.*|.*/.exported-files/.*",
+                    "default": ".*/node_modules/.*|.*/target/.*|.*/\\.git/.*|.*/dist/.*|.*/.idea/.*|.*/.vscode/.*|.*/.history/.*|.*/exported-files/.*",
                     "description": "Regex to exclude paths containing specific directories (e.g., node_modules, target, .git, dist)."
                 },
                 "filesExporter.excludeExtensionsRegex": {

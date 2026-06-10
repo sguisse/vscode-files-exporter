@@ -207,6 +207,8 @@ export class HistoryService {
             max_file: formData.maxFile,
             max_chunk: formData.maxChunk,
             groupByExt: formData.groupByExt,
+            copyGeneratedFilesToClipboard: formData.copyGeneratedFilesToClipboard,
+            generateTreeView: formData.generateTreeView,
             logConsole: formData.logConsole,
             logFile: formData.logFile,
             inc_paths: formData.incPaths,

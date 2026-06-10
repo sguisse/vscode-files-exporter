@@ -5,6 +5,8 @@ export interface ExportConfig {
     max_file: string;
     max_chunk: string;
     groupByExt: boolean;
+    copyGeneratedFilesToClipboard: boolean;
+    generateTreeView: boolean;
     logConsole: boolean;
     logFile: boolean;
     inc_paths: string;

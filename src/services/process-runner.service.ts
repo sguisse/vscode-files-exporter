@@ -7,7 +7,7 @@ export class ProcessRunnerService {
         args: string[],
         onStdout: (data: string) => void,
         onStderr: (data: string) => void
-    ): Promise<{ code: number, stdout: string }> {
+    ): Promise<{ code: number, stdout: string, stderr: string }> {
         return new Promise((resolve, reject) => {
             if (!existsSync(scriptPath)) {
                 return reject(new Error(`Le script moteur est introuvable à l'adresse : ${scriptPath}`));
@@ -18,6 +18,7 @@ export class ProcessRunnerService {
             const child = spawn(command, processArgs);
 
             let fullStdout = '';
+            let fullStderr = '';
 
             child.stdout.on('data', (chunk) => {
                 const text = chunk.toString('utf8');
@@ -25,9 +26,13 @@ export class ProcessRunnerService {
                 onStdout(text);
             });
 
-            child.stderr.on('data', (chunk) => onStderr(chunk.toString('utf8')));
+            child.stderr.on('data', (chunk) => {
+                const text = chunk.toString('utf8');
+                fullStderr += text;
+                onStderr(text);
+            });
 
-            child.on('close', (code) => resolve({ code: code ?? 0, stdout: fullStdout }));
+            child.on('close', (code) => resolve({ code: code ?? 0, stdout: fullStdout, stderr: fullStderr }));
             child.on('error', (err) => reject(err));
         });
     }
