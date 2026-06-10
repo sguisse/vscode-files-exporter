@@ -4,7 +4,8 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Files Exporter</title>
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src vscode-webview-resource: https: data:; font-src https://cdn.jsdelivr.net vscode-webview-resource:; style-src 'unsafe-inline' https://cdn.jsdelivr.net vscode-webview-resource:; script-src 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net vscode-webview-resource:;">
+        <meta http-equiv="Content-Security-Policy"
+            content="default-src 'none'; img-src vscode-webview-resource: https: data:; font-src https://cdn.jsdelivr.net vscode-webview-resource:; style-src 'unsafe-inline' https://cdn.jsdelivr.net vscode-webview-resource:; script-src 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net vscode-webview-resource:;">
         <link href="https://cdn.jsdelivr.net/npm/@vscode/codicons/dist/codicon.css" rel="stylesheet">
         <script type="module"
             src="https://cdn.jsdelivr.net/npm/@vscode/webview-ui-toolkit@latest/dist/toolkit.js"></script>
@@ -57,8 +58,8 @@
                 vertical-align: middle;
                 box-sizing: border-box;
             }
-            .tree-cb:checked { background-color: var(--vscode-checkbox-background, #007fd4); border-color: var(--vscode-checkbox-background, #007fd4); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23ffffff' stroke-width='2' d='M4 8l3 3 5-6'/%3E%3C/svg%3E"); background-size: 12px; background-position: center; background-repeat: no-repeat; }
-            .tree-cb:indeterminate { background-color: var(--vscode-checkbox-background, #007fd4); border-color: var(--vscode-checkbox-background, #007fd4); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='3' y='7' width='10' height='2' fill='%23ffffff'/%3E%3C/svg%3E"); background-size: 10px; background-position: center; background-repeat: no-repeat; }
+            .tree-cb:checked { background-color: var(--vscode-checkbox-background, #007fd4); border-color: var(--vscode-checkbox-background, #007fd4); background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiI+PHBhdGggZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjIiIGQ9Ik00IDhsMyAzIDUtNiIvPjwvc3ZnPg=="); background-size: 12px; background-position: center; background-repeat: no-repeat; }
+            .tree-cb:indeterminate { background-color: var(--vscode-checkbox-background, #007fd4); border-color: var(--vscode-checkbox-background, #007fd4); background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiI+PHJlY3QgeD0iMyIgeT0iNyIgd2lkdGg9IjEwIiBoZWlnaHQ9IjIiIGZpbGw9IiNmZmZmZmYiLz48L3N2Zz4="); background-size: 10px; background-position: center; background-repeat: no-repeat; }
 
             #global-cursor-tooltip { position: fixed; background-color: #000000; color: #ffffff; border: 1px solid #454545; box-shadow: 0px 5px 12px rgba(0, 0, 0, 0.6); padding: 6px 10px; border-radius: 4px; font-family: var(--vscode-font-family, sans-serif); font-size: 11px; font-weight: normal; z-index: 999999; pointer-events: none; display: none; width: max-content; max-width: 200px; white-space: normal; word-wrap: break-word; height: auto; }
 
@@ -189,7 +190,7 @@
             </div>
             <div style="flex-grow:1;">
                 <span class="field-label"
-                    data-tooltip="Regex blacklisting targeted folder structures (e.g. node_modules, .git) to skip.">❌
+                    data-tooltip="Regex blacklisting targeted folder structures (e.g. node_modules, .git) to skip.">🚫
                     Exclude Paths</span>
                 <vscode-text-area id="excPaths" class="full-width" rows="4" resize="vertical"></vscode-text-area>
             </div>

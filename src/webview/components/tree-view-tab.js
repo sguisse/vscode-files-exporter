@@ -67,6 +67,7 @@ export class TreeViewTab {
                         <span class="tree-icon">📄</span>
                         <span class="tree-name file-name" style="color: var(--vscode-textLink-foreground); cursor: pointer; text-decoration: underline;" data-path="${node.absolute_path.replace(/\\/g, '\\\\')}">${fullName}</span>
                         <vscode-button appearance="icon" class="btn-tree-finder tooltip-right" data-tooltip="Reveal in OS Explorer" data-path="${node.absolute_path.replace(/\\/g, '\\\\')}" style="height: 18px; width: 18px; margin-left: 10px;"><span class="codicon codicon-folder-opened"></span></vscode-button>
+                        <vscode-button appearance="icon" class="btn-tree-exclude tooltip-right" data-tooltip="Exclude file path" data-path="${node.absolute_path.replace(/\\/g, '\\\\')}" style="height: 18px; width: 18px; margin-right: 5px;">🚫</vscode-button>
                     </div>`;
         }
 
@@ -92,6 +93,7 @@ export class TreeViewTab {
                     <input type="checkbox" class="tree-cb folder-cb">
                     <span class="tree-icon">📁</span>
                     <span class="tree-name folder-name" data-path="${(node.absolute_path || '').replace(/\\/g, '\\\\')}">${node.name}</span>
+                    <vscode-button appearance="icon" class="btn-tree-exclude tooltip-right" data-tooltip="Exclude folder path" data-path="${(node.absolute_path || '').replace(/\\/g, '\\\\')}" style="height: 18px; width: 18px; margin-left: 10px;"><span class="codicon codicon-close"></span></vscode-button>
                 </div>
                 <div class="tree-children">
                     ${childrenHTML}
@@ -130,6 +132,29 @@ export class TreeViewTab {
                     const separatorIndex = cleanPath.lastIndexOf('/');
                     const dirPath = separatorIndex !== -1 ? rawPath.substring(0, separatorIndex) : rawPath;
                     this.onFinderClick(dirPath);
+                }
+            });
+        });
+
+        container.querySelectorAll('.btn-tree-exclude').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const rawPath = btn.getAttribute('data-path');
+                const excPathsEl = document.getElementById('excPaths');
+                if (excPathsEl) {
+                    const currentVal = excPathsEl.value.trim();
+                    const escapedPath = rawPath.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                    if (currentVal === '') {
+                        excPathsEl.value = escapedPath;
+                    } else {
+                        const lines = currentVal.split('\n');
+                        if (!lines.includes(escapedPath)) {
+                            excPathsEl.value = currentVal + '\n' + escapedPath;
+                        }
+                    }
+                    excPathsEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    excPathsEl.dispatchEvent(new Event('change', { bubbles: true }));
+                    bridge.postMessage('showNotification', { type: 'info', text: `Added to Exclude Paths list layout successfully.` });
                 }
             });
         });
