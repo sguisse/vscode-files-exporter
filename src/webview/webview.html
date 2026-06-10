@@ -54,12 +54,39 @@
                 border-radius: 3px;
                 margin: 0 6px 0 0;
                 cursor: pointer;
-                display: inline-block;
-                vertical-align: middle;
+                display: inline-flex; /* Permet un centrage parfait du glyphe */
+                align-items: center;
+                justify-content: center;
+                position: relative;
                 box-sizing: border-box;
+                vertical-align: middle;
             }
-            .tree-cb:checked { background-color: var(--vscode-checkbox-background, #007fd4); border-color: var(--vscode-checkbox-background, #007fd4); background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiI+PHBhdGggZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjIiIGQ9Ik00IDhsMyAzIDUtNiIvPjwvc3ZnPg=="); background-size: 12px; background-position: center; background-repeat: no-repeat; }
-            .tree-cb:indeterminate { background-color: var(--vscode-checkbox-background, #007fd4); border-color: var(--vscode-checkbox-background, #007fd4); background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiI+PHJlY3QgeD0iMyIgeT0iNyIgd2lkdGg9IjEwIiBoZWlnaHQ9IjIiIGZpbGw9IiNmZmZmZmYiLz48L3N2Zz4="); background-size: 10px; background-position: center; background-repeat: no-repeat; }
+
+            .tree-cb:checked, .tree-cb.is-indeterminate {
+                background-color: var(--vscode-checkbox-background, #007fd4);
+                border-color: var(--vscode-checkbox-selectBorder, var(--vscode-checkbox-background), #007fd4);
+            }
+
+            /* 🟢 Drawing the adaptive checkmark (Checked) */
+            .tree-cb:checked::after {
+                content: '';
+                width: 3px;
+                height: 6px;
+                border: solid var(--vscode-checkbox-foreground, #ffffff);
+                border-width: 0 2px 2px 0;
+                transform: rotate(45deg);
+                position: absolute;
+                top: 1px;
+            }
+
+            /* 🟡 Drawing the adaptive dash (Indeterminate / Tri-state) */
+            .tree-cb.is-indeterminate::after {
+                content: '';
+                width: 8px;
+                height: 2px;
+                background-color: var(--vscode-checkbox-foreground, #ffffff);
+                position: absolute;
+            }
 
             #global-cursor-tooltip { position: fixed; background-color: #000000; color: #ffffff; border: 1px solid #454545; box-shadow: 0px 5px 12px rgba(0, 0, 0, 0.6); padding: 6px 10px; border-radius: 4px; font-family: var(--vscode-font-family, sans-serif); font-size: 11px; font-weight: normal; z-index: 999999; pointer-events: none; display: none; width: max-content; max-width: 200px; white-space: normal; word-wrap: break-word; height: auto; }
 
@@ -127,7 +154,7 @@
                     disabled><span class="codicon codicon-unlock"></span></vscode-button>
                 <vscode-button id="btn-reset-config" appearance="secondary" class="tooltip-right icon-btn"
                     data-tooltip="Reset configuration to last saved values."
-                    disabled><span class="codicon codicon-debug-restart"></span></vscode-button>    
+                    disabled><span class="codicon codicon-debug-restart"></span></vscode-button>
                 <vscode-button id="btn-edit-history" appearance="secondary" class="tooltip-right icon-btn"
                     data-tooltip="Rename the selected profile item display name" disabled><span
                         class="codicon codicon-edit"></span></vscode-button>
@@ -226,7 +253,7 @@
 
         <div
             style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; align-items: end; margin-bottom: 10px;">
-            <div>
+            <div style="margin-bottom: 1px;">
                 <span class="field-label"
                     data-tooltip="Structured file format schema template applied to aggregate the files contents.">Output
                     Format</span>
@@ -244,21 +271,31 @@
                     Chunk (KB)</span>
                 <vscode-text-field id="maxChunk" class="full-width" value="0"></vscode-text-field>
             </div>
-            <vscode-checkbox id="splitChunkByFileExtension"
-                data-tooltip="Force the export runner to partition output chunks whenever a change of file extension occurs.">Split
-                by Ext</vscode-checkbox>
-            <vscode-checkbox id="copyGeneratedFilesToClipboard"
-                data-tooltip="Automatically copy generated export files to the OS clipboard after each successful run, making them easy to paste into Finder, Explorer, LLM chat interfaces, and other tools.">Copy
-                to clipboard</vscode-checkbox>
-            <vscode-checkbox id="generateTreeView"
-                data-tooltip="Instruct the backend engine to build an isolated hierarchical JSON manifest describing all processed source components."
-                checked>Tree View</vscode-checkbox>
-            <vscode-checkbox id="generateLogConsole"
-                data-tooltip="Enable standard output logging directly streaming into this extension terminal window view.">Log
-                Console</vscode-checkbox>
-            <vscode-checkbox id="generateLogFile"
-                data-tooltip="Instruct the exporter engine to save a physical log tracing history report in the destination directory.">Log
-                File</vscode-checkbox>
+            <div style="margin-bottom: 2px;">
+                <vscode-checkbox id="splitChunkByFileExtension"
+                    data-tooltip="Force the export runner to partition output chunks whenever a change of file extension occurs.">Split
+                    by Ext</vscode-checkbox>
+            </div>
+            <div style="margin-bottom: 2px;">
+                <vscode-checkbox id="copyGeneratedFilesToClipboard"
+                    data-tooltip="Automatically copy generated export files to the OS clipboard after each successful run, making them easy to paste into Finder, Explorer, LLM chat interfaces, and other tools.">Copy
+                    to clipboard</vscode-checkbox>
+            </div>
+            <div style="margin-bottom: 2px;">
+                <vscode-checkbox id="generateTreeView"
+                    data-tooltip="Instruct the backend engine to build an isolated hierarchical JSON manifest describing all processed source components."
+                    checked>Tree View</vscode-checkbox>
+            </div>
+            <div style="margin-bottom: 5px;">
+                <vscode-checkbox id="generateLogConsole"
+                    data-tooltip="Enable standard output logging directly streaming into this extension terminal window view.">Log
+                    Console</vscode-checkbox>
+            </div>
+            <div style="margin-bottom: 5px;">
+                <vscode-checkbox id="generateLogFile"
+                    data-tooltip="Instruct the exporter engine to save a physical log tracing history report in the destination directory.">Log
+                    File</vscode-checkbox>
+            </div>
         </div>
 
         <button id="btn-run" class="btn-run-custom">
@@ -313,12 +350,16 @@
                         Files</div>
                     <div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 5px; width: 100%;">
                         <div style="flex-grow: 1;">
-                            <span class="field-label">File Name</span>
+                            <span
+                                data-tooltip="Filter on generated files by their name using a regular expression. Useful in case split chunks are generated, to search a specific output file extension."
+                                class="field-label">File Name</span>
                             <vscode-text-field id="filterFileName" placeholder="Regex pattern"
                                 class="full-width"></vscode-text-field>
                         </div>
                         <div style="flex-grow: 1;">
-                            <span class="field-label">File Content</span>
+                            <span
+                                data-tooltip="Filter on generated files by their content using a regular expression. To search if a generated file contains specific text, use this filter."
+                                class="field-label">File Content</span>
                             <vscode-text-field id="filterFileContent" placeholder="Regex pattern"
                                 class="full-width"></vscode-text-field>
                         </div>

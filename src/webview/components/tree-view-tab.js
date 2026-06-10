@@ -65,8 +65,9 @@ export class TreeViewTab {
             return `<div class="tree-item file-item" data-name="${fullName.toLowerCase()}">
                         <input type="checkbox" class="tree-cb file-cb" data-path="${node.absolute_path.replace(/\\/g, '\\\\')}">
                         <span class="tree-icon">📄</span>
-                        <span class="tree-name file-name" style="color: var(--vscode-textLink-foreground); cursor: pointer; text-decoration: underline;" data-path="${node.absolute_path.replace(/\\/g, '\\\\')}">${fullName}</span>
-                        <vscode-button appearance="icon" class="btn-tree-finder tooltip-right" data-tooltip="Reveal in OS Explorer" data-path="${node.absolute_path.replace(/\\/g, '\\\\')}" style="height: 18px; width: 18px; margin-left: 10px;"><span class="codicon codicon-folder-opened"></span></vscode-button>
+                        <span class="tree-name file-name" style="color: var(--vscode-textLink-foreground); cursor: pointer; text-decoration: underline;" data-path="${node.absolute_path.replace(/\\/g, '\\\\')}"
+                            data-tooltip="Open file here, in VS Code">${fullName}</span>
+                        <vscode-button appearance="icon" class="btn-tree-finder tooltip-right" data-tooltip="Reveal file in OS Explorer" data-path="${node.absolute_path.replace(/\\/g, '\\\\')}" style="height: 18px; width: 18px; margin-left: 10px;"><span class="codicon codicon-folder-opened"></span></vscode-button>
                         <vscode-button appearance="icon" class="btn-tree-exclude tooltip-right" data-tooltip="Exclude file path" data-path="${node.absolute_path.replace(/\\/g, '\\\\')}" style="height: 18px; width: 18px; margin-right: 5px;">🚫</vscode-button>
                     </div>`;
         }
@@ -93,7 +94,7 @@ export class TreeViewTab {
                     <input type="checkbox" class="tree-cb folder-cb">
                     <span class="tree-icon">📁</span>
                     <span class="tree-name folder-name" data-path="${(node.absolute_path || '').replace(/\\/g, '\\\\')}">${node.name}</span>
-                    <vscode-button appearance="icon" class="btn-tree-exclude tooltip-right" data-tooltip="Exclude folder path" data-path="${(node.absolute_path || '').replace(/\\/g, '\\\\')}" style="height: 18px; width: 18px; margin-left: 10px;"><span class="codicon codicon-close"></span></vscode-button>
+                    <vscode-button appearance="icon" class="btn-tree-exclude tooltip-right" data-tooltip="Exclude folder path" data-path="${(node.absolute_path || '').replace(/\\/g, '\\\\')}" style="height: 18px; width: 18px; margin-left: 10px;">🚫</vscode-button>
                 </div>
                 <div class="tree-children">
                     ${childrenHTML}
@@ -128,10 +129,8 @@ export class TreeViewTab {
                 e.stopPropagation();
                 if (this.onFinderClick) {
                     const rawPath = btn.getAttribute('data-path');
-                    const cleanPath = rawPath.replace(/\\/g, '/');
-                    const separatorIndex = cleanPath.lastIndexOf('/');
-                    const dirPath = separatorIndex !== -1 ? rawPath.substring(0, separatorIndex) : rawPath;
-                    this.onFinderClick(dirPath);
+                    // Sending the full file path without trimming
+                    this.onFinderClick(rawPath);
                 }
             });
         });
@@ -141,20 +140,47 @@ export class TreeViewTab {
                 e.stopPropagation();
                 const rawPath = btn.getAttribute('data-path');
                 const excPathsEl = document.getElementById('excPaths');
+
                 if (excPathsEl) {
                     const currentVal = excPathsEl.value.trim();
-                    const escapedPath = rawPath.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+
+                    // 1️⃣ Cross-normalization of path separators (\ vs /)
+                    const cleanRaw = rawPath.replace(/\\/g, '/');
+                    const cleanRoot = this.treeManifest && this.treeManifest.absolute_path
+                        ? this.treeManifest.absolute_path.replace(/\\/g, '/')
+                        : '';
+
+                    // 2️⃣ Extraction of the relative path from the workspace root
+                    let relativePath = cleanRaw;
+                    if (cleanRoot && cleanRaw.startsWith(cleanRoot)) {
+                        relativePath = cleanRaw.slice(cleanRoot.length);
+                    }
+                    relativePath = relativePath.replace(/^\/+/, ''); // Remove any leading residual slash
+
+                    // 3️⃣ Escaping special Regex characters (Except path slashes)
+                    const escapedPath = relativePath.replace(/[-\^$*+?.()|[\]{}]/g, '\\$&');
+
+                    // 4️⃣ Typing the Regex signature according to the node type (Folder vs File)
+                    const isFolder = btn.getAttribute('data-tooltip')?.toLowerCase().includes('folder');
+                    const regexEntry = isFolder ? `.*/${escapedPath}/.*` : `.*/${escapedPath}$`;
+
+                    // 5️⃣ Non-duplicative injection into the configuration field
                     if (currentVal === '') {
-                        excPathsEl.value = escapedPath;
+                        excPathsEl.value = regexEntry;
                     } else {
                         const lines = currentVal.split('\n');
-                        if (!lines.includes(escapedPath)) {
-                            excPathsEl.value = currentVal + '\n' + escapedPath;
+                        if (!lines.includes(regexEntry)) {
+                            excPathsEl.value = currentVal + '\n' + regexEntry;
                         }
                     }
+
+                    // Triggering synchronization cycles and notification
                     excPathsEl.dispatchEvent(new Event('input', { bubbles: true }));
                     excPathsEl.dispatchEvent(new Event('change', { bubbles: true }));
-                    bridge.postMessage('showNotification', { type: 'info', text: `Added to Exclude Paths list layout successfully.` });
+                    bridge.postMessage('showNotification', {
+                        type: 'info',
+                        text: `Added relative pattern "${regexEntry}" to Exclude Paths.`
+                    });
                 }
             });
         });

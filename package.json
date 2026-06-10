@@ -136,8 +136,8 @@
                 },
                 "filesExporter.excludeExtensionsRegex": {
                     "type": "string",
-                    "default": "^[^.]+$|.*\\.(?:log|tmp|lock|zip|tar|png|jpg|gif|pyc)$",
-                    "description": "Regex to exclude files without extensions or with specific extensions (e.g., log, tmp, lock, zip, tar, png, jpg, gif, pyc)."
+                    "default": "^[^.]+$|.*\\.(?:log|tmp|lock|zip|tar|png|jpg|gif|pyc|vsix)$",
+                    "description": "Regex to exclude files without extensions or with specific extensions (e.g., log, tmp, lock, zip, tar, png, jpg, gif, pyc, vsix)."
                 }
             }
         }
