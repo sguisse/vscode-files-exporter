@@ -41,6 +41,9 @@ export class ExporterWebviewPanel {
             }
         );
 
+        // ✨ Set the custom tab title icon using the extension directory uri context
+        this._panel.iconPath = vscode.Uri.joinPath(this.context.extensionUri, 'assets', 'icon.png');
+
         this._panel.webview.html = this.getHtmlContent();
         this._panel.onDidDispose(() => this._panel = undefined);
 

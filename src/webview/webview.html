@@ -346,7 +346,8 @@
             <vscode-panel-view id="view-files">
                 <div style="width: 100%; display: flex; flex-direction: column; gap: 10px;">
                     <div id="exportedFilesTitle" class="section-title"
-                        data-tooltip="Alphabetical listing of all chunks generated during the last cycle.">📂 Exported
+                        data-tooltip="Alphabetical listing of all chunks generated during the last cycle. Display (NB gen Files / NB Filtered Files)">📂
+                        Exported
                         Files</div>
                     <div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 5px; width: 100%;">
                         <div style="flex-grow: 1;">
@@ -364,7 +365,8 @@
                                 class="full-width"></vscode-text-field>
                         </div>
                         <vscode-button id="btn-filter-files" appearance="primary">Filter</vscode-button>
-                        <vscode-button id="btn-reset-filter" appearance="secondary">Reset</vscode-button>
+                        <vscode-button id="btn-reset-filter" appearance="secondary"><span
+                                class="codicon codicon-debug-restart"></span></vscode-button>
                     </div>
                     <div id="exportedFilesList" class="paths-list"></div>
                     <div class="section-title">📝 Logs</div>
