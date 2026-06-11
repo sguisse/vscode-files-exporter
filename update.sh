@@ -1,170 +1,325 @@
 #!/bin/bash
 
-# Overwrite process-runner.service.ts with the optimized native ObjC wrapper logic
-cat << 'EOF' > src/services/process-runner.service.ts
-import { spawn, exec } from 'child_process';
-import { existsSync } from 'fs';
+# Overwrite message.router.ts with all missing helper handlers fully restored
+cat << 'EOF' > src/handlers/message.router.ts
+import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+import { exec } from 'child_process';
+import { HistoryService } from '../services/history.service';
+import { ConfigService } from '../services/config.service';
+import { ExportOrchestratorService } from '../services/export-orchestrator.service';
+import { ExtensionState } from '../interfaces/export.interface';
+import { ProcessRunnerService } from '../services/process-runner.service';
 
-export class ProcessRunnerService {
-    public executePython(
-        scriptPath: string,
-        args: string[],
-        onStdout: (data: string) => void,
-        onStderr: (data: string) => void
-    ): Promise<{ code: number, stdout: string, stderr: string }> {
-        return new Promise((resolve, reject) => {
-            if (!existsSync(scriptPath)) {
-                return reject(new Error(`Le script moteur est introuvable à l'adresse : ${scriptPath}`));
-            }
+export class MessageRouter {
+    constructor(
+        private panel: vscode.WebviewPanel,
+        private historyService: HistoryService,
+        private configService: ConfigService,
+        private orchestrator: ExportOrchestratorService,
+        private state: ExtensionState,
+        private processRunner: ProcessRunnerService
+    ) {}
 
-            const command = process.platform === 'win32' ? 'python' : 'python3';
-            const processArgs = [scriptPath, ...args];
-            const child = spawn(command, processArgs);
-
-            let fullStdout = '';
-            let fullStderr = '';
-
-            child.stdout.on('data', (chunk) => {
-                const text = chunk.toString('utf8');
-                fullStdout += text;
-                onStdout(text);
-            });
-
-            child.stderr.on('data', (chunk) => {
-                const text = chunk.toString('utf8');
-                fullStderr += text;
-                onStderr(text);
-            });
-
-            child.on('close', (code) => resolve({ code: code ?? 0, stdout: fullStdout, stderr: fullStderr }));
-            child.on('error', (err) => reject(err));
-        });
+    public async handleMessage(message: any) {
+        switch (message.command) {
+            case 'checkPaths': await this.handleCheckPaths(message); break;
+            case 'syncPaths': this.state.selectedPaths = message.paths || []; break;
+            case 'updateHistoryViewMode':
+                const activeRepo = this.configService.getRepoName();
+                await this.historyService.setHistoryViewMode(message.mode, activeRepo);
+                break;
+            case 'runExport':
+                const repoRun = this.configService.getRepoName();
+                const result = await this.historyService.saveHistory(message.data, message.currentHistoryId, repoRun);
+                this.panel.webview.postMessage({ command: 'updateHistory', history: result.history, selectedId: result.selectedId, skipFieldSync: true });
+                await this.orchestrator.run(message.data);
+                break;
+            case 'duplicateHistory':
+                if (message.id) {
+                    const repoDup = this.configService.getRepoName();
+                    const dup = await this.historyService.duplicateEntry(message.id, repoDup);
+                    this.panel.webview.postMessage({ command: 'updateHistory', history: dup.history, selectedId: dup.newId });
+                }
+                break;
+            case 'addNewConfigProfile':
+                const defaultSettingsObj = this.getDefaultSettings();
+                const wsPath = this.configService.getWorkspaceRootPath();
+                const wsName = path.basename(wsPath);
+                const repoNew = this.configService.getRepoName();
+                const fresh = await this.historyService.addNewEntry(defaultSettingsObj, wsName, repoNew);
+                this.panel.webview.postMessage({ command: 'updateHistory', history: fresh.history, selectedId: fresh.newId });
+                break;
+            case 'toggleFreezeHistory':
+                if (message.id) {
+                    const modifiedHistory = await this.historyService.toggleFreeze(message.id, message.frozen);
+                    this.panel.webview.postMessage({ command: 'updateHistory', history: modifiedHistory, selectedId: message.id, skipFieldSync: true });
+                }
+                break;
+            case 'openHistoryInVSCode': await this.handleOpenHistoryInVSCode(); break;
+            case 'revealHistoryInOS': await this.handleRevealHistory(); break;
+            case 'applyFileFilter': await this.handleApplyFileFilter(message); break;
+            case 'editHistoryName': await this.handleEditHistoryName(message); break;
+            case 'clearHistory': await this.handleClearHistory(message); break;
+            case 'clearPaths': this.state.selectedPaths = []; break;
+            case 'addOpenFiles': await this.handleAddOpenFiles(message); break;
+            case 'addGitDiffFiles': await this.handleAddGitDiffFiles(message); break;
+            case 'copyLatestExportedFiles': await this.handleCopyLatestExportedFiles(message); break;
+            case 'clearDestDirectory': await this.handleClearDestDirectory(message); break;
+            case 'openFile':
+                try {
+                    const doc = await vscode.workspace.openTextDocument(message.path);
+                    await vscode.window.showTextDocument(doc);
+                } catch (err: any) { vscode.window.showErrorMessage(`Opening failed: ${err.message}`); }
+                break;
+            case 'openFinder':
+                if (message.path) await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(message.path));
+                break;
+            case 'showNotification':
+                if (message.type === 'info') vscode.window.showInformationMessage(message.text);
+                else if (message.type === 'error') vscode.window.showErrorMessage(message.text);
+                else if (message.type === 'warn') vscode.window.showWarningMessage(message.text);
+                break;
+        }
     }
 
-    /**
-     * Copies an array of absolute file paths to the native OS clipboard and poll-verifies their presence.
-     * @param filePaths Array of absolute paths to copy.
-     * @param timeoutMs Maximum polling time allowed for validation.
-     */
-    public copyFilesToClipboard(filePaths: string[], timeoutMs: number = 10000): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
-            // Buffer delay to ensure APFS/NTFS disk controllers have flushed all file generation
-            setTimeout(() => {
-                const platform = process.platform;
-                let writePromise: Promise<void>;
+    private async handleCheckPaths(message: any) {
+        try {
+            const invalidPaths: string[] = [];
+            const wsPath = this.configService.getWorkspaceRootPath();
+            for (const rawPath of message.paths) {
+                let cleanPath = rawPath.replace(/^['"]|['"]$/g, '').trim();
+                if (!cleanPath) continue;
+                if (!path.isAbsolute(cleanPath)) cleanPath = path.join(wsPath, cleanPath);
+                if (!fs.existsSync(cleanPath)) invalidPaths.push(rawPath);
+            }
+            this.panel.webview.postMessage({ command: 'checkPathsResult', invalidPaths });
+        } catch (e) { console.error(e); }
+    }
 
-                if (platform === 'darwin') {
-                    writePromise = new Promise((res, rej) => {
-                        const jxaScript = `
-                            ObjC.import('AppKit');
-                            var pb = $.NSPasteboard.generalPasteboard;
-                            var changeCount = pb.clearContents;
+    private async handleAddOpenFiles(message: any) {
+        const existingPaths: string[] = message.currentPaths || [];
+        const openFiles: string[] = [...existingPaths];
+        vscode.window.tabGroups.all.forEach(group => {
+            group.tabs.forEach(tab => {
+                if (tab.input instanceof vscode.TabInputText) {
+                    const fsPath = tab.input.uri.fsPath;
+                    if (!openFiles.includes(fsPath)) openFiles.push(fsPath);
+                }
+            });
+        });
+        this.state.selectedPaths = openFiles;
+        this.panel.webview.postMessage({ command: 'updatePaths', paths: this.state.selectedPaths });
+    }
 
-                            var paths = ${JSON.stringify(filePaths)};
-                            // ✨ The Magic Bullet: ObjC.wrap() pushes the entire array to Objective-C memory atomically
-                            // Bypassing JS iteration limits and preventing truncation of large file arrays.
-                            pb.setPropertyListForType(ObjC.wrap(paths), 'NSFilenamesPboardType');
-                        `.trim().replace(/'/g, "'\\''");
+    private async handleAddGitDiffFiles(message: any) {
+        const existingPaths: string[] = message.currentPaths || [];
+        const gitFiles: string[] = [...existingPaths];
+        const wsPath = this.configService.getWorkspaceRootPath();
 
-                        exec(`osascript -l JavaScript -e '${jxaScript}'`, (err) => err ? rej(err) : res());
+        exec('git fetch', { cwd: wsPath }, (fetchErr) => {
+            const diffCommand = 'git diff $(git merge-base HEAD @{upstream})..HEAD --name-only';
+
+            exec(diffCommand, { cwd: wsPath }, (err: any, stdout: string) => {
+                if (err) {
+                    exec('git diff origin/HEAD..HEAD --name-only', { cwd: wsPath }, (fallbackErr, fallbackStdout) => {
+                        if (!fallbackErr && fallbackStdout) {
+                            this.processGitOutput(fallbackStdout, gitFiles, wsPath);
+                        } else {
+                            this.panel.webview.postMessage({ command: 'terminalLog', text: `\x1b[93m[Git Diff Warning]: No upstream tracking configuration found for the active branch.\x1b[0m\n` });
+                        }
                     });
-                } else if (platform === 'win32') {
-                    writePromise = new Promise((res, rej) => {
-                        const pathsStr = filePaths.map(p => `'${p.replace(/'/g, "''")}'`).join(',');
-                        exec(`powershell.exe -NoProfile -Command "Set-Clipboard -LiteralPath ${pathsStr}"`, (err) => err ? rej(err) : res());
-                    });
-                } else {
-                    writePromise = new Promise((res, rej) => {
-                        const uriList = filePaths.map(p => `file://${p}`).join('\n');
-                        const proc = exec(`xclip -selection clipboard -t text/uri-list -i`, (err) => err ? rej(err) : res());
-                        proc.stdin?.write(uriList);
-                        proc.stdin?.end();
-                    });
+                    return;
                 }
 
-                // Execute non-blocking asynchronous verification polling loop
-                writePromise.then(() => {
-                    const startTime = Date.now();
-                    const intervalTime = 250;
-                    let lastActualCount = 0;
-
-                    const poll = async () => {
-                        const { verified, actualCount } = await this.verifyClipboard(filePaths);
-                        lastActualCount = actualCount;
-
-                        if (verified) {
-                            resolve();
-                        } else if (Date.now() - startTime >= timeoutMs) {
-                            // ✨ Improved error log reports exactly how many files were successfully bridged
-                            reject(new Error(`Clipboard verification timed out after ${timeoutMs}ms. Expected ${filePaths.length} files, but found ${lastActualCount} in the OS clipboard cache.`));
-                        } else {
-                            setTimeout(poll, intervalTime);
-                        }
-                    };
-
-                    setTimeout(poll, 150);
-                }).catch(reject);
-            }, 800); // ✨ Increased disk flush buffer to 800ms for safety on large batches
+                if (stdout) {
+                    this.processGitOutput(stdout, gitFiles, wsPath);
+                } else {
+                    this.panel.webview.postMessage({ command: 'terminalLog', text: `\n✨ [Git Diff Sync]: Up-to-date. No changes detected between active branch and remote origin.\n` });
+                }
+            });
         });
     }
 
-    /**
-     * Reads back the OS clipboard data structure to verify if all expected file paths are present.
-     */
-    private verifyClipboard(expectedPaths: string[]): Promise<{ verified: boolean, actualCount: number }> {
-        return new Promise((resolve) => {
-            const platform = process.platform;
+    private processGitOutput(stdout: string, gitFiles: string[], wsPath: string) {
+        const lines = stdout.split('\n').map(l => l.trim()).filter(l => l);
+        let additionsCount = 0;
 
-            // Centralized path normalizer to handle URI encoding and separator mismatches securely
-            const normalize = (p: string) => {
-                let clean = p.toLowerCase().replace(/^file:\/\//, '');
-                try { clean = decodeURIComponent(clean); } catch {}
-                return clean.replace(/\\/g, '/').replace(/\/+$/, '');
-            };
-            const expectedSet = new Set(expectedPaths.map(normalize));
-
-            if (platform === 'darwin') {
-                const checkScript = `
-                    ObjC.import('AppKit');
-                    var pb = $.NSPasteboard.generalPasteboard;
-                    var pl = pb.propertyListForType('NSFilenamesPboardType');
-                    // ✨ ObjC.deepUnwrap converts the native C-array cleanly back into a standard JS array
-                    JSON.stringify(ObjC.deepUnwrap(pl) || []);
-                `.trim().replace(/'/g, "'\\''");
-
-                exec(`osascript -l JavaScript -e '${checkScript}'`, (err, stdout) => {
-                    if (err || !stdout.trim()) return resolve({ verified: false, actualCount: 0 });
-                    try {
-                        const actualPaths = JSON.parse(stdout.trim()) as string[];
-                        const actualSet = new Set(actualPaths.map(normalize));
-                        const verified = Array.from(expectedSet).every(p => actualSet.has(p));
-                        resolve({ verified, actualCount: actualSet.size });
-                    } catch { resolve({ verified: false, actualCount: 0 }); }
-                });
-            } else if (platform === 'win32') {
-                exec(`powershell.exe -NoProfile -Command "(Get-Clipboard -Format FileDropList).Path | ConvertTo-Json -Compress"`, (err, stdout) => {
-                    if (err || !stdout.trim()) return resolve({ verified: false, actualCount: 0 });
-                    try {
-                        let actualPaths = JSON.parse(stdout.trim());
-                        if (!Array.isArray(actualPaths)) actualPaths = [actualPaths];
-                        const actualSet = new Set(actualPaths.map(normalize));
-                        const verified = Array.from(expectedSet).every(p => actualSet.has(p));
-                        resolve({ verified, actualCount: actualSet.size });
-                    } catch { resolve({ verified: false, actualCount: 0 }); }
-                });
-            } else {
-                exec(`xclip -selection clipboard -o -t text/uri-list`, (err, stdout) => {
-                    if (err || !stdout.trim()) return resolve({ verified: false, actualCount: 0 });
-                    const actualPaths = stdout.split('\n').filter(Boolean);
-                    const actualSet = new Set(actualPaths.map(normalize));
-                    const verified = Array.from(expectedSet).every(p => actualSet.has(p));
-                    resolve({ verified, actualCount: actualSet.size });
-                });
+        lines.forEach(line => {
+            const fullPath = path.isAbsolute(line) ? line : path.join(wsPath, line);
+            if (!gitFiles.includes(fullPath) && fs.existsSync(fullPath)) {
+                gitFiles.push(fullPath);
+                additionsCount++;
             }
         });
+
+        this.state.selectedPaths = gitFiles;
+        this.panel.webview.postMessage({ command: 'updatePaths', paths: this.state.selectedPaths });
+        this.panel.webview.postMessage({ command: 'terminalLog', text: `\n🌿 [Git Diff Sync Complete]: Injected ${additionsCount} remote delta file(s) into Source Manifest layout.\n` });
+    }
+
+    private async handleCopyLatestExportedFiles(message: any) {
+        try {
+            const destDir = message.path;
+            if (!destDir || !fs.existsSync(destDir)) {
+                vscode.window.showWarningMessage("⚠️ No files to copy, do an export before !");
+                return;
+            }
+
+            const files = fs.readdirSync(destDir);
+            let maxTimestamp = '';
+            const fileTimestamps: { file: string, timestamp: string }[] = [];
+
+            for (const file of files) {
+                if (file.endsWith('.log') || file.endsWith('-report.json') || file.endsWith('-tree.json')) continue;
+                const match = file.match(/^export-(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})/);
+                if (match) {
+                    const ts = match[1];
+                    fileTimestamps.push({ file, timestamp: ts });
+                    if (ts > maxTimestamp) maxTimestamp = ts;
+                }
+            }
+
+            const latestFiles = fileTimestamps.filter(f => f.timestamp === maxTimestamp).map(f => path.join(destDir, f.file));
+
+            if (latestFiles.length === 0) {
+                vscode.window.showWarningMessage("⚠️ No files to copy, do an export before !");
+                return;
+            }
+
+            const timeoutMs = this.configService.getConfiguration().get<number>('copyFilesToClipboardTimeout') ?? 10000;
+
+            await this.processRunner.copyFilesToClipboard(latestFiles, timeoutMs);
+            this.panel.webview.postMessage({ command: 'terminalLog', text: `\n📋 Copied and verified ${latestFiles.length} file(s) to OS clipboard.\n` });
+            vscode.window.showInformationMessage(`Copied and verified ${latestFiles.length} file(s) to clipboard.`);
+        } catch (err: any) {
+            vscode.window.showErrorMessage(`Failed to copy files: ${err.message}`);
+        }
+    }
+
+    private async handleClearDestDirectory(message: any) {
+        try {
+            const destDir = message.path;
+            if (!destDir || !fs.existsSync(destDir)) {
+                vscode.window.showWarningMessage("Destination directory does not exist or is empty.");
+                return;
+            }
+            const choice = await vscode.window.showWarningMessage(
+                `Are you sure you want to permanently delete all contents inside: ${destDir}?`,
+                { modal: true }, "Clean Directory"
+            );
+            if (choice === "Clean Directory") {
+                const files = await fs.promises.readdir(destDir);
+                for (const file of files) {
+                    await fs.promises.rm(path.join(destDir, file), { recursive: true, force: true });
+                }
+                vscode.window.showInformationMessage("Destination directory content successfully cleaned.");
+                this.panel.webview.postMessage({ command: 'terminalLog', text: `\n🧹 Destination directory cleared: ${destDir}\n` });
+            }
+        } catch (err: any) { vscode.window.showErrorMessage(`Failed to clean destination directory: ${err.message}`); }
+    }
+
+    private getDefaultSettings() {
+        const workspacePath = this.configService.getWorkspaceRootPath();
+        const extensionConfig = this.configService.getConfiguration();
+        return {
+            src: workspacePath,
+            dest: path.join(workspacePath, "exported-files"),
+            format: extensionConfig.get<string>('defaultFormat') || 'yaml',
+            max_file: (extensionConfig.get<number>('maxFileSizeKb') ?? 50).toString(),
+            max_chunk: (extensionConfig.get<number>('maxChunkSizeKb') ?? 0).toString(),
+            groupByExt: extensionConfig.get<boolean>('splitChunkByFileExtension') ?? false,
+            copyGeneratedFilesToClipboard: extensionConfig.get<boolean>('copyGeneratedFilesToClipboard') ?? true,
+            generateTreeView: extensionConfig.get<boolean>('generateTreeView') ?? true,
+            logConsole: extensionConfig.get<boolean>('generateLogConsole') ?? true,
+            logFile: extensionConfig.get<boolean>('generateLogFile') ?? false,
+            inc_paths: extensionConfig.get<string>('includePathsRegex') || '.*',
+            exc_paths: extensionConfig.get<string>('excludePathsRegex') || '',
+            inc_ext: extensionConfig.get<string>('includeExtensionsRegex') || '',
+            exc_ext: extensionConfig.get<string>('excludeExtensionsRegex') || ''
+        };
+    }
+
+    private async handleOpenHistoryInVSCode() {
+        try {
+            const historyPath = this.configService.getHistoryFilePath();
+            if (fs.existsSync(historyPath)) {
+                const doc = await vscode.workspace.openTextDocument(historyPath);
+                await vscode.window.showTextDocument(doc);
+            } else {
+                vscode.window.showWarningMessage("History log file does not exist yet.");
+            }
+        } catch (err: any) { vscode.window.showErrorMessage(`Unable to open history file: ${err.message}`); }
+    }
+
+    private async handleRevealHistory() {
+        try {
+            const historyPath = this.configService.getHistoryFilePath();
+            if (fs.existsSync(historyPath)) {
+                await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(historyPath));
+            } else {
+                const parentDir = path.dirname(historyPath);
+                await fs.promises.mkdir(parentDir, { recursive: true });
+                await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(parentDir));
+            }
+        } catch (err: any) { vscode.window.showErrorMessage(`Unable to open targeted file location: ${err.message}`); }
+    }
+
+    private async handleApplyFileFilter(message: any) {
+        try {
+            const { fileNameRegex, fileContentRegex, destDir, files } = message.data;
+            let filteredList = [...files];
+            if (fileNameRegex && fileNameRegex.trim()) {
+                const nameReg = new RegExp(fileNameRegex.trim());
+                filteredList = filteredList.filter(fileItem => nameReg.test(fileItem.split(/[\\/]/).pop() || ''));
+            }
+            if (fileContentRegex && fileContentRegex.trim() && filteredList.length > 0) {
+                const contentReg = new RegExp(fileContentRegex.trim());
+                const cleanDestDir = (destDir || '').replace(/[\\/]$/, '');
+                const sep = cleanDestDir.includes('\\') ? '\\' : '/';
+                const validContentFiles: string[] = [];
+                for (const fileItem of filteredList) {
+                    const baseName = fileItem.split(/[\\/]/).pop() || '';
+                    const fullPath = path.isAbsolute(fileItem) ? fileItem : `${cleanDestDir}${sep}${baseName}`;
+                    if (fs.existsSync(fullPath)) {
+                        const content = fs.readFileSync(fullPath, 'utf8');
+                        if (contentReg.test(content)) validContentFiles.push(fileItem);
+                    }
+                }
+                filteredList = validContentFiles;
+            }
+            this.panel.webview.postMessage({ command: 'filteredFilesResult', files: filteredList });
+        } catch (err: any) { this.panel.webview.postMessage({ command: 'terminalLog', text: `Filter Error: ${err.message}\n` }); }
+    }
+
+    private async handleEditHistoryName(message: any) {
+        if (message.newName && message.newName.trim()) {
+            const newHistory = await this.historyService.updateEntryDisplay(message.id, message.newName.trim());
+            this.panel.webview.postMessage({ command: 'updateHistory', history: newHistory, selectedId: message.id });
+        }
+    }
+
+    private async handleClearHistory(message: any) {
+        const activeId = message.selectedId;
+        const options: string[] = [];
+        if (activeId && activeId !== 'default') options.push("Remove Selected Item (Hard)", "Remove Selected Item (Soft .del)");
+        options.push("Clear All History (Hard)", "Clear All History (Soft .del)");
+        const choice = await vscode.window.showWarningMessage("History logs removal workspace management console.", { modal: true }, ...options);
+        if (!choice) return;
+        if (choice.includes("Selected Item")) {
+            if (choice.includes("Soft .del")) await this.historyService.softClearHistory();
+            const finalHist = await this.historyService.removeEntry(activeId);
+            this.panel.webview.postMessage({ command: 'updateHistory', history: finalHist, selectedId: 'default' });
+        } else {
+            if (choice.includes("Soft .del")) await this.historyService.softClearHistory();
+            await this.historyService.clearHistory();
+            this.panel.webview.postMessage({ command: 'updateHistory', history: [], selectedId: 'default' });
+        }
     }
 }
 EOF
 
-# Trigger application compilation
+# Trigger extension bundle compiler
 npm run compile
+EOF

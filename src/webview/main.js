@@ -39,6 +39,34 @@ const updateHistoryViewToggleButton = () => {
     }
 };
 
+const cancelInlineHistoryRename = () => {
+    const combo = document.getElementById('historyCombo');
+    const input = document.getElementById('historyRenameInput');
+    if (combo && input) {
+        input.style.display = 'none';
+        combo.style.display = 'block';
+    }
+};
+
+const enterInlineRenameMode = () => {
+    if (!state.currentSelectedId || state.currentSelectedId === 'default') return;
+    const combo = document.getElementById('historyCombo');
+    const input = document.getElementById('historyRenameInput');
+    const entry = state.historyList.find(h => h.id === state.currentSelectedId);
+
+    if (combo && input && entry) {
+        combo.style.display = 'none';
+        input.style.display = 'block';
+        input.value = entry.display;
+
+        setTimeout(() => {
+            const targetBox = input.shadowRoot?.querySelector('input') || input;
+            targetBox.focus();
+            if (typeof targetBox.select === 'function') targetBox.select();
+        }, 50);
+    }
+};
+
 const init = () => {
     UIController.injectShadowDomStyles();
     UIController.initCursorTooltipTracker();
@@ -73,8 +101,24 @@ const init = () => {
         resetCurrentConfigFields();
     });
 
-    document.getElementById('btn-edit-history')?.addEventListener('click', () => {
-        if (state.currentSelectedId && state.currentSelectedId !== 'default') bridge.postMessage('editHistoryName', { id: state.currentSelectedId });
+    document.getElementById('btn-edit-history')?.addEventListener('click', enterInlineRenameMode);
+
+    document.getElementById('historyRenameInput')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const val = e.target.value.trim();
+            if (val && state.currentSelectedId && state.currentSelectedId !== 'default') {
+                bridge.postMessage('editHistoryName', { id: state.currentSelectedId, newName: val });
+            }
+            cancelInlineHistoryRename();
+        } else if (e.key === 'Escape') {
+            cancelInlineHistoryRename();
+        }
+    });
+
+    document.getElementById('historyRenameInput')?.addEventListener('blur', () => {
+        setTimeout(() => {
+            cancelInlineHistoryRename();
+        }, 180);
     });
 
     document.getElementById('btn-duplicate-history')?.addEventListener('click', () => {
@@ -269,7 +313,6 @@ const updateHistoryCombo = (selectedId) => {
     const combo = document.getElementById('historyCombo');
     if (!combo) return;
 
-    // Purge elements explicitly to force custom element refreshing cycles
     while (combo.firstChild) {
         combo.removeChild(combo.firstChild);
     }
@@ -301,7 +344,6 @@ const updateHistoryCombo = (selectedId) => {
         applyHistorySelection('default');
     }
 
-    // Force option updates triggers on custom Lit drop-down web components layers
     combo.value = finalId;
     UIController.syncButtonsState(finalId);
 
@@ -348,7 +390,6 @@ window.addEventListener('message', (event) => {
             state.historyViewMode = message.historyViewMode || 'scope-current-repo';
             state.currentRepo = message.currentRepo || '';
 
-            // Log initial configuration settings specifications requested by user
             const matchedEntriesCount = state.historyList.filter(h => state.historyViewMode === 'scope-all-repo' || h.repo === state.currentRepo).length;
             console.log(`[History Combo Init] ViewMode: "${state.historyViewMode}" | RepoName: "${state.currentRepo}" | MatchingEntries: ${matchedEntriesCount} / Total: ${state.historyList.length}`);
 
@@ -371,6 +412,11 @@ window.addEventListener('message', (event) => {
             updateHistoryCombo(state.currentSelectedId);
             if (!message.skipFieldSync) applyHistorySelection(state.currentSelectedId);
             UIController.checkSyncStatus();
+
+            // ✨ Actionable Hook: Automatically enter inline rename mode if the event was triggered by an Add profile action
+            if (state.currentSelectedId && state.currentSelectedId.endsWith('-new')) {
+                enterInlineRenameMode();
+            }
             break;
         case 'terminalLog':
             terminalTab.append(message.text);

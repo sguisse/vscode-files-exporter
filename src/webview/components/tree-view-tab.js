@@ -129,7 +129,6 @@ export class TreeViewTab {
                 e.stopPropagation();
                 if (this.onFinderClick) {
                     const rawPath = btn.getAttribute('data-path');
-                    // Sending the full file path without trimming
                     this.onFinderClick(rawPath);
                 }
             });
@@ -144,27 +143,22 @@ export class TreeViewTab {
                 if (excPathsEl) {
                     const currentVal = excPathsEl.value.trim();
 
-                    // 1️⃣ Cross-normalization of path separators (\ vs /)
                     const cleanRaw = rawPath.replace(/\\/g, '/');
                     const cleanRoot = this.treeManifest && this.treeManifest.absolute_path
                         ? this.treeManifest.absolute_path.replace(/\\/g, '/')
                         : '';
 
-                    // 2️⃣ Extraction of the relative path from the workspace root
                     let relativePath = cleanRaw;
                     if (cleanRoot && cleanRaw.startsWith(cleanRoot)) {
                         relativePath = cleanRaw.slice(cleanRoot.length);
                     }
-                    relativePath = relativePath.replace(/^\/+/, ''); // Remove any leading residual slash
+                    relativePath = relativePath.replace(/^\/+/, '');
 
-                    // 3️⃣ Escaping special Regex characters (Except path slashes)
                     const escapedPath = relativePath.replace(/[-\^$*+?.()|[\]{}]/g, '\\$&');
 
-                    // 4️⃣ Typing the Regex signature according to the node type (Folder vs File)
                     const isFolder = btn.getAttribute('data-tooltip')?.toLowerCase().includes('folder');
                     const regexEntry = isFolder ? `.*/${escapedPath}/.*` : `.*/${escapedPath}$`;
 
-                    // 5️⃣ Non-duplicative injection into the configuration field
                     if (currentVal === '') {
                         excPathsEl.value = regexEntry;
                     } else {
@@ -174,7 +168,6 @@ export class TreeViewTab {
                         }
                     }
 
-                    // Triggering synchronization cycles and notification
                     excPathsEl.dispatchEvent(new Event('input', { bubbles: true }));
                     excPathsEl.dispatchEvent(new Event('change', { bubbles: true }));
                     bridge.postMessage('showNotification', {
@@ -193,8 +186,10 @@ export class TreeViewTab {
                     folder.querySelectorAll('.tree-children .tree-cb').forEach(childCb => {
                         childCb.checked = isChecked;
                         childCb.indeterminate = false;
+                        childCb.classList.remove('is-indeterminate');
                     });
                 }
+                e.target.classList.remove('is-indeterminate');
                 this.updateParentCheckboxes(e.target);
             });
         });
@@ -259,25 +254,37 @@ export class TreeViewTab {
         }
     }
 
+    /**
+     * ✨ Flawless Tri-State Calculation Routine Layer: Evaluates states accurately by matching sub-checkbox arrays
+     */
     updateParentCheckboxes(childCb) {
         let parentFolder = childCb.closest('.tree-children')?.closest('.tree-folder');
         while (parentFolder) {
             const parentCb = parentFolder.querySelector(':scope > .tree-folder-header .tree-cb');
             if (!parentCb) break;
 
-            const leafCbs = Array.from(parentFolder.querySelectorAll('.tree-children .file-cb'));
-            const total = leafCbs.length;
-            const checked = leafCbs.filter(c => c.checked).length;
+            // Target immediate structural children arrays exclusively to avoid calculation pollution leaks
+            const immediateChildrenCbs = Array.from(parentFolder.querySelectorAll(
+                ':scope > .tree-children > .tree-folder > .tree-folder-header .tree-cb, :scope > .tree-children > .tree-item .tree-cb'
+            ));
 
-            if (total > 0 && checked === total) {
+            const total = immediateChildrenCbs.length;
+            const checked = immediateChildrenCbs.filter(c => c.checked && !c.classList.contains('is-indeterminate')).length;
+            const indeterminate = immediateChildrenCbs.filter(c => c.indeterminate || c.classList.contains('is-indeterminate')).length;
+            const unchecked = total - checked - indeterminate;
+
+            if (checked === total && indeterminate === 0) {
                 parentCb.checked = true;
                 parentCb.indeterminate = false;
-            } else if (checked === 0) {
+                parentCb.classList.remove('is-indeterminate');
+            } else if (unchecked === total && indeterminate === 0) {
                 parentCb.checked = false;
                 parentCb.indeterminate = false;
+                parentCb.classList.remove('is-indeterminate');
             } else {
                 parentCb.checked = false;
                 parentCb.indeterminate = true;
+                parentCb.classList.add('is-indeterminate'); // Inject styling token anchor string explicitly
             }
 
             parentFolder = parentFolder.parentElement?.closest('.tree-folder');

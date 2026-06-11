@@ -290,19 +290,9 @@ export class MessageRouter {
     }
 
     private async handleEditHistoryName(message: any) {
-        const entries = await this.historyService.loadHistory();
-        const entry = entries.find(h => h.id === message.id);
-        if (entry) {
-            const newName = await vscode.window.showInputBox({
-                title: "✏️ Rename History Entry",
-                prompt: "Enter the new display identifier for this profile:",
-                value: entry.display,
-                placeHolder: "Profile name..."
-            });
-            if (newName && newName.trim()) {
-                const newHistory = await this.historyService.updateEntryDisplay(message.id, newName.trim());
-                this.panel.webview.postMessage({ command: 'updateHistory', history: newHistory, selectedId: message.id });
-            }
+        if (message.newName && message.newName.trim()) {
+            const newHistory = await this.historyService.updateEntryDisplay(message.id, message.newName.trim());
+            this.panel.webview.postMessage({ command: 'updateHistory', history: newHistory, selectedId: message.id });
         }
     }
 
