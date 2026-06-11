@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as os from 'os';
+import { execSync } from 'child_process';
 
 export class ConfigService {
     private static readonly PREFIX = 'filesExporter';
@@ -9,7 +10,6 @@ export class ConfigService {
         return vscode.workspace.getConfiguration(ConfigService.PREFIX);
     }
 
-    // ✨ Added helper method to check the pinning preference dynamically
     public shouldPinWebview(): boolean {
         return this.getConfiguration().get<boolean>('pinFilesExporter') ?? true;
     }
@@ -32,5 +32,18 @@ export class ConfigService {
             return vscode.workspace.workspaceFolders[0].uri.fsPath;
         }
         return os.homedir();
+    }
+
+    /**
+     * R01: Resolves active repository identifier naming context using fallback strategy
+     */
+    public getRepoName(): string {
+        const wsPath = this.getWorkspaceRootPath();
+        try {
+            const gitRoot = execSync('git rev-parse --show-toplevel', { cwd: wsPath, stdio: ['ignore', 'pipe', 'ignore'], encoding: 'utf8' }).trim();
+            return path.basename(gitRoot);
+        } catch {
+            return path.basename(wsPath);
+        }
     }
 }

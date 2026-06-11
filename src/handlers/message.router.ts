@@ -15,21 +15,26 @@ export class MessageRouter {
         private configService: ConfigService,
         private orchestrator: ExportOrchestratorService,
         private state: ExtensionState,
-        private processRunner: ProcessRunnerService // ✨ Added dependency injection hook here
+        private processRunner: ProcessRunnerService
     ) {}
 
     public async handleMessage(message: any) {
         switch (message.command) {
             case 'checkPaths': await this.handleCheckPaths(message); break;
             case 'syncPaths': this.state.selectedPaths = message.paths || []; break;
+            case 'updateHistoryViewMode':
+                await this.historyService.setHistoryViewMode(message.mode);
+                break;
             case 'runExport':
-                const result = await this.historyService.saveHistory(message.data, message.currentHistoryId);
+                const repoRun = this.configService.getRepoName();
+                const result = await this.historyService.saveHistory(message.data, message.currentHistoryId, repoRun);
                 this.panel.webview.postMessage({ command: 'updateHistory', history: result.history, selectedId: result.selectedId, skipFieldSync: true });
                 await this.orchestrator.run(message.data);
                 break;
             case 'duplicateHistory':
                 if (message.id) {
-                    const dup = await this.historyService.duplicateEntry(message.id);
+                    const repoDup = this.configService.getRepoName();
+                    const dup = await this.historyService.duplicateEntry(message.id, repoDup);
                     this.panel.webview.postMessage({ command: 'updateHistory', history: dup.history, selectedId: dup.newId });
                 }
                 break;
@@ -37,7 +42,8 @@ export class MessageRouter {
                 const defaultSettingsObj = this.getDefaultSettings();
                 const wsPath = this.configService.getWorkspaceRootPath();
                 const wsName = path.basename(wsPath);
-                const fresh = await this.historyService.addNewEntry(defaultSettingsObj, wsName);
+                const repoNew = this.configService.getRepoName();
+                const fresh = await this.historyService.addNewEntry(defaultSettingsObj, wsName, repoNew);
                 this.panel.webview.postMessage({ command: 'updateHistory', history: fresh.history, selectedId: fresh.newId });
                 break;
             case 'toggleFreezeHistory':
@@ -107,16 +113,11 @@ export class MessageRouter {
         const gitFiles: string[] = [...existingPaths];
         const wsPath = this.configService.getWorkspaceRootPath();
 
-        // ─── OPTIMIZED QA IMPLEMENTATION ───
-        // Step 1: Execute fetch to sync local tracking refs with the remote repository safely
         exec('git fetch', { cwd: wsPath }, (fetchErr) => {
-            // Step 2: Compare against upstream tracking head (@{upstream}..HEAD captures local unpushed files, head..upstream captures incoming)
-            // Using a broader merge-base comparison to find all unique changed paths between local branch and remote branch tracking bounds
             const diffCommand = 'git diff $(git merge-base HEAD @{upstream})..HEAD --name-only';
 
             exec(diffCommand, { cwd: wsPath }, (err: any, stdout: string) => {
                 if (err) {
-                    // Fallback to simpler remote reference check if upstream tracking isn't strictly configured for current branch head context
                     exec('git diff origin/HEAD..HEAD --name-only', { cwd: wsPath }, (fallbackErr, fallbackStdout) => {
                         if (!fallbackErr && fallbackStdout) {
                             this.processGitOutput(fallbackStdout, gitFiles, wsPath);
@@ -153,7 +154,6 @@ export class MessageRouter {
         this.panel.webview.postMessage({ command: 'terminalLog', text: `\n🌿 [Git Diff Sync Complete]: Injected ${additionsCount} remote delta file(s) into Source Manifest layout.\n` });
     }
 
-    // Look inside the handleCopyLatestExportedFiles(message: any) method layout:
     private async handleCopyLatestExportedFiles(message: any) {
         try {
             const destDir = message.path;
@@ -183,7 +183,6 @@ export class MessageRouter {
                 return;
             }
 
-            // ✨ Extracting the timeout parameter safely from extension preferences provider
             const timeoutMs = this.configService.getConfiguration().get<number>('copyFilesToClipboardTimeout') ?? 10000;
 
             await this.processRunner.copyFilesToClipboard(latestFiles, timeoutMs);
@@ -217,28 +216,25 @@ export class MessageRouter {
     }
 
     private getDefaultSettings() {
-    const workspacePath = this.configService.getWorkspaceRootPath();
-    const extensionConfig = this.configService.getConfiguration();
-    return {
-        src: workspacePath,
-        dest: path.join(workspacePath, "exported-files"),
-        format: extensionConfig.get<string>('defaultFormat') || 'yaml',
-        max_file: (extensionConfig.get<number>('maxFileSizeKb') ?? 50).toString(),
-        max_chunk: (extensionConfig.get<number>('maxChunkSizeKb') ?? 0).toString(),
-
-        // ✨ Coupling resolution: Dynamic extraction indexed on package.json
-        groupByExt: extensionConfig.get<boolean>('splitChunkByFileExtension') ?? false,
-        copyGeneratedFilesToClipboard: extensionConfig.get<boolean>('copyGeneratedFilesToClipboard') ?? true,
-        generateTreeView: extensionConfig.get<boolean>('generateTreeView') ?? true,
-        logConsole: extensionConfig.get<boolean>('generateLogConsole') ?? true,
-        logFile: extensionConfig.get<boolean>('generateLogFile') ?? false,
-
-        inc_paths: extensionConfig.get<string>('includePathsRegex') || '.*',
-        exc_paths: extensionConfig.get<string>('excludePathsRegex') || '',
-        inc_ext: extensionConfig.get<string>('includeExtensionsRegex') || '',
-        exc_ext: extensionConfig.get<string>('excludeExtensionsRegex') || ''
-    };
-}
+        const workspacePath = this.configService.getWorkspaceRootPath();
+        const extensionConfig = this.configService.getConfiguration();
+        return {
+            src: workspacePath,
+            dest: path.join(workspacePath, "exported-files"),
+            format: extensionConfig.get<string>('defaultFormat') || 'yaml',
+            max_file: (extensionConfig.get<number>('maxFileSizeKb') ?? 50).toString(),
+            max_chunk: (extensionConfig.get<number>('maxChunkSizeKb') ?? 0).toString(),
+            groupByExt: extensionConfig.get<boolean>('splitChunkByFileExtension') ?? false,
+            copyGeneratedFilesToClipboard: extensionConfig.get<boolean>('copyGeneratedFilesToClipboard') ?? true,
+            generateTreeView: extensionConfig.get<boolean>('generateTreeView') ?? true,
+            logConsole: extensionConfig.get<boolean>('generateLogConsole') ?? true,
+            logFile: extensionConfig.get<boolean>('generateLogFile') ?? false,
+            inc_paths: extensionConfig.get<string>('includePathsRegex') || '.*',
+            exc_paths: extensionConfig.get<string>('excludePathsRegex') || '',
+            inc_ext: extensionConfig.get<string>('includeExtensionsRegex') || '',
+            exc_ext: extensionConfig.get<string>('excludeExtensionsRegex') || ''
+        };
+    }
 
     private async handleOpenHistoryInVSCode() {
         try {

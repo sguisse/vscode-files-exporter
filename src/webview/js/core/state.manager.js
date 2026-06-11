@@ -7,7 +7,9 @@ export const state = {
     currentSelectedId: 'default',
     isInitializing: true,
     pathListInvalid: false,
-    totalExportedSourceFiles: 0, // ✨ Tracks total filtered source files processed
+    totalExportedSourceFiles: 0,
+    historyViewMode: 'scope-current-repo',
+    currentRepo: '',
     updatePaths(paths) { this.selectedPaths = paths || []; },
     updateHistory(history, selectedId) {
         this.historyList = history || [];

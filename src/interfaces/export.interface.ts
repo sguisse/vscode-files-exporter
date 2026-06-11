@@ -17,9 +17,10 @@ export interface ExportConfig {
 
 export interface HistoryEntry {
     id: string;
+    repo: string; // R00: Git repository name tracking slot
     display: string;
+    frozen: boolean; // R02: Attributes sorted according to lifecycle positioning criteria
     config: ExportConfig;
-    frozen: boolean; // Ajout du flag de verrouillage
 }
 
 export interface ExtensionState {

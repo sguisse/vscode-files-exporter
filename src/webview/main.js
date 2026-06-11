@@ -32,11 +32,25 @@ const resetRunButton = () => {
     }
 };
 
+const updateHistoryViewToggleButton = () => {
+    const btn = document.getElementById('btn-toggle-history-view');
+    if (btn) {
+        btn.innerHTML = state.historyViewMode === 'scope-current-repo' ? '🏠' : '🌐';
+    }
+};
+
 const init = () => {
     UIController.injectShadowDomStyles();
     UIController.initCursorTooltipTracker();
 
     helpTab.render();
+
+    document.getElementById('btn-toggle-history-view')?.addEventListener('click', () => {
+        state.historyViewMode = state.historyViewMode === 'scope-current-repo' ? 'scope-all-repo' : 'scope-current-repo';
+        updateHistoryViewToggleButton();
+        updateHistoryCombo(state.currentSelectedId);
+        bridge.postMessage('updateHistoryViewMode', { mode: state.historyViewMode });
+    });
 
     document.getElementById('historyCombo')?.addEventListener('change', (e) => {
         const val = e.target.value;
@@ -130,7 +144,7 @@ const init = () => {
                 (p) => bridge.postMessage('openFile', {path:p}),
                 (p) => bridge.postMessage('openFinder', {path:p}),
                 document.getElementById('splitChunkByFileExtension').checked,
-                state.totalExportedSourceFiles // ✨ Pass metrics total count here on view filter resets
+                state.totalExportedSourceFiles
             );
         }
         if (state.lastReportPayload) {
@@ -254,18 +268,47 @@ const applyFormFields = (cfg) => {
 const updateHistoryCombo = (selectedId) => {
     const combo = document.getElementById('historyCombo');
     if (!combo) return;
-    combo.innerHTML = '';
+
+    // Purge elements explicitly to force custom element refreshing cycles
+    while (combo.firstChild) {
+        combo.removeChild(combo.firstChild);
+    }
+
     const defOpt = document.createElement('vscode-option');
     defOpt.value = 'default'; defOpt.textContent = '< Default Configuration >';
     if (selectedId === 'default' || !selectedId) defOpt.selected = true;
     combo.appendChild(defOpt);
+
+    let matchCount = 0;
     state.historyList.forEach(item => {
+        if (state.historyViewMode === 'scope-current-repo' && item.repo !== state.currentRepo) {
+            return;
+        }
+        matchCount++;
         const opt = document.createElement('vscode-option');
         opt.value = item.id; opt.textContent = item.display;
         if (item.id === selectedId) opt.selected = true;
         combo.appendChild(opt);
     });
-    setTimeout(() => { combo.value = selectedId || 'default'; UIController.syncButtonsState(selectedId || 'default'); }, 0);
+
+    let isSelectedHidden = state.historyViewMode === 'scope-current-repo' &&
+        selectedId !== 'default' &&
+        !state.historyList.some(h => h.id === selectedId && h.repo === state.currentRepo);
+
+    const finalId = isSelectedHidden ? 'default' : (selectedId || 'default');
+    if (isSelectedHidden) {
+        state.currentSelectedId = 'default';
+        applyHistorySelection('default');
+    }
+
+    // Force option updates triggers on custom Lit drop-down web components layers
+    combo.value = finalId;
+    UIController.syncButtonsState(finalId);
+
+    setTimeout(() => {
+        combo.value = finalId;
+        UIController.syncButtonsState(finalId);
+    }, 50);
 };
 
 window.addEventListener('message', (event) => {
@@ -302,6 +345,14 @@ window.addEventListener('message', (event) => {
             state.isInitializing = true;
             state.historyList = message.history || [];
             state.currentSelectedId = message.selectedId || 'default';
+            state.historyViewMode = message.historyViewMode || 'scope-current-repo';
+            state.currentRepo = message.currentRepo || '';
+
+            // Log initial configuration settings specifications requested by user
+            const matchedEntriesCount = state.historyList.filter(h => state.historyViewMode === 'scope-all-repo' || h.repo === state.currentRepo).length;
+            console.log(`[History Combo Init] ViewMode: "${state.historyViewMode}" | RepoName: "${state.currentRepo}" | MatchingEntries: ${matchedEntriesCount} / Total: ${state.historyList.length}`);
+
+            updateHistoryViewToggleButton();
             updateHistoryCombo(state.currentSelectedId);
             applyFormFields(message.currentSettings);
             if (message.paths && message.paths.length > 0) {
@@ -334,8 +385,6 @@ window.addEventListener('message', (event) => {
             try {
                 if (message.data) {
                     state.lastReportPayload = message.data;
-
-                    // ✨ Cache total processed source files metric directly inside memory state
                     state.totalExportedSourceFiles = message.data.summary?.total_exported || 0;
 
                     if (message.data.generated_files) {
@@ -346,7 +395,7 @@ window.addEventListener('message', (event) => {
                             (p) => bridge.postMessage('openFile',{path:p}),
                             (p) => bridge.postMessage('openFinder',{path:p}),
                             document.getElementById('splitChunkByFileExtension').checked,
-                            state.totalExportedSourceFiles // ✨ Pass metrics total count here
+                            state.totalExportedSourceFiles
                         );
                     }
                     treeViewTab.render(message.data, (p) => bridge.postMessage('openFile',{path:p}), (p) => bridge.postMessage('openFinder',{path:p}));
@@ -362,7 +411,7 @@ window.addEventListener('message', (event) => {
                     (p) => bridge.postMessage('openFile',{path:p}),
                     (p) => bridge.postMessage('openFinder',{path:p}),
                     document.getElementById('splitChunkByFileExtension').checked,
-                    state.totalExportedSourceFiles // ✨ Pass metrics total count here on filtered views
+                    state.totalExportedSourceFiles
                 );
             } catch (e) {}
             break;

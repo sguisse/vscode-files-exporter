@@ -27,7 +27,6 @@ export class ExporterWebviewPanel {
             this._panel.reveal(vscode.ViewColumn.One);
             if (launchType === 'add') this.updatePaths();
 
-            // ✨ Pin the panel if it is revealed back into active focus context bounds
             this.pinPanelIfEnabled();
             return;
         }
@@ -41,7 +40,6 @@ export class ExporterWebviewPanel {
             }
         );
 
-        // ✨ Set the custom tab title icon using the extension directory uri context
         this._panel.iconPath = vscode.Uri.joinPath(this.context.extensionUri, 'assets', 'icon.png');
 
         this._panel.webview.html = this.getHtmlContent();
@@ -50,14 +48,11 @@ export class ExporterWebviewPanel {
         this.registerMessageRouter();
         this.initWebviewData(this._currentLaunchType);
 
-        // ✨ Pin the newly created webview tab instantly
         this.pinPanelIfEnabled();
     }
 
-    // ✨ Added non-blocking helper method to run the workbench pinning routine
     private pinPanelIfEnabled() {
         if (this.configService.shouldPinWebview()) {
-            // Fires the native VS Code command targeting the active focused editor tab layout
             vscode.commands.executeCommand('workbench.action.pinEditor');
         }
     }
@@ -67,11 +62,15 @@ export class ExporterWebviewPanel {
     }
 
     private async initWebviewData(launchType: 'open' | 'add') {
-        const history = await this.historyService.loadHistory();
+        const wrapper = await this.historyService.getFullWrapper();
+        const history = wrapper.history;
+        const historyViewMode = wrapper.config.historyViewMode;
+
         const workspacePath = this.configService.getWorkspaceRootPath();
         const extensionConfig = this.configService.getConfiguration();
         const tooltipDelay = extensionConfig.get<number>('tooltipDelay') || 400;
         const lastRunId = await this.historyService.getLastRunConfigId();
+        const currentRepo = this.configService.getRepoName();
 
         const defaultSettings = {
             src: workspacePath,
@@ -94,7 +93,7 @@ export class ExporterWebviewPanel {
         let targetSettings = defaultSettings;
 
         if (launchType === 'open' && lastRunId !== 'default') {
-            const foundEntry = history.find(h => h.id === lastRunId);
+            const foundEntry = history.find((h: any) => h.id === lastRunId);
             if (foundEntry) {
                 targetSelectedId = lastRunId;
                 targetSettings = foundEntry.config as any;
@@ -110,14 +109,16 @@ export class ExporterWebviewPanel {
             history,
             selectedId: targetSelectedId,
             paths: initialPaths,
-            tooltipDelay
+            tooltipDelay,
+            historyViewMode,
+            currentRepo
         });
     }
 
     private registerMessageRouter() {
         if (!this._panel) return;
         const orchestrator = new ExportOrchestratorService(this.context, this.configService, this.processRunner, this._panel);
-        const router = new MessageRouter(this._panel, this.historyService, this.configService, orchestrator, this.state);
+        const router = new MessageRouter(this._panel, this.historyService, this.configService, orchestrator, this.state, this.processRunner);
 
         this._panel.webview.onDidReceiveMessage((msg) => {
             if (msg.command === 'webviewReady') {

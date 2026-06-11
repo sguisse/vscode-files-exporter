@@ -54,7 +54,7 @@
                 border-radius: 3px;
                 margin: 0 6px 0 0;
                 cursor: pointer;
-                display: inline-flex; /* Permet un centrage parfait du glyphe */
+                display: inline-flex;
                 align-items: center;
                 justify-content: center;
                 position: relative;
@@ -67,7 +67,6 @@
                 border-color: var(--vscode-checkbox-selectBorder, var(--vscode-checkbox-background), #007fd4);
             }
 
-            /* 🟢 Drawing the adaptive checkmark (Checked) */
             .tree-cb:checked::after {
                 content: '';
                 width: 3px;
@@ -79,7 +78,6 @@
                 top: 1px;
             }
 
-            /* 🟡 Drawing the adaptive dash (Indeterminate / Tri-state) */
             .tree-cb.is-indeterminate::after {
                 content: '';
                 width: 8px;
@@ -90,7 +88,6 @@
 
             #global-cursor-tooltip { position: fixed; background-color: #000000; color: #ffffff; border: 1px solid #454545; box-shadow: 0px 5px 12px rgba(0, 0, 0, 0.6); padding: 6px 10px; border-radius: 4px; font-family: var(--vscode-font-family, sans-serif); font-size: 11px; font-weight: normal; z-index: 999999; pointer-events: none; display: none; width: max-content; max-width: 200px; white-space: normal; word-wrap: break-word; height: auto; }
 
-            /* --- STYLISH RUN EXPORT BUTTON (60% Centered) --- */
             .btn-run-custom {
                 width: 60%;
                 margin: 0px auto 0px auto;
@@ -129,11 +126,9 @@
                 border: 1px solid var(--vscode-panel-border);
             }
 
-            /* --- ANIMATION FOR LOADER --- */
             @keyframes spin { 100% { transform: rotate(360deg); } }
             .spin-anim { animation: spin 1s linear infinite; display: inline-block; }
 
-            /* --- PROFESSIONAL TABS OVERRIDE --- */
             vscode-panels {
                margin-top: 10px;
                min-height: 500px;
@@ -148,6 +143,8 @@
                 data-tooltip="History log containing previously executed configuration profiles">🕒 Configuration
                 History (Auto-Saved on Run)</div>
             <div class="history-actions-container">
+                <vscode-button id="btn-toggle-history-view" appearance="secondary" class="tooltip-right icon-btn"
+                    data-tooltip="Toggle history scope: Current Repo (🏠) / All Repos (🌐)">🏠</vscode-button>
                 <vscode-dropdown id="historyCombo" style="flex-grow: 1;"></vscode-dropdown>
                 <vscode-button id="btn-freeze-history" appearance="secondary" class="tooltip-right icon-btn"
                     data-tooltip="Freeze or unfreeze profile. Unfreezing allows overwriting and re-naming configurations"
