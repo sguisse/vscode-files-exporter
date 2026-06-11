@@ -85,13 +85,54 @@ export class MessageRouter {
 
     private async handleOpenBrowserTab(url: string) {
         try {
-            // Use the native Simple Browser system command to display SPA applications securely inside a real VS Code tab
+            const labelTarget = url.includes('gemini') ? 'Gemini' : 'NotebookLM';
+            let foundTab: vscode.Tab | undefined;
+            let targetGroup: vscode.TabGroup | undefined;
+
+            // Scan through all active workspace tabs to see if our targeted tab exists
+            for (const group of vscode.window.tabGroups.all) {
+                for (const tab of group.tabs) {
+                    const inputUrl = (tab.input as any)?.uri?.toString() || '';
+                    if (tab.label === labelTarget || inputUrl.includes(url) || tab.label.toLowerCase().includes(labelTarget.toLowerCase())) {
+                        foundTab = tab;
+                        targetGroup = group;
+                        break;
+                    }
+                }
+                if (foundTab) { break; }
+            }
+
+            let finalColumn = vscode.ViewColumn.Two;
+
+            if (foundTab && targetGroup) {
+                if (targetGroup.viewColumn !== undefined) {
+                    finalColumn = targetGroup.viewColumn;
+                }
+
+                // Focus the accurate group container row layout
+                if (targetGroup.viewColumn === vscode.ViewColumn.One) {
+                    await vscode.commands.executeCommand('workbench.action.focusFirstEditorGroup');
+                } else if (targetGroup.viewColumn === vscode.ViewColumn.Two) {
+                    await vscode.commands.executeCommand('workbench.action.focusSecondEditorGroup');
+                } else if (targetGroup.viewColumn === vscode.ViewColumn.Three) {
+                    await vscode.commands.executeCommand('workbench.action.focusThirdEditorGroup');
+                }
+
+                // Switch active selection index inside that group
+                const index = targetGroup.tabs.indexOf(foundTab);
+                if (index !== -1) {
+                    await vscode.commands.executeCommand('workbench.action.openEditorAtIndex', index);
+                }
+            }
+
+            // Always call simpleBrowser.show to enforce proper state initialization and populate webview context contents safely
             await vscode.commands.executeCommand('simpleBrowser.show', url, {
-                viewColumn: vscode.ViewColumn.Two,
+                viewColumn: finalColumn,
                 preserveFocus: false
             });
+
         } catch (err: any) {
-            vscode.window.showErrorMessage(`Unable to open the integrated browser tab: ${err.message}`);
+            vscode.window.showErrorMessage(`Unable to manage integrated browser tab: ${err.message}`);
         }
     }
 
