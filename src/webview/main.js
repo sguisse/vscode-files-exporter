@@ -91,7 +91,10 @@ const renderExchangeIconButtons = (exchangeItems) => {
 
         btn.appendChild(img);
         btn.addEventListener('click', () => {
-            bridge.postMessage('openBrowserTab', { url: item.url });
+            bridge.postMessage('openBrowserTab', {
+                url: item.url,
+                openInVSCode: item.openInVSCode !== false
+            });
         });
 
         container.appendChild(btn);
@@ -471,8 +474,8 @@ window.addEventListener('message', (event) => {
                         filesTab.render(
                             state.lastGeneratedFilesPayload,
                             document.getElementById('destDir').value,
-                            (p) => bridge.postMessage('openFile',{path:p}),
-                            (p) => bridge.postMessage('openFinder',{path:p}),
+                            (p) => bridge.postMessage('openFile', {path:p}),
+                            (p) => bridge.postMessage('openFinder', {path:p}),
                             document.getElementById('splitChunkByFileExtension').checked,
                             state.totalExportedSourceFiles
                         );
@@ -487,8 +490,8 @@ window.addEventListener('message', (event) => {
                 filesTab.render(
                     payload,
                     document.getElementById('destDir').value,
-                    (p) => bridge.postMessage('openFile',{path:p}),
-                    (p) => bridge.postMessage('openFinder',{path:p}),
+                    (p) => bridge.postMessage('openFile', {path:p}),
+                    (p) => bridge.postMessage('openFinder', {path:p}),
                     document.getElementById('splitChunkByFileExtension').checked,
                     state.totalExportedSourceFiles
                 );

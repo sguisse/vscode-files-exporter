@@ -73,7 +73,15 @@ export class MessageRouter {
                 if (message.path) await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(message.path));
                 break;
             case 'openBrowserTab':
-                await this.handleOpenBrowserTab(message.url);
+                if (message.openInVSCode === false) {
+                    try {
+                        await vscode.env.openExternal(vscode.Uri.parse(message.url));
+                    } catch (err: any) {
+                        vscode.window.showErrorMessage(`Failed to launch external user browser session: ${err.message}`);
+                    }
+                } else {
+                    await this.handleOpenBrowserTab(message.url);
+                }
                 break;
             case 'showNotification':
                 if (message.type === 'info') vscode.window.showInformationMessage(message.text);
@@ -267,7 +275,7 @@ export class MessageRouter {
                     await fs.promises.rm(path.join(destDir, file), { recursive: true, force: true });
                 }
                 vscode.window.showInformationMessage("Destination directory content successfully cleaned.");
-                this.panel.webview.postMessage({ command: 'terminalLog', text: `\n057f Destination directory cleared: ${destDir}\n` });
+                this.panel.webview.postMessage({ command: 'terminalLog', text: `\n🧹 Destination directory cleared: ${destDir}\n` });
             }
         } catch (err: any) { vscode.window.showErrorMessage(`Failed to clean destination directory: ${err.message}`); }
     }
