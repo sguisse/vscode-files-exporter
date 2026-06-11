@@ -217,7 +217,7 @@
             <div style="flex-grow:1;">
                 <span class="field-label"
                     data-tooltip="Regex checklist specifying file extensions to let through during discovery.">🟢
-                    Include Exts</span>
+                    Include exts</span>
                 <vscode-text-area id="incExts" class="full-width" rows="4" resize="vertical"></vscode-text-area>
             </div>
             <div style="flex-grow:1;">
@@ -229,7 +229,7 @@
             <div style="flex-grow:1;">
                 <span class="field-label"
                     data-tooltip="Regex mapping identifying forbidden raw formats (e.g. log, exe, png) to skip.">🔴
-                    Exclude Exts</span>
+                    Exclude exts</span>
                 <vscode-text-area id="excExts" class="full-width" rows="4" resize="vertical"></vscode-text-area>
             </div>
         </div>
@@ -275,33 +275,29 @@
             </div>
             <div style="margin-bottom: 2px;">
                 <vscode-checkbox id="splitChunkByFileExtension"
-                    data-tooltip="Force the export runner to partition output chunks whenever a change of file extension occurs.">Split
-                    by Ext</vscode-checkbox>
+                    data-tooltip="Force the export runner to partition output chunks whenever a change of file extension occurs.">Split&nbsp;by&nbsp;ext</vscode-checkbox>
             </div>
             <div style="margin-bottom: 2px;">
                 <vscode-checkbox id="copyGeneratedFilesToClipboard"
-                    data-tooltip="Automatically copy generated export files to the OS clipboard after each successful run, making them easy to paste into Finder, Explorer, LLM chat interfaces, and other tools.">Copy
-                    to clipboard</vscode-checkbox>
+                    data-tooltip="Automatically copy generated export files to the <strong>OS clipboard</strong> after each successful run, making them easy to paste into Finder, Explorer, LLM chat interfaces, and other tools.">Copy&nbsp;to&nbsp;clip</vscode-checkbox>
             </div>
             <div style="margin-bottom: 2px;">
                 <vscode-checkbox id="generateTreeView"
                     data-tooltip="Instruct the backend engine to build an isolated hierarchical JSON manifest describing all processed source components."
-                    checked>Tree View</vscode-checkbox>
+                    checked>Tree&nbsp;View</vscode-checkbox>
             </div>
             <div style="margin-bottom: 5px;">
                 <vscode-checkbox id="generateLogConsole"
-                    data-tooltip="Enable standard output logging directly streaming into this extension terminal window view.">Log
-                    Console</vscode-checkbox>
+                    data-tooltip="Enable standard output logging directly streaming into this extension terminal window view.">Log&nbsp;Console</vscode-checkbox>
             </div>
             <div style="margin-bottom: 5px;">
                 <vscode-checkbox id="generateLogFile"
-                    data-tooltip="Instruct the exporter engine to save a physical log tracing history report in the destination directory.">Log
-                    File</vscode-checkbox>
+                    data-tooltip="Instruct the exporter engine to save a physical log tracing history report in the destination directory.">Log&nbsp;File</vscode-checkbox>
             </div>
         </div>
 
         <div style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;">
-            <button id="btn-run" class="btn-run-custom" style="margin: 0; width: 60%;">
+            <button id="btn-run" class="btn-run-custom" style="margin: 10px; width: 150px;">
                 <span class="codicon codicon-play"></span> RUN EXPORT
             </button>
             <div id="exchange-buttons-container" style="display: flex; gap: 10px; align-items: center;"></div>

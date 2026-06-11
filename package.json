@@ -153,6 +153,63 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Automatically pin the browser tab when opened to prevent it from being overwritten or closed as a preview tab."
+                },
+                "filesExporter.exchange": {
+                    "type": "array",
+                    "description": "A list of custom exchange tools and links.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "icon": {
+                                "type": "string",
+                                "description": "Path to the icon SVG or PNG."
+                            },
+                            "url": {
+                                "type": "string",
+                                "format": "uri",
+                                "description": "The URL to open."
+                            },
+                            "tooltip": {
+                                "type": "string",
+                                "description": "The hover tooltip text."
+                            },
+                            "height": {
+                                "type": "string",
+                                "description": "Height of the icon (e.g., '45px')."
+                            },
+                            "width": {
+                                "type": "string",
+                                "description": "Width of the icon (e.g., '45px')."
+                            },
+                            "openInVSCode": {
+                                "type": "boolean",
+                                "description": "Whether to open the link inside VS Code or an external browser."
+                            }
+                        },
+                        "required": [
+                            "icon",
+                            "url",
+                            "tooltip"
+                        ]
+                    },
+                    "default": [
+                        {
+                            "icon": "assets/brands/gemini.svg",
+                            "url": "https://gemini.google.com/",
+                            "tooltip": "Open Gemini",
+                            "height": "45px",
+                            "width": "45px",
+                            "openInVSCode": true
+                        },
+                        {
+                            "icon": "assets/brands/notebookLM.svg",
+                            "url": "https://notebooklm.google.com/",
+                            "tooltip": "Open NotebookLM",
+                            "height": "45px",
+                            "width": "45px",
+                            "openInVSCode": false
+                        }
+                    ]
                 }
             }
         },

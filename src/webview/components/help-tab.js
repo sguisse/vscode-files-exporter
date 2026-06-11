@@ -1,3 +1,5 @@
+import { bridge } from '../js/core/vscode.bridge.js';
+
 export class HelpTab {
     constructor() {
         this.containerId = 'view-help';
@@ -107,12 +109,16 @@ export class HelpTab {
                         💡 <strong>Work with LLM Clients outside vscode/IntelliJ (Gemini, ChatGPT, ...):</strong>
                         <ul>
                             <li>Select only folders/files needed by LLM to create/adapt/analyze your code/documentation. To limit the context size (tokens 💰/🌱) and improve performance.</li>
-                            <li> Disable ◻️ <strong>Split by Ext</strong> to prevent automatic file splitting based on file extensions.</li>
+                            <li> Disable ◻️ <strong>Split by ext</strong> to prevent automatic file splitting based on file extensions.</li>
                             <li>Select '<strong>YAML</strong>' as <strong>Output Format</strong> for better compatibility with LLM clients.</li>
                             <li>After '<strong>Run Export</strong>', Goto <strong>FILES</strong> tab to open the OS file explorer directly on the generated file with 📂.</li>
                             <li>D&D the file in LLM chat to be in the context (attachment).</li>
-                            <li>Then you can use this sample prompt template (or in '<strong><em>Gems</em></strong>' for Gemini):</li>
-                            <ul>
+                            <li>Then you can use this sample <strong>prompt template</strong> (or in '<strong><em>Gems</em></strong>' for Gemini):
+                                <vscode-button id="btn-copy-sample-prompt" appearance="secondary" class="tooltip-right icon-btn" style="color: red; data-tooltip="Copy sample prompt to OS clipboard">
+                                <span class="codicon codicon-copy"></span>
+                                </vscode-button>
+                            </li>
+                            <ul id="sample-prompt-content">
                                 <li><strong>Role</strong></li>
                                     <ul>
                                         <li>You act as an Architect xxxx expert in xxxxxx code.</li>
@@ -176,10 +182,33 @@ export class HelpTab {
                             <li><a href="https://github.com/sguisse/vscode-files-exporter/blob/main/user-guide.md" target="_blank">Files Exporter - User Guide</a></li>
                             <li><a href="https://github.com/sguisse/vscode-files-exporter/blob/main/scenario.md" target="_blank">Sample complete Use-Case: How to add a new feature to your application</a></li>
                             <li><a href="https://github.com/sguisse/vscode-files-exporter/blob/main/faq.md" target="_blank">FAQ</a></li>
+                            <li><a href="https://zonalogo.com/" target="_blank">Zonalogo - Find other brand icons to use in exchange config</a></li>
                         </ul>
                     </div>
                   </div>
         `;
         console.log("[QA Trace] HelpTab template successfully injected.");
+
+        // Wiring the clipboard copy functionality for the sample prompt template
+        const copyBtn = document.getElementById('btn-copy-sample-prompt');
+        const promptContent = document.getElementById('sample-prompt-content');
+
+        if (copyBtn && promptContent) {
+            copyBtn.addEventListener('click', () => {
+                const textToCopy = promptContent.innerText || promptContent.textContent;
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    bridge.postMessage('showNotification', {
+                        type: 'info',
+                        text: 'Sample prompt template copied to clipboard successfully!'
+                    });
+                }).catch((err) => {
+                    console.error('Failed to copy sample prompt layout text: ', err);
+                    bridge.postMessage('showNotification', {
+                        type: 'error',
+                        text: 'Failed to access clipboard layout structures.'
+                    });
+                });
+            });
+        }
     }
 }

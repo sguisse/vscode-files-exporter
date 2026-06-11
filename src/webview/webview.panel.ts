@@ -104,22 +104,21 @@ export class ExporterWebviewPanel {
 
         const initialPaths = launchType === 'add' ? this.state.selectedPaths : [];
 
-        const exchange = wrapper.config?.exchange || [
-            {
-                icon: "assets/brands/gemini.svg",
-                url: "https://gemini.google.com/",
-                tooltip: "Open Gemini",
-                height: "45px",
-                width: "45px"
-            },
-            {
-                icon: "assets/brands/notebookLM.svg",
-                url: "https://notebooklm.google.com/",
-                tooltip: "Open NotebookLM",
-                height: "45px",
-                width: "45px"
-            }
-        ];
+        const exchangeFromHistory = wrapper.config?.exchange;
+        const exchangeFromConfig = extensionConfig.get<any[]>('exchange');
+
+        console.log(`[Files Exporter Diagnostics] --- INIT WEBVIEW DATA LAYERS ---`);
+        console.log(`[Files Exporter Diagnostics] Current targetRepo identified: "${currentRepo}"`);
+        console.log(`[Files Exporter Diagnostics] exchangeFromHistory structure:`, exchangeFromHistory ? JSON.stringify(exchangeFromHistory, null, 2) : "undefined/null");
+        console.log(`[Files Exporter Diagnostics] exchangeFromConfig property route:`, exchangeFromConfig ? JSON.stringify(exchangeFromConfig, null, 2) : "undefined/null");
+
+        // FIX: Evaluates explicit array length to prevent truthy evaluation of empty arrays ([]) from stopping fallback chain execution
+        const exchange = (exchangeFromHistory && exchangeFromHistory.length > 0)
+            ? exchangeFromHistory
+            : (exchangeFromConfig || []);
+
+        console.log(`[Files Exporter Diagnostics] Final compiled exchange array payload:`, JSON.stringify(exchange, null, 2));
+        console.log(`[Files Exporter Diagnostics] ---------------------------------------`);
 
         this._panel?.webview.postMessage({
             command: 'initSettings',
