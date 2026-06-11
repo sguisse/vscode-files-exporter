@@ -6,10 +6,7 @@ import { HistoryEntry, ExportConfig } from '../interfaces/export.interface';
 export class HistoryService {
     constructor(private readonly historyFilePath: string) {}
 
-    /**
-     * Always reloads the live filesystem file payload directly to prevent instance overwrite loss
-     */
-    public async getFullWrapper(): Promise<any> {
+    public async getFullWrapper(currentRepo?: string): Promise<any> {
         let parsed: any = {};
         if (existsSync(this.historyFilePath)) {
             try {
@@ -19,22 +16,32 @@ export class HistoryService {
         }
 
         if (!parsed.config) {
-            parsed.config = parsed.defaults || {};
-            delete parsed.defaults;
+            parsed.config = {};
+        }
+        if (!parsed.config.repo) {
+            parsed.config.repo = [];
+        }
+        if (!parsed.history) {
+            parsed.history = [];
         }
 
-        // R03: Validate default structural fallback configurations parameters
-        if (parsed.config.lastRunConfigId === undefined) parsed.config.lastRunConfigId = 'default';
-        if (parsed.config.historyViewMode === undefined) parsed.config.historyViewMode = 'scope-current-repo';
-        if (!parsed.history) parsed.history = [];
+        if (currentRepo) {
+            let repoEntry = parsed.config.repo.find((r: any) => r.repo === currentRepo);
+            if (!repoEntry) {
+                repoEntry = {
+                    repo: currentRepo,
+                    lastRunConfigId: parsed.config.lastRunConfigId || 'default',
+                    historyViewMode: parsed.config.historyViewMode || 'scope-current-repo'
+                };
+                parsed.config.repo.push(repoEntry);
+            }
+        }
 
         return parsed;
     }
 
     private async writeWrapper(wrapper: any): Promise<void> {
         await fs.mkdir(path.dirname(this.historyFilePath), { recursive: true });
-
-        // R02: Structural properties normalization and order sanitization mapping sequence
         wrapper.history = wrapper.history.map((h: any) => ({
             id: h.id,
             repo: h.repo || 'unknown',
@@ -42,7 +49,6 @@ export class HistoryService {
             frozen: h.frozen || false,
             config: h.config
         }));
-
         await fs.writeFile(this.historyFilePath, JSON.stringify(wrapper, null, 2), 'utf8');
     }
 
@@ -51,19 +57,23 @@ export class HistoryService {
         return wrapper.history;
     }
 
-    public async getLastRunConfigId(): Promise<string> {
-        const wrapper = await this.getFullWrapper();
-        return wrapper.config.lastRunConfigId;
+    public async getLastRunConfigId(repo: string): Promise<string> {
+        const wrapper = await this.getFullWrapper(repo);
+        const repoEntry = wrapper.config.repo.find((r: any) => r.repo === repo);
+        return repoEntry ? repoEntry.lastRunConfigId : 'default';
     }
 
-    public async setHistoryViewMode(mode: string): Promise<void> {
-        const wrapper = await this.getFullWrapper();
-        wrapper.config.historyViewMode = mode;
+    public async setHistoryViewMode(mode: string, repo: string): Promise<void> {
+        const wrapper = await this.getFullWrapper(repo);
+        const repoEntry = wrapper.config.repo.find((r: any) => r.repo === repo);
+        if (repoEntry) {
+            repoEntry.historyViewMode = mode;
+        }
         await this.writeWrapper(wrapper);
     }
 
     public async saveHistory(formData: any, currentHistoryId: string | undefined, repo: string): Promise<{ history: HistoryEntry[], selectedId: string }> {
-        const wrapper = await this.getFullWrapper();
+        const wrapper = await this.getFullWrapper(repo);
         const uiConfig = this.mapFormDataToConfig(formData);
 
         if (currentHistoryId && currentHistoryId !== 'default') {
@@ -71,20 +81,29 @@ export class HistoryService {
             if (existingIndex !== -1 && !wrapper.history[existingIndex].frozen) {
                 wrapper.history[existingIndex].config = uiConfig;
                 wrapper.history[existingIndex].repo = repo;
-                wrapper.config.lastRunConfigId = currentHistoryId;
+
+                const repoEntry = wrapper.config.repo.find((r: any) => r.repo === repo);
+                if (repoEntry) {
+                    repoEntry.lastRunConfigId = currentHistoryId;
+                }
+
                 await this.writeWrapper(wrapper);
                 return { history: wrapper.history, selectedId: currentHistoryId };
             }
         }
 
         const finalSelectedId = currentHistoryId || 'default';
-        wrapper.config.lastRunConfigId = finalSelectedId;
+        const repoEntry = wrapper.config.repo.find((r: any) => r.repo === repo);
+        if (repoEntry) {
+            repoEntry.lastRunConfigId = finalSelectedId;
+        }
+
         await this.writeWrapper(wrapper);
         return { history: wrapper.history, selectedId: finalSelectedId };
     }
 
     public async duplicateEntry(id: string, repo: string): Promise<{ history: HistoryEntry[], newId: string }> {
-        const wrapper = await this.getFullWrapper();
+        const wrapper = await this.getFullWrapper(repo);
         const target = wrapper.history.find((h: any) => h.id === id);
         if (!target) return { history: wrapper.history, newId: id };
 
@@ -103,7 +122,7 @@ export class HistoryService {
     }
 
     public async addNewEntry(defaultConfig: ExportConfig, workspaceName: string, repo: string): Promise<{ history: HistoryEntry[], newId: string }> {
-        const wrapper = await this.getFullWrapper();
+        const wrapper = await this.getFullWrapper(repo);
         const now = new Date();
         const pad = (n: number) => n.toString().padStart(2, '0');
         const displayName = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}-${pad(now.getHours())}:${pad(now.getMinutes())} --> ${workspaceName} --> ⚙️ New config`;
@@ -145,7 +164,15 @@ export class HistoryService {
     public async removeEntry(id: string): Promise<HistoryEntry[]> {
         const wrapper = await this.getFullWrapper();
         wrapper.history = wrapper.history.filter((h: any) => h.id !== id);
-        if (wrapper.config.lastRunConfigId === id) wrapper.config.lastRunConfigId = 'default';
+
+        if (wrapper.config && wrapper.config.repo) {
+            wrapper.config.repo.forEach((r: any) => {
+                if (r.lastRunConfigId === id) {
+                    r.lastRunConfigId = 'default';
+                }
+            });
+        }
+
         await this.writeWrapper(wrapper);
         return wrapper.history;
     }
@@ -153,7 +180,11 @@ export class HistoryService {
     public async clearHistory(): Promise<void> {
         const wrapper = await this.getFullWrapper();
         wrapper.history = [];
-        wrapper.config.lastRunConfigId = 'default';
+        if (wrapper.config && wrapper.config.repo) {
+            wrapper.config.repo.forEach((r: any) => {
+                r.lastRunConfigId = 'default';
+            });
+        }
         await this.writeWrapper(wrapper);
     }
 

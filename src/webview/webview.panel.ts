@@ -62,15 +62,17 @@ export class ExporterWebviewPanel {
     }
 
     private async initWebviewData(launchType: 'open' | 'add') {
-        const wrapper = await this.historyService.getFullWrapper();
+        const currentRepo = this.configService.getRepoName();
+        const wrapper = await this.historyService.getFullWrapper(currentRepo);
         const history = wrapper.history;
-        const historyViewMode = wrapper.config.historyViewMode;
+
+        const repoEntry = wrapper.config.repo.find((r: any) => r.repo === currentRepo);
+        const historyViewMode = repoEntry ? repoEntry.historyViewMode : 'scope-current-repo';
+        const lastRunId = repoEntry ? repoEntry.lastRunConfigId : 'default';
 
         const workspacePath = this.configService.getWorkspaceRootPath();
         const extensionConfig = this.configService.getConfiguration();
         const tooltipDelay = extensionConfig.get<number>('tooltipDelay') || 400;
-        const lastRunId = await this.historyService.getLastRunConfigId();
-        const currentRepo = this.configService.getRepoName();
 
         const defaultSettings = {
             src: workspacePath,

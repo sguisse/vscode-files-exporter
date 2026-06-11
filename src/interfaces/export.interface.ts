@@ -17,9 +17,9 @@ export interface ExportConfig {
 
 export interface HistoryEntry {
     id: string;
-    repo: string; // R00: Git repository name tracking slot
+    repo: string;
     display: string;
-    frozen: boolean; // R02: Attributes sorted according to lifecycle positioning criteria
+    frozen: boolean;
     config: ExportConfig;
 }
 

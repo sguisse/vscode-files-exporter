@@ -34,9 +34,6 @@ export class ConfigService {
         return os.homedir();
     }
 
-    /**
-     * R01: Resolves active repository identifier naming context using fallback strategy
-     */
     public getRepoName(): string {
         const wsPath = this.getWorkspaceRootPath();
         try {
