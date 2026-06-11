@@ -14,6 +14,10 @@ export class ConfigService {
         return this.getConfiguration().get<boolean>('pinFilesExporter') ?? true;
     }
 
+    public shouldPinBrowserTab(): boolean {
+        return this.getConfiguration().get<boolean>('pinBrowserTab') ?? true;
+    }
+
     public getPythonScriptPath(extensionPath: string): string {
         const customPath = this.getConfiguration().get<string>('scriptPythonPath');
         return customPath || path.join(extensionPath, 'scripts', 'files-exporter.py');

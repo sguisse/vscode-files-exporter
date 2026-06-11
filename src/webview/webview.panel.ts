@@ -104,6 +104,23 @@ export class ExporterWebviewPanel {
 
         const initialPaths = launchType === 'add' ? this.state.selectedPaths : [];
 
+        const exchange = wrapper.config?.exchange || [
+            {
+                icon: "assets/brands/gemini.svg",
+                url: "https://gemini.google.com/",
+                tooltip: "Open Gemini",
+                height: "45px",
+                width: "45px"
+            },
+            {
+                icon: "assets/brands/notebookLM.svg",
+                url: "https://notebooklm.google.com/",
+                tooltip: "Open NotebookLM",
+                height: "45px",
+                width: "45px"
+            }
+        ];
+
         this._panel?.webview.postMessage({
             command: 'initSettings',
             defaultSettings,
@@ -113,7 +130,8 @@ export class ExporterWebviewPanel {
             paths: initialPaths,
             tooltipDelay,
             historyViewMode,
-            currentRepo
+            currentRepo,
+            exchange
         });
     }
 

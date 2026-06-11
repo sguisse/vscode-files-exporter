@@ -67,7 +67,6 @@
                 border-color: var(--vscode-checkbox-selectBorder, var(--vscode-checkbox-background), #007fd4);
             }
 
-            /* 🟢 Adaptive checkmark layout design (Checked state) - Pixel Perfect Centering */
             .tree-cb:checked::after {
                 content: '';
                 width: 3px;
@@ -80,7 +79,6 @@
                 left: 50%;
             }
 
-            /* 🟡 Adaptive dash layout design (Indeterminate / Tri-state) - Pixel Perfect Centering */
             .tree-cb.is-indeterminate::after {
                 content: '';
                 width: 8px;
@@ -306,12 +304,7 @@
             <button id="btn-run" class="btn-run-custom" style="margin: 0; width: 60%;">
                 <span class="codicon codicon-play"></span> RUN EXPORT
             </button>
-            <vscode-button id="btn-gemini" appearance="icon" style="width: 64px; height: 64px;" data-tooltip="Open Gemini">
-                <img src="assets/brands/gemini.svg" alt="Gemini" style="width: 64px; height: 64px;" />
-            </vscode-button>
-            <vscode-button id="btn-notebooklm" appearance="icon" style="width: 64px; height: 64px;" data-tooltip="Open NotebookLM">
-                <img src="assets/brands/notebookLM.svg" alt="NotebookLM" style="width: 64px; height: 64px;" />
-            </vscode-button>
+            <div id="exchange-buttons-container" style="display: flex; gap: 10px; align-items: center;"></div>
         </div>
 
         <vscode-panels>

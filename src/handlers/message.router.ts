@@ -89,7 +89,6 @@ export class MessageRouter {
             let foundTab: vscode.Tab | undefined;
             let targetGroup: vscode.TabGroup | undefined;
 
-            // Scan through all active workspace tabs to see if our targeted tab exists
             for (const group of vscode.window.tabGroups.all) {
                 for (const tab of group.tabs) {
                     const inputUrl = (tab.input as any)?.uri?.toString() || '';
@@ -109,7 +108,6 @@ export class MessageRouter {
                     finalColumn = targetGroup.viewColumn;
                 }
 
-                // Focus the accurate group container row layout
                 if (targetGroup.viewColumn === vscode.ViewColumn.One) {
                     await vscode.commands.executeCommand('workbench.action.focusFirstEditorGroup');
                 } else if (targetGroup.viewColumn === vscode.ViewColumn.Two) {
@@ -118,18 +116,20 @@ export class MessageRouter {
                     await vscode.commands.executeCommand('workbench.action.focusThirdEditorGroup');
                 }
 
-                // Switch active selection index inside that group
                 const index = targetGroup.tabs.indexOf(foundTab);
                 if (index !== -1) {
                     await vscode.commands.executeCommand('workbench.action.openEditorAtIndex', index);
                 }
             }
 
-            // Always call simpleBrowser.show to enforce proper state initialization and populate webview context contents safely
             await vscode.commands.executeCommand('simpleBrowser.show', url, {
                 viewColumn: finalColumn,
                 preserveFocus: false
             });
+
+            if (this.configService.shouldPinBrowserTab()) {
+                await vscode.commands.executeCommand('workbench.action.pinEditor');
+            }
 
         } catch (err: any) {
             vscode.window.showErrorMessage(`Unable to manage integrated browser tab: ${err.message}`);
@@ -267,7 +267,7 @@ export class MessageRouter {
                     await fs.promises.rm(path.join(destDir, file), { recursive: true, force: true });
                 }
                 vscode.window.showInformationMessage("Destination directory content successfully cleaned.");
-                this.panel.webview.postMessage({ command: 'terminalLog', text: `\n🧹 Destination directory cleared: ${destDir}\n` });
+                this.panel.webview.postMessage({ command: 'terminalLog', text: `\n057f Destination directory cleared: ${destDir}\n` });
             }
         } catch (err: any) { vscode.window.showErrorMessage(`Failed to clean destination directory: ${err.message}`); }
     }

@@ -67,6 +67,37 @@ const enterInlineRenameMode = () => {
     }
 };
 
+const renderExchangeIconButtons = (exchangeItems) => {
+    const container = document.getElementById('exchange-buttons-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (!exchangeItems || !Array.isArray(exchangeItems)) return;
+
+    exchangeItems.forEach(item => {
+        const btn = document.createElement('vscode-button');
+        btn.setAttribute('appearance', 'icon');
+        btn.style.width = item.width || '64px';
+        btn.style.height = item.height || '64px';
+        if (item.tooltip) {
+            btn.setAttribute('data-tooltip', item.tooltip);
+        }
+
+        const img = document.createElement('img');
+        img.src = item.icon;
+        img.alt = item.tooltip || 'Exchange Link';
+        img.style.width = item.width || '64px';
+        img.style.height = item.height || '64px';
+
+        btn.appendChild(img);
+        btn.addEventListener('click', () => {
+            bridge.postMessage('openBrowserTab', { url: item.url });
+        });
+
+        container.appendChild(btn);
+    });
+};
+
 const init = () => {
     UIController.injectShadowDomStyles();
     UIController.initCursorTooltipTracker();
@@ -150,14 +181,6 @@ const init = () => {
 
     document.getElementById('btn-run')?.addEventListener('click', runExport);
     document.getElementById('btn-copy-cmd')?.addEventListener('click', () => terminalTab.copyCommand());
-
-    document.getElementById('btn-gemini')?.addEventListener('click', () => {
-        bridge.postMessage('openBrowserTab', { url: 'https://gemini.google.com/' });
-    });
-
-    document.getElementById('btn-notebooklm')?.addEventListener('click', () => {
-        bridge.postMessage('openBrowserTab', { url: 'https://notebooklm.google.com/' });
-    });
 
     document.getElementById('btn-copy-latest-files')?.addEventListener('click', () => {
         const destDir = document.getElementById('destDir').value;
@@ -408,6 +431,9 @@ window.addEventListener('message', (event) => {
                 state.selectedPaths = message.paths;
                 document.getElementById('pathList').value = state.selectedPaths.join('\n');
             }
+
+            renderExchangeIconButtons(message.exchange);
+
             setTimeout(() => {
                 state.isInitializing = false;
                 UIController.checkSyncStatus();
@@ -421,7 +447,6 @@ window.addEventListener('message', (event) => {
             if (!message.skipFieldSync) applyHistorySelection(state.currentSelectedId);
             UIController.checkSyncStatus();
 
-            // ✨ Actionable Hook: Automatically enter inline rename mode if the event was triggered by an Add profile action
             if (state.currentSelectedId && state.currentSelectedId.endsWith('-new')) {
                 enterInlineRenameMode();
             }
