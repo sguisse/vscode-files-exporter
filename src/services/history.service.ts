@@ -127,7 +127,7 @@ export class HistoryService {
         const pad = (n: number) => n.toString().padStart(2, '0');
         const displayName = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}-${pad(now.getHours())}:${pad(now.getMinutes())} --> ${workspaceName} --> ⚙️ New config`;
 
-        const newId = now.toISOString() + "-new";
+        const newId = now.toISOString();
         const newEntry: HistoryEntry = {
             id: newId,
             repo: repo,

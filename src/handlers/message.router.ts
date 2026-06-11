@@ -94,31 +94,6 @@ export class MessageRouter {
         } catch (e) { console.error(e); }
     }
 
-    private async handleOpenHistoryInVSCode() {
-        try {
-            const historyPath = this.configService.getHistoryFilePath();
-            if (fs.existsSync(historyPath)) {
-                const doc = await vscode.workspace.openTextDocument(historyPath);
-                await vscode.window.showTextDocument(doc);
-            } else {
-                vscode.window.showWarningMessage("History log file does not exist yet.");
-            }
-        } catch (err: any) { vscode.window.showErrorMessage(`Unable to open history file: ${err.message}`); }
-    }
-
-    private async handleRevealHistory() {
-        try {
-            const historyPath = this.configService.getHistoryFilePath();
-            if (fs.existsSync(historyPath)) {
-                await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(historyPath));
-            } else {
-                const parentDir = path.dirname(historyPath);
-                await fs.promises.mkdir(parentDir, { recursive: true });
-                await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(parentDir));
-            }
-        } catch (err: any) { vscode.window.showErrorMessage(`Unable to open targeted file location: ${err.message}`); }
-    }
-
     private async handleAddOpenFiles(message: any) {
         const existingPaths: string[] = message.currentPaths || [];
         const openFiles: string[] = [...existingPaths];
