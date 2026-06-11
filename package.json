@@ -67,6 +67,31 @@
                     "default": "~/files-exporter/.files-exporter-history.yaml",
                     "description": "Absolute path to the history log file."
                 },
+                "filesExporter.maxFileSizeKb": {
+                    "type": "number",
+                    "default": 50,
+                    "description": "Skip individual files larger than this (in KB)."
+                },
+                "filesExporter.includePathsRegex": {
+                    "type": "string",
+                    "default": ".*",
+                    "description": "Regex to include paths (default is all paths '.*')."
+                },
+                "filesExporter.includeExtensionsRegex": {
+                    "type": "string",
+                    "default": ".*\\.(java|ts|tsx|js|html|css|json|xml|yaml|yml|py|md|properties)$",
+                    "description": "Regex to include files with specific extensions (default is '.*\\.(java|ts|tsx|js|html|css|json|xml|yaml|yml|py|md|properties)$')."
+                },
+                "filesExporter.excludePathsRegex": {
+                    "type": "string",
+                    "default": ".*/node_modules/.*|.*/target/.*|.*/\\.git/.*|.*/dist/.*|.*/.idea/.*|.*/.vscode/.*|.*/.history/.*|.*/exported-files/.*",
+                    "description": "Regex to exclude paths containing specific directories (e.g., node_modules, target, .git, dist)."
+                },
+                "filesExporter.excludeExtensionsRegex": {
+                    "type": "string",
+                    "default": "^[^.]+$|.*\\.(?:log|tmp|lock|zip|tar|png|jpg|gif|pyc|vsix)$",
+                    "description": "Regex to exclude files without extensions or with specific extensions (e.g., log, tmp, lock, zip, tar, png, jpg, gif, pyc, vsix)."
+                },
                 "filesExporter.defaultFormat": {
                     "type": "string",
                     "enum": [
@@ -78,11 +103,6 @@
                     ],
                     "default": "yaml",
                     "description": "Default output format."
-                },
-                "filesExporter.maxFileSizeKb": {
-                    "type": "number",
-                    "default": 50,
-                    "description": "Skip individual files larger than this (in KB)."
                 },
                 "filesExporter.maxChunkSizeKb": {
                     "type": "number",
@@ -119,25 +139,15 @@
                     "default": 2000,
                     "description": "Delay in milliseconds before showing the custom tooltips on hover."
                 },
-                "filesExporter.includePathsRegex": {
-                    "type": "string",
-                    "default": ".*",
-                    "description": "Regex to include paths (default is all paths '.*')."
+                "filesExporter.copyFilesToClipboardTimeout": {
+                    "type": "number",
+                    "default": 10000,
+                    "description": "Maximum non-blocking timeout limit in milliseconds to poll-verify that all exported files are fully cached into the OS clipboard."
                 },
-                "filesExporter.includeExtensionsRegex": {
-                    "type": "string",
-                    "default": ".*\\.(java|ts|tsx|js|html|css|json|xml|yaml|yml|py|md|properties)$",
-                    "description": "Regex to include files with specific extensions (default is '.*\\.(java|ts|tsx|js|html|css|json|xml|yaml|yml|py|md|properties)$')."
-                },
-                "filesExporter.excludePathsRegex": {
-                    "type": "string",
-                    "default": ".*/node_modules/.*|.*/target/.*|.*/\\.git/.*|.*/dist/.*|.*/.idea/.*|.*/.vscode/.*|.*/.history/.*|.*/exported-files/.*",
-                    "description": "Regex to exclude paths containing specific directories (e.g., node_modules, target, .git, dist)."
-                },
-                "filesExporter.excludeExtensionsRegex": {
-                    "type": "string",
-                    "default": "^[^.]+$|.*\\.(?:log|tmp|lock|zip|tar|png|jpg|gif|pyc|vsix)$",
-                    "description": "Regex to exclude files without extensions or with specific extensions (e.g., log, tmp, lock, zip, tar, png, jpg, gif, pyc, vsix)."
+                "filesExporter.pinFilesExporter": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Automatically pin the Files Exporter UI tab when opened to prevent it from being overwritten or closed as a preview tab."
                 }
             }
         }

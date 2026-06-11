@@ -119,6 +119,7 @@ export class ExportOrchestratorService {
         return [];
     }
 
+    // Look inside the copyGeneratedFilesToClipboard(filePaths: string[]) method layout:
     private async copyGeneratedFilesToClipboard(filePaths: string[]) {
         if (filePaths.length === 0) {
             this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\n⚠️ Clipboard auto-copy skipped: no generated export files found.\n` });
@@ -126,13 +127,15 @@ export class ExportOrchestratorService {
         }
 
         try {
-            // ✨ Redirecting to the centralized process runner utility service
-            await this.processRunner.copyFilesToClipboard(filePaths);
-            this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\n📋 Auto-copied ${filePaths.length} generated file(s) to OS clipboard.\n` });
-            vscode.window.showInformationMessage(`Copied ${filePaths.length} generated file(s) to clipboard.`);
+            // ✨ Fetching the customized validation timeout setting from user configurations scope
+            const timeoutMs = this.configService.getConfiguration().get<number>('copyFilesToClipboardTimeout') ?? 10000;
+
+            await this.processRunner.copyFilesToClipboard(filePaths, timeoutMs);
+            this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\n📋 Auto-copied and verified ${filePaths.length} generated file(s) to OS clipboard.\n` });
+            vscode.window.showInformationMessage(`Copied and verified ${filePaths.length} generated file(s) to clipboard.`);
         } catch (err: any) {
-            this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\n⚠️ Clipboard auto-copy failed: ${err.message}\n` });
-            vscode.window.showWarningMessage(`Clipboard auto-copy failed: ${err.message}`);
+            this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\n❌ Clipboard auto-copy failed: ${err.message}\n` });
+            vscode.window.showErrorMessage(`Clipboard verification failed: ${err.message}`);
         }
     }
 

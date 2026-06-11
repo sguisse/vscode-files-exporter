@@ -124,7 +124,14 @@ const init = () => {
         if (document.getElementById('filterFileName')) document.getElementById('filterFileName').value = '';
         if (document.getElementById('filterFileContent')) document.getElementById('filterFileContent').value = '';
         if (state.lastGeneratedFilesPayload) {
-            filesTab.render(state.lastGeneratedFilesPayload, document.getElementById('destDir').value, (p) => bridge.postMessage('openFile', {path:p}), (p) => bridge.postMessage('openFinder', {path:p}), document.getElementById('splitChunkByFileExtension').checked);
+            filesTab.render(
+                state.lastGeneratedFilesPayload,
+                document.getElementById('destDir').value,
+                (p) => bridge.postMessage('openFile', {path:p}),
+                (p) => bridge.postMessage('openFinder', {path:p}),
+                document.getElementById('splitChunkByFileExtension').checked,
+                state.totalExportedSourceFiles // ✨ Pass metrics total count here on view filter resets
+            );
         }
         if (state.lastReportPayload) {
             treeViewTab.render(state.lastReportPayload, (p) => bridge.postMessage('openFile', {path:p}), (p) => bridge.postMessage('openFinder', {path:p}));
@@ -327,9 +334,20 @@ window.addEventListener('message', (event) => {
             try {
                 if (message.data) {
                     state.lastReportPayload = message.data;
+
+                    // ✨ Cache total processed source files metric directly inside memory state
+                    state.totalExportedSourceFiles = message.data.summary?.total_exported || 0;
+
                     if (message.data.generated_files) {
                         state.lastGeneratedFilesPayload = JSON.parse(JSON.stringify(message.data.generated_files));
-                        filesTab.render(state.lastGeneratedFilesPayload, document.getElementById('destDir').value, (p) => bridge.postMessage('openFile',{path:p}), (p) => bridge.postMessage('openFinder',{path:p}), document.getElementById('splitChunkByFileExtension').checked);
+                        filesTab.render(
+                            state.lastGeneratedFilesPayload,
+                            document.getElementById('destDir').value,
+                            (p) => bridge.postMessage('openFile',{path:p}),
+                            (p) => bridge.postMessage('openFinder',{path:p}),
+                            document.getElementById('splitChunkByFileExtension').checked,
+                            state.totalExportedSourceFiles // ✨ Pass metrics total count here
+                        );
                     }
                     treeViewTab.render(message.data, (p) => bridge.postMessage('openFile',{path:p}), (p) => bridge.postMessage('openFinder',{path:p}));
                 }
@@ -338,7 +356,14 @@ window.addEventListener('message', (event) => {
         case 'filteredFilesResult':
             try {
                 const payload = { ...state.lastGeneratedFilesPayload, exports: message.files };
-                filesTab.render(payload, document.getElementById('destDir').value, (p) => bridge.postMessage('openFile',{path:p}), (p) => bridge.postMessage('openFinder',{path:p}), document.getElementById('splitChunkByFileExtension').checked);
+                filesTab.render(
+                    payload,
+                    document.getElementById('destDir').value,
+                    (p) => bridge.postMessage('openFile',{path:p}),
+                    (p) => bridge.postMessage('openFinder',{path:p}),
+                    document.getElementById('splitChunkByFileExtension').checked,
+                    state.totalExportedSourceFiles // ✨ Pass metrics total count here on filtered views
+                );
             } catch (e) {}
             break;
     }

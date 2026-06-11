@@ -26,6 +26,9 @@ export class ExporterWebviewPanel {
         if (this._panel) {
             this._panel.reveal(vscode.ViewColumn.One);
             if (launchType === 'add') this.updatePaths();
+
+            // ✨ Pin the panel if it is revealed back into active focus context bounds
+            this.pinPanelIfEnabled();
             return;
         }
 
@@ -43,6 +46,17 @@ export class ExporterWebviewPanel {
 
         this.registerMessageRouter();
         this.initWebviewData(this._currentLaunchType);
+
+        // ✨ Pin the newly created webview tab instantly
+        this.pinPanelIfEnabled();
+    }
+
+    // ✨ Added non-blocking helper method to run the workbench pinning routine
+    private pinPanelIfEnabled() {
+        if (this.configService.shouldPinWebview()) {
+            // Fires the native VS Code command targeting the active focused editor tab layout
+            vscode.commands.executeCommand('workbench.action.pinEditor');
+        }
     }
 
     private updatePaths() {

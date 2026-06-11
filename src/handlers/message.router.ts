@@ -153,6 +153,7 @@ export class MessageRouter {
         this.panel.webview.postMessage({ command: 'terminalLog', text: `\n🌿 [Git Diff Sync Complete]: Injected ${additionsCount} remote delta file(s) into Source Manifest layout.\n` });
     }
 
+    // Look inside the handleCopyLatestExportedFiles(message: any) method layout:
     private async handleCopyLatestExportedFiles(message: any) {
         try {
             const destDir = message.path;
@@ -182,10 +183,12 @@ export class MessageRouter {
                 return;
             }
 
-            // ✨ Calling the centralized utility function method instead of the duplicate one
-            await this.processRunner.copyFilesToClipboard(latestFiles);
-            this.panel.webview.postMessage({ command: 'terminalLog', text: `\n📋 Copied ${latestFiles.length} file(s) to OS clipboard.\n` });
-            vscode.window.showInformationMessage(`Copied ${latestFiles.length} file(s) to clipboard.`);
+            // ✨ Extracting the timeout parameter safely from extension preferences provider
+            const timeoutMs = this.configService.getConfiguration().get<number>('copyFilesToClipboardTimeout') ?? 10000;
+
+            await this.processRunner.copyFilesToClipboard(latestFiles, timeoutMs);
+            this.panel.webview.postMessage({ command: 'terminalLog', text: `\n📋 Copied and verified ${latestFiles.length} file(s) to OS clipboard.\n` });
+            vscode.window.showInformationMessage(`Copied and verified ${latestFiles.length} file(s) to clipboard.`);
         } catch (err: any) {
             vscode.window.showErrorMessage(`Failed to copy files: ${err.message}`);
         }

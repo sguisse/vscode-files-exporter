@@ -1,5 +1,6 @@
 export class FilesTab {
-    render(files, destDir, onFileClick, onFinderClick, isSplitActive) {
+    // ✨ Appended totalSourceFiles as an optional input argument parameter
+    render(files, destDir, onFileClick, onFinderClick, isSplitActive, totalSourceFiles = 0) {
         const lists = {
             'exports': document.getElementById('exportedFilesList'),
             'logs': document.getElementById('logsList'),
@@ -8,6 +9,14 @@ export class FilesTab {
 
         const cleanDestDir = (destDir || '').replace(/[\\/]$/, '');
         const sep = cleanDestDir.includes('\\') ? '\\' : '/';
+
+        let exportItems = files['exports'] || [];
+
+        // ✨ Dynamically update the section header title metric text
+        const titleEl = document.getElementById('exportedFilesTitle');
+        if (titleEl) {
+            titleEl.textContent = `📂 Exported Files (${exportItems.length} / ${totalSourceFiles})`;
+        }
 
         // Stable thematic VS Code color palette
         const colorPalette = [
@@ -44,12 +53,9 @@ export class FilesTab {
                 const fullPath = `${cleanDestDir}${sep}${fileName}`;
                 const escapedPath = fullPath.replace(/\\/g, '\\\\');
 
-                //─── ANCHOR REGEX QA: Extraction of the nested semantic type before the chunk number ───
-                //Match everything between the timestamp and the '_number.extension' block
                 const match = fileName.match(/export-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_(.+)_\d+\.\w+$/);
                 const currentSemanticType = match ? match[1] : 'unknown';
 
-                // Color alternation only if the semantic extension changes
                 if (isSplitActive && key === 'exports') {
                     if (lastSemanticType !== '' && currentSemanticType !== lastSemanticType) {
                         currentPaletteIndex = (currentPaletteIndex + 1) % colorPalette.length;
@@ -100,5 +106,8 @@ export class FilesTab {
             const el = document.getElementById(id);
             if (el) el.innerHTML = '';
         });
+        // Reset the title back to its standard static representation text on clear layouts
+        const titleEl = document.getElementById('exportedFilesTitle');
+        if (titleEl) titleEl.textContent = '📂 Exported Files';
     }
 }

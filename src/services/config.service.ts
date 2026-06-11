@@ -9,13 +9,17 @@ export class ConfigService {
         return vscode.workspace.getConfiguration(ConfigService.PREFIX);
     }
 
+    // ✨ Added helper method to check the pinning preference dynamically
+    public shouldPinWebview(): boolean {
+        return this.getConfiguration().get<boolean>('pinFilesExporter') ?? true;
+    }
+
     public getPythonScriptPath(extensionPath: string): string {
         const customPath = this.getConfiguration().get<string>('scriptPythonPath');
         return customPath || path.join(extensionPath, 'scripts', 'files-exporter.py');
     }
 
     public getHistoryFilePath(): string {
-        // Retour strict à l'extension d'origine .yaml pour retrouver le fichier
         const rawPath = this.getConfiguration().get<string>('historyYamlPath') || '~/.files-exporter-history.yaml';
         if (rawPath.startsWith('~')) {
             return path.join(os.homedir(), rawPath.slice(1));
