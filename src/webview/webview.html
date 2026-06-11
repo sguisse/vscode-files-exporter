@@ -302,9 +302,17 @@
             </div>
         </div>
 
-        <button id="btn-run" class="btn-run-custom">
-            <span class="codicon codicon-play"></span> RUN EXPORT
-        </button>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;">
+            <button id="btn-run" class="btn-run-custom" style="margin: 0; width: 60%;">
+                <span class="codicon codicon-play"></span> RUN EXPORT
+            </button>
+            <vscode-button id="btn-gemini" appearance="icon" style="width: 64px; height: 64px;" data-tooltip="Open Gemini">
+                <img src="assets/brands/gemini.svg" alt="Gemini" style="width: 64px; height: 64px;" />
+            </vscode-button>
+            <vscode-button id="btn-notebooklm" appearance="icon" style="width: 64px; height: 64px;" data-tooltip="Open NotebookLM">
+                <img src="assets/brands/notebookLM.svg" alt="NotebookLM" style="width: 64px; height: 64px;" />
+            </vscode-button>
+        </div>
 
         <vscode-panels>
             <vscode-panel-tab id="tab-report">REPORT</vscode-panel-tab>
@@ -315,7 +323,7 @@
 
             <vscode-panel-view id="view-report">
                 <div style="width: 100%; display: flex; flex-direction: column; gap: 20px;">
-                    <div id="reportTableSection" style="display: none;">
+                    <div id="reportTableSection" style="none;">
                         <div class="section-title">📊 Export Report (by Extension)</div>
                         <table id="reportTable"
                             style="width: 100%; border-collapse: collapse; font-family: var(--vscode-editor-font-family); font-size: 12px; border: 1px solid var(--vscode-panel-border);">
@@ -340,7 +348,7 @@
                             <tfoot id="reportTableFooter"></tfoot>
                         </table>
                     </div>
-                    <div id="reportGraphSection" style="display: none;">
+                    <div id="reportGraphSection" style="none;">
                         <div class="section-title">🥧 Distribution (Pie Chart)</div>
                         <div class="chart-container"><canvas id="reportChart"></canvas></div>
                     </div>

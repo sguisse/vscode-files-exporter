@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# Overwrite message.router.ts with all missing helper handlers fully restored
+# Overwrite src/handlers/message.router.ts to implement VS Code's native Simple Browser engine.
+# This successfully bypasses X-Frame-Options / CSP restrictions inside an integrated editor tab.
 cat << 'EOF' > src/handlers/message.router.ts
 import * as vscode from 'vscode';
 import * as fs from 'fs';
@@ -76,11 +77,26 @@ export class MessageRouter {
             case 'openFinder':
                 if (message.path) await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(message.path));
                 break;
+            case 'openBrowserTab':
+                await this.handleOpenBrowserTab(message.url);
+                break;
             case 'showNotification':
                 if (message.type === 'info') vscode.window.showInformationMessage(message.text);
                 else if (message.type === 'error') vscode.window.showErrorMessage(message.text);
                 else if (message.type === 'warn') vscode.window.showWarningMessage(message.text);
                 break;
+        }
+    }
+
+    private async handleOpenBrowserTab(url: string) {
+        try {
+            // Use the native Simple Browser system command to display SPA applications securely inside a real VS Code tab
+            await vscode.commands.executeCommand('simpleBrowser.show', url, {
+                viewColumn: vscode.ViewColumn.Two,
+                preserveFocus: false
+            });
+        } catch (err: any) {
+            vscode.window.showErrorMessage(`Unable to open the integrated browser tab: ${err.message}`);
         }
     }
 
@@ -318,8 +334,4 @@ export class MessageRouter {
         }
     }
 }
-EOF
-
-# Trigger extension bundle compiler
-npm run compile
 EOF

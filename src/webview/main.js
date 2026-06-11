@@ -151,6 +151,14 @@ const init = () => {
     document.getElementById('btn-run')?.addEventListener('click', runExport);
     document.getElementById('btn-copy-cmd')?.addEventListener('click', () => terminalTab.copyCommand());
 
+    document.getElementById('btn-gemini')?.addEventListener('click', () => {
+        bridge.postMessage('openBrowserTab', { url: 'https://gemini.google.com/' });
+    });
+
+    document.getElementById('btn-notebooklm')?.addEventListener('click', () => {
+        bridge.postMessage('openBrowserTab', { url: 'https://notebooklm.google.com/' });
+    });
+
     document.getElementById('btn-copy-latest-files')?.addEventListener('click', () => {
         const destDir = document.getElementById('destDir').value;
         if (destDir) bridge.postMessage('copyLatestExportedFiles', { path: destDir });
