@@ -1,7 +1,10 @@
-import { spawn, exec } from 'child_process';
+import { spawn, exec, ChildProcess } from 'child_process';
 import { existsSync } from 'fs';
 
 export class ProcessRunnerService {
+    // Retains an internal reference map stack to manage the actively executing headless processes
+    private activeProcesses: Map<string, ChildProcess> = new Map();
+
     public executePython(
         scriptPath: string,
         args: string[],
@@ -16,6 +19,10 @@ export class ProcessRunnerService {
             const command = process.platform === 'win32' ? 'python' : 'python3';
             const processArgs = [scriptPath, ...args];
             const child = spawn(command, processArgs);
+
+            // Register the process instance wrapper into global execution monitoring stacks
+            const processTrackingKey = scriptPath;
+            this.activeProcesses.set(processTrackingKey, child);
 
             let fullStdout = '';
             let fullStderr = '';
@@ -32,19 +39,37 @@ export class ProcessRunnerService {
                 onStderr(text);
             });
 
-            child.on('close', (code) => resolve({ code: code ?? 0, stdout: fullStdout, stderr: fullStderr }));
-            child.on('error', (err) => reject(err));
+            child.on('close', (code) => {
+                this.activeProcesses.delete(processTrackingKey);
+                resolve({ code: code ?? 0, stdout: fullStdout, stderr: fullStderr });
+            });
+
+            child.on('error', (err) => {
+                this.activeProcesses.delete(processTrackingKey);
+                reject(err);
+            });
         });
     }
 
     /**
+     * Issues an atomic operational termination command directly to the target subshell process thread.
+     */
+    public killActivePythonScript(scriptPath: string): boolean {
+        const child = this.activeProcesses.get(scriptPath);
+        if (child) {
+            // Send SIGKILL signal wrapper to cleanly force terminate downstream core loop structures
+            child.kill('SIGKILL');
+            this.activeProcesses.delete(scriptPath);
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Copies an array of absolute file paths to the native OS clipboard and poll-verifies their presence.
-     * @param filePaths Array of absolute paths to copy.
-     * @param timeoutMs Maximum polling time allowed for validation.
      */
     public copyFilesToClipboard(filePaths: string[], timeoutMs: number = 10000): Promise<void> {
         return new Promise<void>((resolve, reject) => {
-            // Buffer delay to ensure APFS/NTFS disk controllers have flushed all file generation
             setTimeout(() => {
                 const platform = process.platform;
                 let writePromise: Promise<void>;
@@ -55,10 +80,7 @@ export class ProcessRunnerService {
                             ObjC.import('AppKit');
                             var pb = $.NSPasteboard.generalPasteboard;
                             var changeCount = pb.clearContents;
-
                             var paths = ${JSON.stringify(filePaths)};
-                            // ✨ The Magic Bullet: ObjC.wrap() pushes the entire array to Objective-C memory atomically
-                            // Bypassing JS iteration limits and preventing truncation of large file arrays.
                             pb.setPropertyListForType(ObjC.wrap(paths), 'NSFilenamesPboardType');
                         `.trim().replace(/'/g, "'\\''");
 
@@ -78,7 +100,6 @@ export class ProcessRunnerService {
                     });
                 }
 
-                // Execute non-blocking asynchronous verification polling loop
                 writePromise.then(() => {
                     const startTime = Date.now();
                     const intervalTime = 250;
@@ -91,7 +112,6 @@ export class ProcessRunnerService {
                         if (verified) {
                             resolve();
                         } else if (Date.now() - startTime >= timeoutMs) {
-                            // ✨ Improved error log reports exactly how many files were successfully bridged
                             reject(new Error(`Clipboard verification timed out after ${timeoutMs}ms. Expected ${filePaths.length} files, but found ${lastActualCount} in the OS clipboard cache.`));
                         } else {
                             setTimeout(poll, intervalTime);
@@ -100,18 +120,13 @@ export class ProcessRunnerService {
 
                     setTimeout(poll, 150);
                 }).catch(reject);
-            }, 800); // ✨ Increased disk flush buffer to 800ms for safety on large batches
+            }, 800);
         });
     }
 
-    /**
-     * Reads back the OS clipboard data structure to verify if all expected file paths are present.
-     */
     private verifyClipboard(expectedPaths: string[]): Promise<{ verified: boolean, actualCount: number }> {
         return new Promise((resolve) => {
             const platform = process.platform;
-
-            // Centralized path normalizer to handle URI encoding and separator mismatches securely
             const normalize = (p: string) => {
                 let clean = p.toLowerCase().replace(/^file:\/\//, '');
                 try { clean = decodeURIComponent(clean); } catch {}
@@ -124,7 +139,6 @@ export class ProcessRunnerService {
                     ObjC.import('AppKit');
                     var pb = $.NSPasteboard.generalPasteboard;
                     var pl = pb.propertyListForType('NSFilenamesPboardType');
-                    // ✨ ObjC.deepUnwrap converts the native C-array cleanly back into a standard JS array
                     JSON.stringify(ObjC.deepUnwrap(pl) || []);
                 `.trim().replace(/'/g, "'\\''");
 

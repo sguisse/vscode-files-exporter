@@ -11,6 +11,7 @@ import { MessageRouter } from '../handlers/message.router';
 export class ExporterWebviewPanel {
     private _panel: vscode.WebviewPanel | undefined;
     private _currentLaunchType: 'open' | 'add' = 'open';
+    private _configListener: vscode.Disposable | undefined;
 
     constructor(
         private readonly context: vscode.ExtensionContext,
@@ -41,12 +42,26 @@ export class ExporterWebviewPanel {
         );
 
         this._panel.iconPath = vscode.Uri.joinPath(this.context.extensionUri, 'assets', 'icon.png');
-
         this._panel.webview.html = this.getHtmlContent();
-        this._panel.onDidDispose(() => this._panel = undefined);
+
+        this._panel.onDidDispose(() => {
+            this._panel = undefined;
+            if (this._configListener) {
+                this._configListener.dispose();
+                this._configListener = undefined;
+            }
+        });
 
         this.registerMessageRouter();
-        this.initWebviewData(this._currentLaunchType);
+
+        this._configListener = vscode.workspace.onDidChangeConfiguration((e) => {
+            if (e.affectsConfiguration('filesExporter.inclusionsPredefinies')) {
+                this._panel?.webview.postMessage({
+                    command: 'updatePredefinedInclusions',
+                    predefinedInclusions: this.configService.getPredefinedInclusions()
+                });
+            }
+        });
 
         this.pinPanelIfEnabled();
     }
@@ -106,19 +121,11 @@ export class ExporterWebviewPanel {
 
         const exchangeFromHistory = wrapper.config?.exchange;
         const exchangeFromConfig = extensionConfig.get<any[]>('exchange');
+        const predefinedInclusions = this.configService.getPredefinedInclusions();
 
-        console.log(`[Files Exporter Diagnostics] --- INIT WEBVIEW DATA LAYERS ---`);
-        console.log(`[Files Exporter Diagnostics] Current targetRepo identified: "${currentRepo}"`);
-        console.log(`[Files Exporter Diagnostics] exchangeFromHistory structure:`, exchangeFromHistory ? JSON.stringify(exchangeFromHistory, null, 2) : "undefined/null");
-        console.log(`[Files Exporter Diagnostics] exchangeFromConfig property route:`, exchangeFromConfig ? JSON.stringify(exchangeFromConfig, null, 2) : "undefined/null");
-
-        // FIX: Evaluates explicit array length to prevent truthy evaluation of empty arrays ([]) from stopping fallback chain execution
         const exchange = (exchangeFromHistory && exchangeFromHistory.length > 0)
             ? exchangeFromHistory
             : (exchangeFromConfig || []);
-
-        console.log(`[Files Exporter Diagnostics] Final compiled exchange array payload:`, JSON.stringify(exchange, null, 2));
-        console.log(`[Files Exporter Diagnostics] ---------------------------------------`);
 
         this._panel?.webview.postMessage({
             command: 'initSettings',
@@ -130,7 +137,8 @@ export class ExporterWebviewPanel {
             tooltipDelay,
             historyViewMode,
             currentRepo,
-            exchange
+            exchange,
+            predefinedInclusions
         });
     }
 
@@ -139,8 +147,9 @@ export class ExporterWebviewPanel {
         const orchestrator = new ExportOrchestratorService(this.context, this.configService, this.processRunner, this._panel);
         const router = new MessageRouter(this._panel, this.historyService, this.configService, orchestrator, this.state, this.processRunner);
 
-        this._panel.webview.onDidReceiveMessage((msg) => {
+        this._panel.webview.onDidReceiveMessage(async (msg) => {
             if (msg.command === 'webviewReady') {
+                await this.initWebviewData(this._currentLaunchType);
                 if (this._currentLaunchType === 'add') this.updatePaths();
             } else {
                 router.handleMessage(msg);

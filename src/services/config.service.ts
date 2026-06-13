@@ -47,4 +47,10 @@ export class ConfigService {
             return path.basename(wsPath);
         }
     }
+
+    public getPredefinedInclusions(): any[] {
+        const config = this.getConfiguration();
+        return config.get<any[]>('inclusionsPredefinies') ||
+               config.get<any[]>('inclusionspredefinies') || [];
+    }
 }

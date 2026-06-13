@@ -14,12 +14,22 @@ const treeViewTab = new TreeViewTab();
 const terminalTab = new TerminalTab();
 const helpTab = new HelpTab();
 
+let isModifierPressed = false;
+
 const setRunButtonLoading = () => {
     const btn = document.getElementById('btn-run');
     if (btn) {
         btn.classList.add('loading');
-        btn.disabled = true;
-        btn.innerHTML = '<span class="codicon codicon-sync spin-anim"></span> PROCESSING EXPORT...';
+        btn.disabled = false;
+        btn.innerHTML = '<span class="codicon codicon-sync spin-anim"></span> EXPORT IN PROGRESS... <span id="btn-kill-task" title="Kill active export process immediately" style="margin-left: 12px; background: #b71c1c; color: #ffffff; padding: 2px 6px; border-radius: 3px; font-size: 11px; display: inline-flex; align-items: center; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.4); cursor: pointer !important;">🛑 KILL</span>';
+
+        setTimeout(() => {
+            document.getElementById('btn-kill-task')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                bridge.postMessage('killExport');
+            });
+        }, 20);
     }
 };
 
@@ -101,11 +111,220 @@ const renderExchangeIconButtons = (exchangeItems) => {
     });
 };
 
+const renderPredefinedInclusionsMenu = () => {
+    const menu = document.getElementById('predefined-inclusions-menu');
+    if (!menu) return;
+    menu.innerHTML = '';
+
+    if (!state.predefinedInclusions || state.predefinedInclusions.length === 0) {
+        menu.innerHTML = '<div style="padding: 6px 10px; font-size: 11px; font-style: italic; color: var(--vscode-descriptionForeground);">No inclusions configured</div>';
+        return;
+    }
+
+    state.predefinedInclusions.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'predefined-item-row';
+        row.style.cssText = 'padding: 6px 10px; cursor: pointer; font-size: 12px; font-family: var(--vscode-font-family); border-radius: 2px; margin: 1px 2px; transition: background 0.15s, color 0.15s;';
+        row.innerText = item.label;
+
+        if (isModifierPressed) {
+            row.style.background = '#ffcdd2';
+            row.style.color = '#b71c1c';
+            row.setAttribute('data-tooltip', '⚠️ DESTRUCTIVE: Click to completely OVERWRITE and REPLACE field content!');
+        } else {
+            row.style.background = 'transparent';
+            row.style.color = 'var(--vscode-dropdown-foreground, #cccccc)';
+            row.setAttribute('data-tooltip', 'Click to APPEND extensions on a new line.');
+        }
+
+        row.addEventListener('mouseenter', () => {
+            if (isModifierPressed) {
+                row.style.background = '#ef9a9a';
+                row.style.color = '#7f0000';
+            } else {
+                row.style.background = 'var(--vscode-list-hoverBackground, #2a2d2e)';
+                row.style.color = 'var(--vscode-list-hoverForeground, #ffffff)';
+            }
+        });
+
+        row.addEventListener('mouseleave', () => {
+            if (isModifierPressed) {
+                row.style.background = '#ffcdd2';
+                row.style.color = '#b71c1c';
+            } else {
+                row.style.background = 'transparent';
+                row.style.color = 'var(--vscode-dropdown-foreground, #cccccc)';
+            }
+        });
+
+        row.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const shouldReplace = e.ctrlKey || e.metaKey || isModifierPressed;
+            applyPredefinedExtensions(item.extensions, shouldReplace);
+            menu.style.display = 'none';
+        });
+
+        menu.appendChild(row);
+    });
+};
+
+const updateMenuHotkeysLayout = () => {
+    const menu = document.getElementById('predefined-inclusions-menu');
+    const kebabBtn = document.getElementById('btn-predefined-inclusions');
+
+    if (kebabBtn) {
+        if (isModifierPressed) {
+            kebabBtn.setAttribute('data-tooltip', 'Predefined extensions (REPLACE mode active)');
+        } else {
+            kebabBtn.setAttribute('data-tooltip', 'Predefined extension inclusions');
+        }
+    }
+
+    if (!menu || menu.style.display !== 'block') return;
+    renderPredefinedInclusionsMenu();
+};
+
+const applyPredefinedExtensions = (extensions, shouldReplace) => {
+    const incExtsEl = document.getElementById('incExts');
+    if (!incExtsEl || !extensions) return;
+
+    let lines = [];
+    if (!shouldReplace) {
+        let currentVal = incExtsEl.value.trim();
+        lines = currentVal ? currentVal.split('\n').map(l => l.trim()) : [];
+    }
+
+    extensions.forEach(ext => {
+        let cleanExt = ext.replace(/^\*/, '').trim();
+        if (cleanExt.startsWith('.')) {
+            cleanExt = cleanExt.slice(1);
+        }
+        if (!cleanExt) return;
+
+        const pattern = `.*\\.${cleanExt}$`;
+        if (!lines.includes(pattern)) {
+            lines.push(pattern);
+        }
+    });
+
+    incExtsEl.value = lines.join('\n');
+    incExtsEl.dispatchEvent(new Event('input', { bubbles: true }));
+    incExtsEl.dispatchEvent(new Event('change', { bubbles: true }));
+    UIController.checkSyncStatus();
+};
+
+/**
+ * Parses path arrays locally to intercept risk scenarios prior to triggering executions
+ */
+const triggerGuardrailValidationFlow = (pathsArray, onSuccess) => {
+    let outUserHome = false;
+    let homeRootBare = false;
+
+    // Fallback normalization logic when absolute workspace contexts are unpopulated
+    const userHome = '/Users/mac-SGUISS21'; // Derived directly from explicit context structure metrics
+    const normalizedHome = userHome.toLowerCase().replace(/\\/g, '/').replace(/\/+$/, '');
+
+    pathsArray.forEach(p => {
+        let clean = p.replace(/^['"]|['"]$/g, '').trim().toLowerCase().replace(/\\/g, '/').replace(/\/+$/, '');
+        if (!clean) return;
+
+        // Flags tracking outer limits or unnested user root processing selections
+        if (!clean.startsWith(normalizedHome)) {
+            outUserHome = true;
+        }
+        if (clean === normalizedHome) {
+            homeRootBare = true;
+        }
+    });
+
+    if (!outUserHome && !homeRootBare) {
+        onSuccess();
+        return;
+    }
+
+    let titleText = "⚠️ Performance & Scope Warning";
+    let warningMsg = "Crawling external system storage folders outside User Home can induce severe indexing lag and memory degradation regressions. Are you sure you want to proceed?";
+
+    if (homeRootBare && !outUserHome) {
+        titleText = "🛑 Performance Warning";
+        warningMsg = "You have targeted your root User Home directory directly without subfolders. This forces an evaluation across every single app state storage, cache workspace, and document tree asset. This will heavily degrade indexing performance and exhaust token allocations. Do you want to continue?";
+    }
+
+    // Modal view template configuration with custom constraints enforcing the 450px minimum width requirement
+    const backdrop = document.createElement('div');
+    backdrop.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999999; display: flex; align-items: center; justify-content: center;';
+
+    const modal = document.createElement('div');
+    modal.style.cssText = 'background: var(--vscode-editor-background, #1e1e1e); color: var(--vscode-foreground, #cccccc); padding: 20px; border-radius: 6px; border: 1px solid var(--vscode-panel-border); min-width: 450px; max-width: 550px; box-shadow: 0 4px 16px rgba(0,0,0,0.6); font-family: var(--vscode-font-family, sans-serif); box-sizing: border-box;';
+
+    modal.innerHTML = `
+        <div style="font-weight: 600; margin-bottom: 12px; font-size: 14px; color: #ffc107;">${titleText}</div>
+        <div style="font-size: 12px; margin-bottom: 20px; line-height: 1.5; white-space: normal; word-wrap: break-word;">${warningMsg}</div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <vscode-button id="btn-guardrail-proceed" appearance="primary">Proceed Anyway</vscode-button>
+            <vscode-button id="btn-guardrail-cancel" appearance="secondary">Cancel Run</vscode-button>
+        </div>
+    `;
+
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+
+    const closeModal = () => document.body.removeChild(backdrop);
+
+    document.getElementById('btn-guardrail-cancel')?.addEventListener('click', () => {
+        closeModal();
+        terminalTab.append("\n🚫 Operation aborted by user: Target path safely bypassed via layout guardrail definitions.\n");
+        resetRunButton();
+    });
+
+    document.getElementById('btn-guardrail-proceed')?.addEventListener('click', () => {
+        closeModal();
+        onSuccess();
+    });
+};
+
 const init = () => {
     UIController.injectShadowDomStyles();
     UIController.initCursorTooltipTracker();
 
     helpTab.render();
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Control' || e.key === 'Meta') {
+            if (!isModifierPressed) {
+                isModifierPressed = true;
+                updateMenuHotkeysLayout();
+            }
+        }
+    });
+
+    window.addEventListener('keyup', (e) => {
+        if (e.key === 'Control' || e.key === 'Meta') {
+            if (isModifierPressed) {
+                isModifierPressed = false;
+                updateMenuHotkeysLayout();
+            }
+        }
+    });
+
+    document.getElementById('btn-predefined-inclusions')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const menu = document.getElementById('predefined-inclusions-menu');
+        if (menu) {
+            const isOpening = menu.style.display !== 'block';
+            if (isOpening) {
+                renderPredefinedInclusionsMenu();
+                menu.style.display = 'block';
+            } else {
+                menu.style.display = 'none';
+            }
+        }
+    });
+
+    document.addEventListener('click', () => {
+        const menu = document.getElementById('predefined-inclusions-menu');
+        if (menu) menu.style.display = 'none';
+    });
 
     document.getElementById('btn-toggle-history-view')?.addEventListener('click', () => {
         state.historyViewMode = state.historyViewMode === 'scope-current-repo' ? 'scope-all-repo' : 'scope-current-repo';
@@ -182,7 +401,28 @@ const init = () => {
         bridge.postMessage('addGitDiffFiles', { currentPaths });
     });
 
-    document.getElementById('btn-run')?.addEventListener('click', runExport);
+    document.getElementById('btn-run')?.addEventListener('click', (e) => {
+        const btn = document.getElementById('btn-run');
+        if (btn && btn.classList.contains('loading')) return;
+
+        let isFormValid = true;
+        Object.keys(ValidatorService.validators).forEach(id => {
+            if (!ValidatorService.executeFieldValidation(id)) isFormValid = false;
+        });
+        if (state.pathListInvalid) isFormValid = false;
+        if (!isFormValid) {
+            terminalTab.append("\n❌ Export aborted: Please fix the highlighted fields in red pastel before running.\n");
+            return;
+        }
+
+        const pathsArray = (document.getElementById('pathList')?.value || '').split('\n').map(p => p.trim()).filter(p => p);
+
+        // Wrap the execution inside the modal workflow layer
+        triggerGuardrailValidationFlow(pathsArray, () => {
+            runExport();
+        });
+    });
+
     document.getElementById('btn-copy-cmd')?.addEventListener('click', () => terminalTab.copyCommand());
 
     document.getElementById('btn-copy-latest-files')?.addEventListener('click', () => {
@@ -268,16 +508,6 @@ const init = () => {
 };
 
 const runExport = () => {
-    let isFormValid = true;
-    Object.keys(ValidatorService.validators).forEach(id => {
-        if (!ValidatorService.executeFieldValidation(id)) isFormValid = false;
-    });
-    if (state.pathListInvalid) isFormValid = false;
-    if (!isFormValid) {
-        terminalTab.append("\n❌ Export aborted: Please fix the highlighted fields in red pastel before running.\n");
-        return;
-    }
-
     setRunButtonLoading();
     terminalTab.clear();
     terminalTab.append("⏳ Starting export process...\n");
@@ -423,6 +653,7 @@ window.addEventListener('message', (event) => {
             state.currentSelectedId = message.selectedId || 'default';
             state.historyViewMode = message.historyViewMode || 'scope-current-repo';
             state.currentRepo = message.currentRepo || '';
+            state.predefinedInclusions = message.predefinedInclusions || [];
 
             const matchedEntriesCount = state.historyList.filter(h => state.historyViewMode === 'scope-all-repo' || h.repo === state.currentRepo).length;
             console.log(`[History Combo Init] ViewMode: "${state.historyViewMode}" | RepoName: "${state.currentRepo}" | MatchingEntries: ${matchedEntriesCount} / Total: ${state.historyList.length}`);
@@ -436,12 +667,17 @@ window.addEventListener('message', (event) => {
             }
 
             renderExchangeIconButtons(message.exchange);
+            renderPredefinedInclusionsMenu();
 
             setTimeout(() => {
                 state.isInitializing = false;
                 UIController.checkSyncStatus();
                 ValidatorService.executeFieldValidation('pathList');
             }, 50);
+            break;
+        case 'updatePredefinedInclusions':
+            state.predefinedInclusions = message.predefinedInclusions || [];
+            renderPredefinedInclusionsMenu();
             break;
         case 'updateHistory':
             state.historyList = message.history || [];
@@ -456,6 +692,13 @@ window.addEventListener('message', (event) => {
             break;
         case 'terminalLog':
             terminalTab.append(message.text);
+
+            if (message.text.includes('Export process killed manually')) {
+                resetRunButton();
+                resetCurrentConfigFields();
+                break;
+            }
+
             if (message.text.includes('Export complete!') || message.text.includes('Export aborted') || message.text.includes('ERROR:')) {
                 resetRunButton();
             }

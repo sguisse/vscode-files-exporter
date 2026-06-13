@@ -1,15 +1,4 @@
-Role
-You act as an Architect xxxx expert in xxxxxx code.
-Context
-Read and analyze deeply the given codebase (partial) in attachement (file named : "xxxxxxx") to understand its structure and functionality.
-Read also the related technical documentation in attachement (file named : "xxxxxxx") to follow and respect during your code generation.
-Expected
-Add a tab named "Help" in file 'src/webview/components/help-tab.js'. Include in it the user guide of the application in HTML.
-Output
-Does not give any theoretical explanation, introduction or textual conclusion outside of the script.
-Only provide the full content of the modified file 'src/webview/components/help-tab.js' with the new "Help" tab content as described in the expected section and full other necessary modifications in other related files.
-Provide the entire output as a SINGLE, self-contained Bash script ('*.sh') actionnable at the workspace root.
-Use 'cat << 'EOF' > path/to/file' blocks to create or overwrite ALL complete files (no snippets, no truncation comments, no "...").
-Manage the potential syntax conflict between the triple-backticks of the LLM chat GUI Markdown and the triple-backticks that the Bash script must write to the Markdown files.
-The script must manage the creation of the necessary folders ('mkdir -p').
-Ensure that the script is 100% compliant, without concessions, and directly executable locally in workspace root after a 'chmod +x'.
+TODO : Proposer dans un menu déroulant des inclusions prédéfinies (ex : les fichiers de configuration, les fichiers de documentation, les sources Front-end, les sources Back-end)
+Les inclusions prédefinies sont configurables via les settings de l'extention dans la variable "inclusionsPredefinies" de type array (ex : "inclusionsPredefinies": {"config": ["*.json", "*.yaml"], "docs": ["*.md"], "frontend": ["*.js", "*.css"], "backend": ["*.java", "*.py"]})
+Ce menu déroulant est accessible via un bouton vscode "kebab-vertical" à côté du label d'inclusion aligné à droite du span content "🟢 Include exts"
+Dans la generation tous les fichiers produits sont exclusivement en Anglais !

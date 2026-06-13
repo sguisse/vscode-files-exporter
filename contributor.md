@@ -106,6 +106,7 @@ To ensure the project remains high-quality and easy to read for everyone, please
 1. **SOLID Principles**: Keep things separated. If you add a new UI Tab, create a new file in `src/webview/components/` (e.g., `my-new-tab.js`). Do not dump thousands of lines of code into `main.js`.
 2. **No UI Freezes**: Never read massive files or folders directly inside the TypeScript/JavaScript backend. Always pass heavy file-reading tasks to the Python engine (`files-exporter.py`).
 3. **Design System**: When adding buttons or text boxes to `webview.html`, use the official Microsoft `<vscode-button>` and `<vscode-text-field>` tags. Do not use hardcoded colors (like `#FFFFFF`); always use CSS variables (like `var(--vscode-editor-background)`).
+    * cf [https://microsoft.github.io/vscode-codicons/dist/codicon.html](https://microsoft.github.io/vscode-codicons/dist/codicon.html)
 4. **AI-Assisted Coding**: We highly encourage using LLMs (like Gemini, ChatGPT, Claude) to write your PRs! Just make sure to use the **Files Exporter** itself to generate the context you feed to the AI (as outlined in `scenario.md`).
 
 Thank you for helping us build an amazing tool for the developer community! 🚀

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { exec } from 'child_process';
+import * as os from 'os';
 import { ConfigService } from './config.service';
 import { ProcessRunnerService } from './process-runner.service';
 
@@ -13,19 +13,49 @@ export class ExportOrchestratorService {
         private readonly webviewPanel: vscode.WebviewPanel
     ) {}
 
+    public cancelActiveExport(): boolean {
+        const script = this.configService.getPythonScriptPath(this.context.extensionPath);
+        return this.processRunner.killActivePythonScript(script);
+    }
+
+    private makePathsAbsolute(paths: string[], workspaceRoot: string): string[] {
+        return paths.map(p => {
+            let clean = p.replace(/^['"]|['"]$/g, '').trim();
+            if (!clean) return '';
+            if (!path.isAbsolute(clean)) {
+                return path.join(workspaceRoot, clean);
+            }
+            return clean;
+        }).filter(Boolean);
+    }
+
+    private makeSinglePathAbsolute(p: string, workspaceRoot: string): string {
+        let clean = (p || '').replace(/^['"]|['"]$/g, '').trim();
+        if (!clean) return workspaceRoot;
+        if (!path.isAbsolute(clean)) {
+            return path.join(workspaceRoot, clean);
+        }
+        return clean;
+    }
+
     public async run(formData: any): Promise<void> {
         const script = this.configService.getPythonScriptPath(this.context.extensionPath);
-        const concatenatedSources = (formData.paths || []).join(',');
+        const workspaceRoot = this.configService.getWorkspaceRootPath();
 
-        const execArgs = this.buildArgs(formData, concatenatedSources);
-        const displayArgs = this.buildDisplayArgs(formData, concatenatedSources);
+        const absoluteSourcesArray = this.makePathsAbsolute(formData.paths || [], workspaceRoot);
+        const absoluteDestDirectory = this.makeSinglePathAbsolute(formData.destDir, workspaceRoot);
+        const concatenatedSources = absoluteSourcesArray.join(',');
+
+        const runtimeTransmittedData = {
+            ...formData,
+            destDir: absoluteDestDirectory
+        };
+
+        const execArgs = this.buildArgs(runtimeTransmittedData, concatenatedSources);
+        const displayArgs = this.buildDisplayArgs(runtimeTransmittedData, concatenatedSources);
 
         const fullCommand = `python3 '${script}' ${displayArgs.join(' ')}`;
         this.webviewPanel.webview.postMessage({ command: 'updateCommand', text: fullCommand });
-        this.webviewPanel.webview.postMessage({
-            command: 'terminalLog',
-            text: `\n🐛 [QA Debug Trace] Array arguments sent to process engine: ${JSON.stringify(execArgs)}\n`
-        });
 
         try {
             const { code, stdout, stderr } = await this.processRunner.executePython(
@@ -34,11 +64,17 @@ export class ExportOrchestratorService {
                 (err) => this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\x1b[91mERROR: ${err}\x1b[0m` })
             );
 
+            // Defensive Check: If streams are fully empty and exit code indicates anomaly, it implies SIGKILL termination.
+            // Proactively intercept and return here to block downstream completion popup notifications.
+            if (code !== 0 && stderr.length === 0 && stdout.length === 0) {
+                return;
+            }
+
             if (code === 0) {
                 this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\n✅ Process exited safely.\n` });
                 vscode.window.showInformationMessage("Export Complete!");
-                const generatedFiles = this.parseAndSendReport(stdout, formData.destDir);
-                if (formData.copyGeneratedFilesToClipboard) {
+                const generatedFiles = this.parseAndSendReport(stdout, runtimeTransmittedData.destDir);
+                if (runtimeTransmittedData.copyGeneratedFilesToClipboard) {
                     await this.copyGeneratedFilesToClipboard(generatedFiles);
                 }
             } else {
@@ -48,6 +84,7 @@ export class ExportOrchestratorService {
                 vscode.window.showErrorMessage(`Export engine failed with exit code ${code}${detail}`);
             }
         } catch (e: any) {
+            if (e.message && e.message.includes('Error: kill')) return;
             vscode.window.showErrorMessage(`Engine Error : ${e.message}`);
         }
     }
@@ -119,7 +156,6 @@ export class ExportOrchestratorService {
         return [];
     }
 
-    // Look inside the copyGeneratedFilesToClipboard(filePaths: string[]) method layout:
     private async copyGeneratedFilesToClipboard(filePaths: string[]) {
         if (filePaths.length === 0) {
             this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\n⚠️ Clipboard auto-copy skipped: no generated export files found.\n` });
@@ -127,9 +163,7 @@ export class ExportOrchestratorService {
         }
 
         try {
-            // ✨ Fetching the customized validation timeout setting from user configurations scope
             const timeoutMs = this.configService.getConfiguration().get<number>('copyFilesToClipboardTimeout') ?? 10000;
-
             await this.processRunner.copyFilesToClipboard(filePaths, timeoutMs);
             this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\n📋 Auto-copied and verified ${filePaths.length} generated file(s) to OS clipboard.\n` });
             vscode.window.showInformationMessage(`Copied and verified ${filePaths.length} generated file(s) to clipboard.`);
@@ -138,5 +172,4 @@ export class ExportOrchestratorService {
             vscode.window.showErrorMessage(`Clipboard verification failed: ${err.message}`);
         }
     }
-
 }

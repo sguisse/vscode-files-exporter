@@ -214,10 +214,13 @@
                     Paths</span>
                 <vscode-text-area id="incPaths" class="full-width" rows="4" resize="vertical"></vscode-text-area>
             </div>
-            <div style="flex-grow:1;">
-                <span class="field-label"
-                    data-tooltip="Regex checklist specifying file extensions to let through during discovery.">🟢
-                    Include exts</span>
+            <div style="flex-grow:1; position: relative;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <span class="field-label"
+                        data-tooltip="Regex checklist specifying file extensions to let through during discovery.">🟢 Include exts</span>
+                    <vscode-button id="btn-predefined-inclusions" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Predefined extension inclusions. Press Ctrl/Cmd to replace content instead of appending."><span class="codicon codicon-kebab-vertical"></span></vscode-button>
+                </div>
+                <div id="predefined-inclusions-menu" style="display: none; position: absolute; top: 24px; right: 0; background: var(--vscode-dropdown-background, #252526); border: 1px solid var(--vscode-dropdown-border, #3c3c3c); border-radius: 3px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 1000; min-width: 160px;"></div>
                 <vscode-text-area id="incExts" class="full-width" rows="4" resize="vertical"></vscode-text-area>
             </div>
             <div style="flex-grow:1;">

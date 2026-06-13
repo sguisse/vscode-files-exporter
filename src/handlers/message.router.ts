@@ -32,6 +32,14 @@ export class MessageRouter {
                 this.panel.webview.postMessage({ command: 'updateHistory', history: result.history, selectedId: result.selectedId, skipFieldSync: true });
                 await this.orchestrator.run(message.data);
                 break;
+            case 'killExport':
+                const killed = this.orchestrator.cancelActiveExport();
+                if (killed) {
+                    this.panel.webview.postMessage({ command: 'terminalLog', text: `\n🛑 Export process killed manually via interface selection parameters.\n` });
+                    this.panel.webview.postMessage({ command: 'terminalLog', text: 'Export aborted.' });
+                    vscode.window.showWarningMessage("Killing Export Process (🛑): Process has been killed Successfully.");
+                }
+                break;
             case 'duplicateHistory':
                 if (message.id) {
                     const repoDup = this.configService.getRepoName();

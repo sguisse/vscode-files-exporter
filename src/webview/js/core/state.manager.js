@@ -10,6 +10,7 @@ export const state = {
     totalExportedSourceFiles: 0,
     historyViewMode: 'scope-current-repo',
     currentRepo: '',
+    predefinedInclusions: [],
     updatePaths(paths) { this.selectedPaths = paths || []; },
     updateHistory(history, selectedId) {
         this.historyList = history || [];
