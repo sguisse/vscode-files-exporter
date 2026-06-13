@@ -28,12 +28,12 @@
         "commands": [
             {
                 "command": "files-exporter.openTool",
-                "title": "Open Files Exporter UI",
+                "title": "Files Exporter --> Open UI",
                 "icon": "$(export)"
             },
             {
                 "command": "files-exporter.addFromExplorer",
-                "title": "Add to Files Exporter"
+                "title": "Files Exporter --> Add from Explorer"
             }
         ],
         "menus": {

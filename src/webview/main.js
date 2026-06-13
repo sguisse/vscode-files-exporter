@@ -213,22 +213,16 @@ const applyPredefinedExtensions = (extensions, shouldReplace) => {
     UIController.checkSyncStatus();
 };
 
-/**
- * Parses path arrays locally to intercept risk scenarios prior to triggering executions
- */
 const triggerGuardrailValidationFlow = (pathsArray, onSuccess) => {
     let outUserHome = false;
     let homeRootBare = false;
-
-    // Fallback normalization logic when absolute workspace contexts are unpopulated
-    const userHome = '/Users/mac-SGUISS21'; // Derived directly from explicit context structure metrics
+    const userHome = '/Users/mac-SGUISS21';
     const normalizedHome = userHome.toLowerCase().replace(/\\/g, '/').replace(/\/+$/, '');
 
     pathsArray.forEach(p => {
         let clean = p.replace(/^['"]|['"]$/g, '').trim().toLowerCase().replace(/\\/g, '/').replace(/\/+$/, '');
         if (!clean) return;
 
-        // Flags tracking outer limits or unnested user root processing selections
         if (!clean.startsWith(normalizedHome)) {
             outUserHome = true;
         }
@@ -250,12 +244,11 @@ const triggerGuardrailValidationFlow = (pathsArray, onSuccess) => {
         warningMsg = "You have targeted your root User Home directory directly without subfolders. This forces an evaluation across every single app state storage, cache workspace, and document tree asset. This will heavily degrade indexing performance and exhaust token allocations. Do you want to continue?";
     }
 
-    // Modal view template configuration with custom constraints enforcing the 450px minimum width requirement
     const backdrop = document.createElement('div');
     backdrop.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999999; display: flex; align-items: center; justify-content: center;';
 
     const modal = document.createElement('div');
-    modal.style.cssText = 'background: var(--vscode-editor-background, #1e1e1e); color: var(--vscode-foreground, #cccccc); padding: 20px; border-radius: 6px; border: 1px solid var(--vscode-panel-border); min-width: 450px; max-width: 550px; box-shadow: 0 4px 16px rgba(0,0,0,0.6); font-family: var(--vscode-font-family, sans-serif); box-sizing: border-box;';
+    modal.style.cssText = 'background: var(--vscode-editor-background, #1e1e1e); color: var(--vscode-foreground, #cccccc); padding: 20px; border-radius: 6px; border: 1px solid var(--vscode-panel-border); min-width: 450px; max-width: 550px; box-shadow: 0 4px 16px rgba(0,0,0,0.6); font-family: var(--vscode-font-family); box-sizing: border-box;';
 
     modal.innerHTML = `
         <div style="font-weight: 600; margin-bottom: 12px; font-size: 14px; color: #ffc107;">${titleText}</div>
@@ -281,6 +274,26 @@ const triggerGuardrailValidationFlow = (pathsArray, onSuccess) => {
         closeModal();
         onSuccess();
     });
+};
+
+/**
+ * Parses and computes the exact line string index corresponding to absolute cursor selection values
+ */
+const saveActiveTextareaCursorIndex = () => {
+    const textarea = document.getElementById('pathList');
+    const hiddenInput = document.getElementById('hiddenPathListCursorIndex');
+    if (!textarea || !hiddenInput) return;
+
+    // Retrieve internal textarea reference from underlying Web Component shadow DOM layers if present
+    const nativeTextarea = textarea.shadowRoot?.querySelector('textarea') || textarea;
+    const selectionStart = nativeTextarea.selectionStart || 0;
+    const textContent = nativeTextarea.value || '';
+
+    // Calculate line index by slicing content up to selection position boundaries
+    const textUpToCursor = textContent.substring(0, selectionStart);
+    const lineIndex = textUpToCursor.split('\n').length;
+
+    hiddenInput.value = lineIndex.toString();
 };
 
 const init = () => {
@@ -401,6 +414,32 @@ const init = () => {
         bridge.postMessage('addGitDiffFiles', { currentPaths });
     });
 
+    // Wire selection monitoring listeners across all structural interaction pipelines
+    const pathListTextArea = document.getElementById('pathList');
+    if (pathListTextArea) {
+        const targetTextarea = pathListTextArea.shadowRoot?.querySelector('textarea') || pathListTextArea;
+        targetTextarea.addEventListener('blur', saveActiveTextareaCursorIndex);
+        targetTextarea.addEventListener('keyup', saveActiveTextareaCursorIndex);
+        targetTextarea.addEventListener('click', saveActiveTextareaCursorIndex);
+    }
+
+    document.getElementById('btn-open-cursor-line')?.addEventListener('click', () => {
+        const textarea = document.getElementById('pathList');
+        const hiddenInput = document.getElementById('hiddenPathListCursorIndex');
+        if (!textarea || !hiddenInput) return;
+
+        const text = textarea.value || '';
+        const lines = text.split('\n');
+
+        // Fetch target index line reference from persistent internal overlay parameter container
+        let savedLineIndex = parseInt(hiddenInput.value || '1', 10);
+        if (isNaN(savedLineIndex) || savedLineIndex < 1) savedLineIndex = 1;
+        if (savedLineIndex > lines.length) savedLineIndex = lines.length;
+
+        const lineContent = (lines[savedLineIndex - 1] || '').trim();
+        bridge.postMessage('openPathAtCursor', { path: lineContent, lineNum: savedLineIndex });
+    });
+
     document.getElementById('btn-run')?.addEventListener('click', (e) => {
         const btn = document.getElementById('btn-run');
         if (btn && btn.classList.contains('loading')) return;
@@ -417,7 +456,6 @@ const init = () => {
 
         const pathsArray = (document.getElementById('pathList')?.value || '').split('\n').map(p => p.trim()).filter(p => p);
 
-        // Wrap the execution inside the modal workflow layer
         triggerGuardrailValidationFlow(pathsArray, () => {
             runExport();
         });
@@ -696,6 +734,9 @@ window.addEventListener('message', (event) => {
             if (message.text.includes('Export process killed manually')) {
                 resetRunButton();
                 resetCurrentConfigFields();
+                reportTab.clear();
+                filesTab.clear();
+                treeViewTab.clear();
                 break;
             }
 

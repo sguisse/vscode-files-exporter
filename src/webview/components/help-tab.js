@@ -119,30 +119,33 @@ export class HelpTab {
                                 </vscode-button>
                             </li>
                             <ul id="sample-prompt-content">
-                                <li><strong>Role</strong></li>
-                                    <ul>
-                                        <li>You act as an Architect xxxx expert in xxxxxx code.</li>
-                                    </ul>
-                                <li><strong>Context</strong></li>
-                                    <ul>
-                                        <li>Read and analyze deeply the given codebase (partial) in attachement (file named : \"<strong>xxxxxxx</strong>\") to understand its structure and functionality.</li>
-                                        <li>Read also the related technical documentation in attachement (file named : \"<strong>xxxxxxx</strong>\") to follow and respect during your code generation.</li>
-                                    </ul>
-                                <li><strong>Expected</strong></li>
-                                        <ul>
-                                            <li>Add a tab named \"Help\" in file '<em>src/webview/components/help-tab.js</em>'. Include in it the user guide of the application in HTML.</li>
-                                        </ul>
-                                <li><strong>Output</strong></li>
-                                    <ul>
-                                        <li>Does not give any theoretical explanation, introduction or textual conclusion outside of the script.</li>
-                                        <li>Only provide the full content of the modified file '<em>src/webview/components/help-tab.js</em>' with the new \"Help\" tab content as described in the expected section and full other necessary modifications in other related files.</li>
-                                        <li>Provide the entire output as a SINGLE, self-contained Bash script ('<em>*.sh</em>') actionnable at the workspace root.</li>
-                                        <li>Use '<em>cat << 'EOF' > path/to/file</em>' blocks to create or overwrite ALL complete files (no snippets, no truncation comments, no \"...\").</li>
-                                        <li>Manage the potential syntax conflict between the triple-backticks of the LLM chat GUI Markdown and the triple-backticks that the Bash script must write to the Markdown files.</li>
-                                        <li>The script must manage the creation of the necessary folders ('<em>mkdir -p</em>').</li>
-                                        <li>Ensure that the script is 100% compliant, without concessions, and directly executable locally in workspace root after a '<em>chmod +x</em>'.</li>
-                                    </ul>
+                            <li><strong>Role</strong></li>
+                            <ul>
+                                <li>You act as an expert <em style="color: blue;"><strong>Software Architect and Senior Developer</strong></em> specializing in <em style="color: blue;"><strong>VS Code Extensions and JavaScript/Webview development.</strong></em></li>
                             </ul>
+                            <li><strong>Context</strong></li>
+                            <ul>
+                                <li>Deeply analyze the provided partial codebase in the attachment (file named : \"<em style="color: blue;"><strong>xxxxxxx</strong></em>\") to understand its current tab system, component structure, and state management.</li>
+                                <li>Read also the related technical documentation in the attachment (file named : \"<em style="color: blue;"><strong>xxxxxxx</strong></em>\") to strictly follow and respect during your code generation.</li>
+                            </ul>
+                            <li><strong>Expected</strong></li>
+                            <ul>
+                                <em style="color: blue;">
+                                <li><strong>[[ Create a new tab component named \"Help\" inside '<em>src/webview/components/help-tab.js</em>' that renders the application's user guide in clean HTML/JSX.</strong></li>
+                                <li><strong>Integrate this new \"Help\" tab into the existing Webview layout. This requires modifying other related files (e.g., main container, tab navigation, or router files) to inject the new tab alongside the existing ones without breaking or overwriting them. ]]</strong></li>
+                                </em>
+                            </ul>
+                            <li><strong>Output</strong></li>
+                            <ul>
+                                <li>Does not give any theoretical explanation, introduction or textual conclusion outside of the script. Output ONLY the Bash script block.</li>
+                                <li>Provide the entire output as a <strong>SINGLE</strong>, self-contained, and production-ready Bash script ('<em>*.sh</em>') actionable at the workspace root.</li>
+                                <li>The script must manage the creation of the necessary folders ('<em>mkdir -p</em>').</li>
+                                <li>For the <strong>NEW</strong> file, use a full '<em>cat << 'EOF' > path/to/file</em>' block. No snippets, no truncation comments, no \"...\".</li>
+                                <li>For the <strong>EXISTING</strong> related files, DO NOT overwrite them completely. Instead, write precise automated modification commands (using <em>sed</em>, <em>awk</em>, or robust line-matching replacements) to inject only the necessary delta (the new tab import and navigation link).</li>
+                                <li><strong>CRITICAL</strong>: Safely manage the syntax conflict between the triple-backticks of the LLM chat GUI Markdown and any backticks or template literals that the Bash script must write to the JavaScript/HTML files. Ensure the generated shell script does not prematurely close the LLM's code block response.</li>
+                                <li>Ensure that the script is 100% compliant, complete, and directly executable locally in workspace root after a '<em>chmod +x</em>'.</li>
+                            </ul>
+                        </ul>
                             <li>Then <strong>copy/paste</strong> the generated Bash script into a file named '<strong><em>patch.sh</em></strong>' in workspace root and execute it!</li>
                             <li>Refresh the workspace if needed to see the changes.</li>
                         </ul>

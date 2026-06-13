@@ -37,8 +37,11 @@ export class MessageRouter {
                 if (killed) {
                     this.panel.webview.postMessage({ command: 'terminalLog', text: `\n🛑 Export process killed manually via interface selection parameters.\n` });
                     this.panel.webview.postMessage({ command: 'terminalLog', text: 'Export aborted.' });
-                    vscode.window.showWarningMessage("Killing Export Process (🛑): Process has been killed Successfully.");
+                    vscode.window.showWarningMessage("Export Process Terminated Successfully.");
                 }
+                break;
+            case 'openPathAtCursor':
+                await this.handleOpenPathAtCursor(message);
                 break;
             case 'duplicateHistory':
                 if (message.id) {
@@ -96,6 +99,45 @@ export class MessageRouter {
                 else if (message.type === 'error') vscode.window.showErrorMessage(message.text);
                 else if (message.type === 'warn') vscode.window.showWarningMessage(message.text);
                 break;
+        }
+    }
+
+    private async handleOpenPathAtCursor(message: any) {
+        const { path: rawPath, lineNum } = message;
+
+        // Validation Control 1: Empty line check
+        if (!rawPath || !rawPath.trim()) {
+            vscode.window.showErrorMessage(`No path defined on line n° ${lineNum}`);
+            return;
+        }
+
+        const wsPath = this.configService.getWorkspaceRootPath();
+        let cleanPath = rawPath.replace(/^['"]|['"]$/g, '').trim();
+        if (!cleanPath) return;
+
+        // Resolve absolute locations if a relative structure definition is present
+        if (!path.isAbsolute(cleanPath)) {
+            cleanPath = path.join(wsPath, cleanPath);
+        }
+
+        // Validation Control 2: Storage visibility/existence check
+        if (!fs.existsSync(cleanPath)) {
+            vscode.window.showWarningMessage(`The path '${rawPath}' at line n° ${lineNum} does not exist`);
+            return;
+        }
+
+        try {
+            const pathStat = fs.statSync(cleanPath);
+            if (pathStat.isDirectory()) {
+                // Folder logic routine: reveal natively within standard OS Explorer frameworks
+                await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(cleanPath));
+            } else {
+                // File logic routine: trigger immediate text workspace document canvas focus inside edit windows
+                const targetDoc = await vscode.workspace.openTextDocument(cleanPath);
+                await vscode.window.showTextDocument(targetDoc);
+            }
+        } catch (err: any) {
+            vscode.window.showErrorMessage(`Failed to resolve workspace item: ${err.message}`);
         }
     }
 
