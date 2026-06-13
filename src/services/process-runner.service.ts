@@ -2,7 +2,6 @@ import { spawn, exec, ChildProcess } from 'child_process';
 import { existsSync } from 'fs';
 
 export class ProcessRunnerService {
-    // Retains an internal reference map stack to manage the actively executing headless processes
     private activeProcesses: Map<string, ChildProcess> = new Map();
 
     public executePython(
@@ -10,7 +9,7 @@ export class ProcessRunnerService {
         args: string[],
         onStdout: (data: string) => void,
         onStderr: (data: string) => void
-    ): Promise<{ code: number, stdout: string, stderr: string }> {
+    ): Promise<{ code: number | null, signal: string | null, stdout: string, stderr: string }> {
         return new Promise((resolve, reject) => {
             if (!existsSync(scriptPath)) {
                 return reject(new Error(`Le script moteur est introuvable à l'adresse : ${scriptPath}`));
@@ -20,7 +19,6 @@ export class ProcessRunnerService {
             const processArgs = [scriptPath, ...args];
             const child = spawn(command, processArgs);
 
-            // Register the process instance wrapper into global execution monitoring stacks
             const processTrackingKey = scriptPath;
             this.activeProcesses.set(processTrackingKey, child);
 
@@ -39,9 +37,10 @@ export class ProcessRunnerService {
                 onStderr(text);
             });
 
-            child.on('close', (code) => {
+            // Capture both termination exit code and close signals atomically without masking overrides
+            child.on('close', (code, signal) => {
                 this.activeProcesses.delete(processTrackingKey);
-                resolve({ code: code ?? 0, stdout: fullStdout, stderr: fullStderr });
+                resolve({ code, signal, stdout: fullStdout, stderr: fullStderr });
             });
 
             child.on('error', (err) => {
@@ -51,13 +50,9 @@ export class ProcessRunnerService {
         });
     }
 
-    /**
-     * Issues an atomic operational termination command directly to the target subshell process thread.
-     */
     public killActivePythonScript(scriptPath: string): boolean {
         const child = this.activeProcesses.get(scriptPath);
         if (child) {
-            // Send SIGKILL signal wrapper to cleanly force terminate downstream core loop structures
             child.kill('SIGKILL');
             this.activeProcesses.delete(scriptPath);
             return true;
@@ -65,9 +60,6 @@ export class ProcessRunnerService {
         return false;
     }
 
-    /**
-     * Copies an array of absolute file paths to the native OS clipboard and poll-verifies their presence.
-     */
     public copyFilesToClipboard(filePaths: string[], timeoutMs: number = 10000): Promise<void> {
         return new Promise<void>((resolve, reject) => {
             setTimeout(() => {

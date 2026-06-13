@@ -58,15 +58,14 @@ export class ExportOrchestratorService {
         this.webviewPanel.webview.postMessage({ command: 'updateCommand', text: fullCommand });
 
         try {
-            const { code, stdout, stderr } = await this.processRunner.executePython(
+            const { code, signal, stdout, stderr } = await this.processRunner.executePython(
                 script, execArgs,
                 (out) => this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: out }),
                 (err) => this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\x1b[91mERROR: ${err}\x1b[0m` })
             );
 
-            // Defensive Check: If streams are fully empty and exit code indicates anomaly, it implies SIGKILL termination.
-            // Proactively intercept and return here to block downstream completion popup notifications.
-            if (code !== 0 && stderr.length === 0 && stdout.length === 0) {
+            // Halt immediately to suppress completion alerts if process termination signals are caught
+            if (signal !== null || code === null) {
                 return;
             }
 
