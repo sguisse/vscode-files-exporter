@@ -21,7 +21,12 @@ export class ExporterWebviewPanel {
         private readonly state: ExtensionState
     ) {}
 
-    public show(launchType: 'open' | 'add') {
+    
+    public excludePathFromExplorer(fsPath: string) {
+        this._panel?.webview.postMessage({ command: 'excludeExplorerPathSelection', path: fsPath });
+    }
+
+public show(launchType: 'open' | 'add') {
         this._currentLaunchType = launchType;
 
         if (this._panel) {

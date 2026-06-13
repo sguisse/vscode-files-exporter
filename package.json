@@ -34,6 +34,10 @@
             {
                 "command": "files-exporter.addFromExplorer",
                 "title": "Files Exporter --> Add from Explorer"
+            },
+            {
+                "command": "files-exporter.ExcludeFromExplorer",
+                "title": "Files Exporter --> 🚫 Exclude paths"
             }
         ],
         "menus": {
@@ -46,11 +50,15 @@
             "explorer/context": [
                 {
                     "command": "files-exporter.openTool",
-                    "group": "navigation@1"
+                    "group": "navigation@0"
                 },
                 {
                     "command": "files-exporter.addFromExplorer",
-                    "group": "navigation@2"
+                    "group": "navigation@0"
+                },
+                {
+                    "command": "files-exporter.ExcludeFromExplorer",
+                    "group": "navigation@0"
                 }
             ]
         },
@@ -172,13 +180,47 @@
                                 "description": "File extensions array listed as wildcards or literal parameters."
                             }
                         },
-                        "required": ["label", "extensions"]
+                        "required": [
+                            "label",
+                            "extensions"
+                        ]
                     },
                     "default": [
-                        { "label": "Configurations", "extensions": ["*.json", "*.yaml", "*.yml", "*.xml", "*.toml"] },
-                        { "label": "Documentation", "extensions": ["*.md", "*.txt"] },
-                        { "label": "Front-end Sources", "extensions": ["*.js", "*.ts", "*.tsx", "*.jsx", "*.css", "*.html"] },
-                        { "label": "Back-end Sources", "extensions": ["*.java", "*.py"] }
+                        {
+                            "label": "Configurations",
+                            "extensions": [
+                                "*.json",
+                                "*.yaml",
+                                "*.yml",
+                                "*.xml",
+                                "*.toml"
+                            ]
+                        },
+                        {
+                            "label": "Documentation",
+                            "extensions": [
+                                "*.md",
+                                "*.txt"
+                            ]
+                        },
+                        {
+                            "label": "Front-end Sources",
+                            "extensions": [
+                                "*.js",
+                                "*.ts",
+                                "*.tsx",
+                                "*.jsx",
+                                "*.css",
+                                "*.html"
+                            ]
+                        },
+                        {
+                            "label": "Back-end Sources",
+                            "extensions": [
+                                "*.java",
+                                "*.py"
+                            ]
+                        }
                     ]
                 },
                 "filesExporter.exchange": {

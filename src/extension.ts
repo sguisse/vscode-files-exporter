@@ -25,7 +25,6 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     const addCmd = vscode.commands.registerCommand('files-exporter.addFromExplorer', (uri: vscode.Uri, selectedUris: vscode.Uri[]) => {
-        // Protection robuste si clic droit fait en dehors d'un fichier explicite
         const uris = selectedUris || (uri ? [uri] : []);
 
         uris.forEach(u => {
@@ -37,7 +36,16 @@ export function activate(context: vscode.ExtensionContext) {
         webviewPanelManager.show('add');
     });
 
-    context.subscriptions.push(openCmd, addCmd);
+    const excludeCmd = vscode.commands.registerCommand('files-exporter.ExcludeFromExplorer', (uri: vscode.Uri, selectedUris: vscode.Uri[]) => {
+        const uris = selectedUris || (uri ? [uri] : []);
+        uris.forEach(u => {
+            if (u) {
+                webviewPanelManager.excludePathFromExplorer(u.fsPath);
+            }
+        });
+    });
+
+    context.subscriptions.push(openCmd, addCmd, excludeCmd);
 }
 
 export function deactivate() {}

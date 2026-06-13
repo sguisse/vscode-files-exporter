@@ -658,6 +658,50 @@ const updateHistoryCombo = (selectedId) => {
 window.addEventListener('message', (event) => {
     const message = event.data;
     switch (message.command) {
+
+            case 'excludeExplorerPathSelection':
+                try {
+                    const excPathsEl = document.getElementById('excPaths');
+                    if (excPathsEl && message.path) {
+                        const currentVal = excPathsEl.value.trim();
+                        const cleanRaw = message.path.replace(/\\/g, '/');
+                        const wsRootPath = state.defaultSettings?.src ? state.defaultSettings.src.replace(/\\/g, '/') : '';
+
+                        let relativePath = cleanRaw;
+                        if (wsRootPath && cleanRaw.startsWith(wsRootPath)) {
+                            relativePath = cleanRaw.slice(wsRootPath.length);
+                        }
+                        relativePath = relativePath.replace(/^\/+/, '');
+                        const escapedPath = relativePath.replace(/[-\\^\$*+?.()|[\]{}]/g, '\\$&');
+
+                        let isFolder = true;
+                        if (cleanRaw.includes('.')) {
+                            const lastSegment = cleanRaw.split('/').pop();
+                            if (lastSegment && lastSegment.includes('.')) isFolder = false;
+                        }
+
+                        const regexEntry = isFolder ? `.*/${escapedPath}/.*` : `.*/${escapedPath}$`;
+
+                        if (currentVal === '') {
+                            excPathsEl.value = regexEntry;
+                        } else {
+                            const lines = currentVal.split('\n');
+                            if (!lines.includes(regexEntry)) {
+                                excPathsEl.value = currentVal + '\n' + regexEntry;
+                            }
+                        }
+
+                        excPathsEl.dispatchEvent(new Event('input', { bubbles: true }));
+                        excPathsEl.dispatchEvent(new Event('change', { bubbles: true }));
+                        UIController.checkSyncStatus();
+
+                        bridge.postMessage('showNotification', {
+                            type: 'info',
+                            text: 'Added pattern to Exclude Paths: ' + regexEntry
+                        });
+                    }
+                } catch(err) { console.error(err); }
+                break;
         case 'checkPathsResult':
             const pathEl = document.getElementById('pathList');
             if (!pathEl) return;
