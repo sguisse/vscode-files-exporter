@@ -121,11 +121,11 @@ export class HistoryService {
         return { history: wrapper.history, newId };
     }
 
-    public async addNewEntry(defaultConfig: ExportConfig, workspaceName: string, repo: string): Promise<{ history: HistoryEntry[], newId: string }> {
+    public async addNewEntry(defaultConfig: ExportConfig, workspaceName: string, repo: string, customName?: string): Promise<{ history: HistoryEntry[], newId: string }> {
         const wrapper = await this.getFullWrapper(repo);
         const now = new Date();
         const pad = (n: number) => n.toString().padStart(2, '0');
-        const displayName = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}-${pad(now.getHours())}:${pad(now.getMinutes())} --> ${workspaceName} --> ⚙️ New config`;
+        const displayName = customName || `${pad(now.getMonth() + 1)}/${pad(now.getDate())}-${pad(now.getHours())}:${pad(now.getMinutes())} --> ${workspaceName} --> ⚙️ New config`;
 
         const newId = now.toISOString();
         const newEntry: HistoryEntry = {
@@ -192,7 +192,7 @@ export class HistoryService {
         if (existsSync(this.historyFilePath)) {
             const now = new Date();
             const pad = (n: number) => n.toString().padStart(2, '0');
-            const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+            const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_\${pad(now.getHours())}-\${pad(now.getMinutes())}-\${pad(now.getSeconds())}`;
             const backupPath = `${this.historyFilePath}.${timestamp}.del`;
             await fs.copyFile(this.historyFilePath, backupPath);
         }

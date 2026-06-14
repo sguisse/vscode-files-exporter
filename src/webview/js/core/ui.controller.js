@@ -90,13 +90,12 @@ export const UIController = {
     },
     syncButtonsState(val) {
         const btnFreeze = document.getElementById('btn-freeze-history'), btnEdit = document.getElementById('btn-edit-history'), btnDup = document.getElementById('btn-duplicate-history');
+        if (btnDup) btnDup.disabled = false; // Always enable duplication routine configuration blocks parameters
         if (!val || val === 'default') {
             if(btnFreeze) { btnFreeze.disabled = true; btnFreeze.innerHTML = '<span class="codicon codicon-unlock"></span>'; }
             if(btnEdit) btnEdit.disabled = true;
-            if(btnDup) btnDup.disabled = true;
         } else {
             if(btnFreeze) btnFreeze.disabled = false;
-            if(btnDup) btnDup.disabled = false;
             const entry = state.historyList.find(h => h.id === val);
             if (entry) {
                 if(btnFreeze) btnFreeze.innerHTML = entry.frozen ? '<span class="codicon codicon-lock"></span>' : '<span class="codicon codicon-unlock"></span>';

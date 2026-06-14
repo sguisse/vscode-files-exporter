@@ -7,7 +7,7 @@ export const ValidatorService = {
         const lines = val.split('\n');
         for (const line of lines) {
             const trimmed = line.trim();
-            if (trimmed) {
+            if (trimmed && !trimmed.startsWith('#')) {
                 try { new RegExp(trimmed); }
                 catch (e) { return `Invalid regex on line: "${trimmed}"`; }
             }
@@ -62,6 +62,49 @@ export const ValidatorService = {
                 el.removeAttribute('data-orig-tooltip');
             }
             if (id === 'pathList') state.pathListInvalid = false; // Will be overwritten by backend if invalid
+
+            // --- Dedicated Workspace Alignment Validation Layer ---
+            if (id === 'destDir' || id === 'pathList') {
+                const workspaceRoot = state.defaultSettings?.src || '';
+                const linesToCheck = id === 'pathList' ? el.value.split('\n').map(p => p.trim()).filter(p => p) : [el.value.trim()];
+
+                let isOutsideWorkspace = false;
+                linesToCheck.forEach(line => {
+                    if (line && !line.startsWith('#') && workspaceRoot) {
+                        let cleanLine = line.replace(/^['"]|['"]$/g, '').trim();
+                        // Verify absolute alignment boundaries natively
+                        if (!cleanLine.toLowerCase().startsWith(workspaceRoot.toLowerCase())) {
+                            isOutsideWorkspace = true;
+                        }
+                    }
+                });
+
+                // Clear out pre-existing workspace warnings to prevent multi-injection pollution
+                let baseTooltip = el.getAttribute('data-tooltip') || '';
+                const warningMsg = "⚠️ You reference a folder outside current Workspace";
+                baseTooltip = baseTooltip.replace(new RegExp('\\s*' + warningMsg.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g'), '').trim();
+
+                if (isOutsideWorkspace && linesToCheck.length > 0 && linesToCheck[0] !== '') {
+                    // Set pure background color configurations without modifying borders directly
+                    el.style.setProperty('--input-background', '#fff9c4', 'important');
+                    el.style.setProperty('--background-color', '#fff9c4', 'important');
+                    el.style.backgroundColor = '#fff9c4';
+
+                    const finalTooltip = baseTooltip ? `${baseTooltip}\n${warningMsg}` : warningMsg;
+                    el.setAttribute('data-tooltip', finalTooltip);
+                } else {
+                    // Reset inputs background configurations clean
+                    el.style.removeProperty('--input-background');
+                    el.style.removeProperty('--background-color');
+                    el.style.backgroundColor = '';
+
+                    if (baseTooltip) {
+                        el.setAttribute('data-tooltip', baseTooltip);
+                    } else {
+                        el.removeAttribute('data-tooltip');
+                    }
+                }
+            }
             return true;
         }
     },
@@ -70,11 +113,24 @@ export const ValidatorService = {
             const el = document.getElementById(id);
             if (el) {
                 el.classList.remove('field-invalid');
+                el.style.removeProperty('--input-background');
+                el.style.removeProperty('--background-color');
+                el.style.backgroundColor = '';
                 if (el.hasAttribute('data-orig-tooltip')) {
                     const originalTooltip = el.getAttribute('data-orig-tooltip');
                     if (originalTooltip) el.setAttribute('data-tooltip', originalTooltip);
                     else el.removeAttribute('data-tooltip');
                     el.removeAttribute('data-orig-tooltip');
+                }
+
+                // Clear any residual workspace path warnings on reset configurations operations
+                let currentTooltip = el.getAttribute('data-tooltip') || '';
+                const warningMsg = "⚠️ You reference a folder outside current Workspace";
+                currentTooltip = currentTooltip.replace(new RegExp('\\s*' + warningMsg.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g'), '').trim();
+                if (currentTooltip) {
+                    el.setAttribute('data-tooltip', currentTooltip);
+                } else {
+                    el.removeAttribute('data-tooltip');
                 }
             }
         });

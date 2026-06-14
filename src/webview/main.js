@@ -276,24 +276,99 @@ const triggerGuardrailValidationFlow = (pathsArray, onSuccess) => {
     });
 };
 
-/**
- * Parses and computes the exact line string index corresponding to absolute cursor selection values
- */
 const saveActiveTextareaCursorIndex = () => {
     const textarea = document.getElementById('pathList');
     const hiddenInput = document.getElementById('hiddenPathListCursorIndex');
     if (!textarea || !hiddenInput) return;
 
-    // Retrieve internal textarea reference from underlying Web Component shadow DOM layers if present
     const nativeTextarea = textarea.shadowRoot?.querySelector('textarea') || textarea;
     const selectionStart = nativeTextarea.selectionStart || 0;
     const textContent = nativeTextarea.value || '';
 
-    // Calculate line index by slicing content up to selection position boundaries
     const textUpToCursor = textContent.substring(0, selectionStart);
     const lineIndex = textUpToCursor.split('\n').length;
 
     hiddenInput.value = lineIndex.toString();
+};
+
+function explodeRegexFilter(regexStr) {
+    const [noExtensionPart, extensionsPart] = regexStr.split('|');
+    if (!extensionsPart) {
+        return [regexStr];
+    }
+    const extensionsMatch = extensionsPart.match(/\((?:\?:)?([^)]+)\)/);
+    if (!extensionsMatch) {
+        return [regexStr];
+    }
+    const extensions = extensionsMatch[1].split('|');
+    const individualExtensions = extensions.map(ext => `.*\\.${ext}$`);
+    return [noExtensionPart, ...individualExtensions];
+}
+
+const sortTextAreaLines = (id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const lines = el.value.split('\n').map(l => l.trim()).filter(l => l);
+    lines.sort((a, b) => a.localeCompare(b));
+    el.value = lines.join('\n');
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+};
+
+const explodeTextAreaRegex = (id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const exploded = explodeRegexFilter(el.value);
+    el.value = exploded.join('\n');
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+};
+
+const groupTextAreaExtensions = (id) => {
+    const el = document.getElementById(id);
+    if (!el || !state.predefinedInclusions) return;
+    const lines = el.value.split('\n').map(l => l.trim()).filter(l => l);
+    const groupedLines = [];
+
+    state.predefinedInclusions.forEach(category => {
+        const catExtensions = category.extensions.map(ext => ext.replace(/^\*/, '').trim().replace(/^\./, ''));
+        const matchedInCat = [];
+
+        lines.forEach(line => {
+            const extMatch = line.match(/\.\*\\\.([^$]+)\$/);
+            if (extMatch && catExtensions.includes(extMatch[1])) {
+                matchedInCat.push(line);
+            }
+        });
+
+        if (matchedInCat.length > 0) {
+            matchedInCat.sort((a, b) => a.localeCompare(b));
+            groupedLines.push(`# --- ${category.label} ---`);
+            groupedLines.push(...matchedInCat);
+        }
+    });
+
+    const matchedWithCat = [];
+    state.predefinedInclusions.forEach(category => {
+        const catExtensions = category.extensions.map(ext => ext.replace(/^\*/, '').trim().replace(/^\./, ''));
+        lines.forEach(line => {
+            const extMatch = line.match(/\.\*\\\.([^$]+)\$/);
+            if (extMatch && catExtensions.includes(extMatch[1])) {
+                matchedWithCat.push(line);
+            }
+        });
+    });
+
+    const remaining = lines.filter(l => !matchedWithCat.includes(l) && !l.startsWith('#'));
+    if (remaining.length > 0) {
+        remaining.sort((a, b) => a.localeCompare(b));
+        groupedLines.push('# --- Miscellaneous ---');
+        groupedLines.push(...remaining);
+    }
+
+    el.value = groupedLines.join('\n');
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
 };
 
 const init = () => {
@@ -319,6 +394,17 @@ const init = () => {
             }
         }
     });
+
+    document.getElementById('btn-sort-incPaths')?.addEventListener('click', () => sortTextAreaLines('incPaths'));
+    document.getElementById('btn-sort-excPaths')?.addEventListener('click', () => sortTextAreaLines('excPaths'));
+    document.getElementById('btn-sort-incExts')?.addEventListener('click', () => sortTextAreaLines('incExts'));
+    document.getElementById('btn-sort-excExts')?.addEventListener('click', () => sortTextAreaLines('excExts'));
+
+    document.getElementById('btn-explode-incExts')?.addEventListener('click', () => explodeTextAreaRegex('incExts'));
+    document.getElementById('btn-explode-excExts')?.addEventListener('click', () => explodeTextAreaRegex('excExts'));
+
+    document.getElementById('btn-group-incExts')?.addEventListener('click', () => groupTextAreaExtensions('incExts'));
+    document.getElementById('btn-group-excExts')?.addEventListener('click', () => groupTextAreaExtensions('excExts'));
 
     document.getElementById('btn-predefined-inclusions')?.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -388,7 +474,33 @@ const init = () => {
     });
 
     document.getElementById('btn-duplicate-history')?.addEventListener('click', () => {
-        if (state.currentSelectedId && state.currentSelectedId !== 'default') bridge.postMessage('duplicateHistory', { id: state.currentSelectedId });
+        const getVal = (id) => document.getElementById(id)?.value || '';
+        const getCheck = (id) => !!document.getElementById(id)?.checked;
+        const pathsStr = (document.getElementById('pathList')?.value || '').split('\n').map(p => p.trim()).filter(p => p).join(', ');
+
+        const screenConfig = {
+            src: pathsStr, dest: getVal('destDir'), format: getVal('format'),
+            max_file: getVal('maxFile'), max_chunk: getVal('maxChunk'),
+            groupByExt: getCheck('splitChunkByFileExtension'),
+            copyGeneratedFilesToClipboard: getCheck('copyGeneratedFilesToClipboard'),
+            generateTreeView: getCheck('generateTreeView'),
+            logConsole: getCheck('generateLogConsole'), logFile: getCheck('generateLogFile'),
+            inc_paths: getVal('incPaths'), exc_paths: getVal('excPaths'),
+            inc_ext: getVal('incExts'), exc_ext: getVal('excExts')
+        };
+
+        let customDisplayName = null;
+        if (state.currentSelectedId && state.currentSelectedId !== 'default') {
+            const selectedEntry = state.historyList.find(h => h.id === state.currentSelectedId);
+            if (selectedEntry) {
+                customDisplayName = `${selectedEntry.display} - copy`;
+            }
+        }
+
+        bridge.postMessage('addNewConfigProfile', {
+            duplicateConfig: screenConfig,
+            customName: customDisplayName
+        });
     });
 
     document.getElementById('btn-add-history')?.addEventListener('click', () => bridge.postMessage('addNewConfigProfile'));
@@ -414,7 +526,6 @@ const init = () => {
         bridge.postMessage('addGitDiffFiles', { currentPaths });
     });
 
-    // Wire selection monitoring listeners across all structural interaction pipelines
     const pathListTextArea = document.getElementById('pathList');
     if (pathListTextArea) {
         const targetTextarea = pathListTextArea.shadowRoot?.querySelector('textarea') || pathListTextArea;
@@ -431,7 +542,6 @@ const init = () => {
         const text = textarea.value || '';
         const lines = text.split('\n');
 
-        // Fetch target index line reference from persistent internal overlay parameter container
         let savedLineIndex = parseInt(hiddenInput.value || '1', 10);
         if (isNaN(savedLineIndex) || savedLineIndex < 1) savedLineIndex = 1;
         if (savedLineIndex > lines.length) savedLineIndex = lines.length;
@@ -545,38 +655,14 @@ const init = () => {
     bridge.postMessage('webviewReady');
 };
 
-const runExport = () => {
-    setRunButtonLoading();
-    terminalTab.clear();
-    terminalTab.append("⏳ Starting export process...\n");
-    const pathsArray = (document.getElementById('pathList')?.value || '').split('\n').map(p => p.trim()).filter(p => p);
-
-    bridge.postMessage('runExport', {
-        currentHistoryId: state.currentSelectedId,
-        data: {
-            paths: pathsArray,
-            destDir: document.getElementById('destDir')?.value || '',
-            format: document.getElementById('format')?.value || 'yaml',
-            maxFile: document.getElementById('maxFile')?.value || '50',
-            maxChunk: document.getElementById('maxChunk')?.value || '0',
-            groupByExt: !!document.getElementById('splitChunkByFileExtension')?.checked,
-            copyGeneratedFilesToClipboard: !!document.getElementById('copyGeneratedFilesToClipboard')?.checked,
-            logConsole: !!document.getElementById('generateLogConsole')?.checked,
-            logFile: !!document.getElementById('generateLogFile')?.checked,
-            generateTreeView: !!document.getElementById('generateTreeView')?.checked,
-            incPaths: document.getElementById('incPaths')?.value || '',
-            excPaths: document.getElementById('excPaths')?.value || '',
-            incExts: document.getElementById('incExts')?.value || '',
-            excExts: document.getElementById('excExts')?.value || ''
-        }
-    });
-};
-
 const applyHistorySelection = (val) => {
     reportTab.clear(); filesTab.clear(); treeViewTab.clear(); terminalTab.clear();
     const targetConfig = val === 'default' ? state.defaultSettings : state.historyList.find(h => h.id === val)?.config;
     applyFormFields(targetConfig);
-    setTimeout(() => ValidatorService.executeFieldValidation('pathList'), 10);
+    setTimeout(() => {
+        ValidatorService.executeFieldValidation('pathList');
+        ValidatorService.executeFieldValidation('destDir');
+    }, 10);
 };
 
 const resetCurrentConfigFields = () => {
@@ -588,6 +674,7 @@ const resetCurrentConfigFields = () => {
     ValidatorService.clearAllValidationStyles();
     setTimeout(() => {
         ValidatorService.executeFieldValidation('pathList');
+        ValidatorService.executeFieldValidation('destDir');
         UIController.checkSyncStatus();
     }, 10);
 };
@@ -755,6 +842,7 @@ window.addEventListener('message', (event) => {
                 state.isInitializing = false;
                 UIController.checkSyncStatus();
                 ValidatorService.executeFieldValidation('pathList');
+                ValidatorService.executeFieldValidation('destDir');
             }, 50);
             break;
         case 'updatePredefinedInclusions':

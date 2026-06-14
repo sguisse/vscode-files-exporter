@@ -139,6 +139,18 @@
                border-top: 1px solid var(--vscode-panel-border);
                padding-top: 0px;
             }
+
+            .filter-actions-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 4px;
+            }
+            .filter-btn-group {
+                display: flex;
+                gap: 2px;
+                align-items: center;
+            }
         </style>
     </head>
     <body>
@@ -163,7 +175,7 @@
                     data-tooltip="Rename the selected profile item display name" disabled><span
                         class="codicon codicon-edit"></span></vscode-button>
                 <vscode-button id="btn-duplicate-history" appearance="secondary" class="tooltip-right icon-btn"
-                    data-tooltip="Duplicate selected profile configuration profile" disabled><span
+                    data-tooltip="Duplicate current screen configuration elements parameters values"><span
                         class="codicon codicon-files"></span></vscode-button>
                 <vscode-button id="btn-add-history" appearance="secondary" class="tooltip-right icon-btn"
                     data-tooltip="Create a new fresh profile configuration from default settings"><span
@@ -214,30 +226,45 @@
                 <vscode-text-field id="maxFile" value="50" style="width: 110px;"></vscode-text-field>
             </div>
             <div style="flex-grow:1;">
-                <span class="field-label"
-                    data-tooltip="Regex mapping specifying inside-folder structures to explicitly allow.">✅ Include
-                    Paths</span>
+                <div class="filter-actions-header">
+                    <span class="field-label" data-tooltip="Regex mapping specifying inside-folder structures to explicitly allow.">✅ Include Paths</span>
+                    <div class="filter-btn-group">
+                        <vscode-button id="btn-sort-incPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically"><span class="codicon codicon-sort-ascending"></span></vscode-button>
+                    </div>
+                </div>
                 <vscode-text-area id="incPaths" class="full-width" rows="4" resize="vertical"></vscode-text-area>
             </div>
             <div style="flex-grow:1; position: relative;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                    <span class="field-label"
-                        data-tooltip="Regex checklist specifying file extensions to let through during discovery.">🟢 Include exts</span>
-                    <vscode-button id="btn-predefined-inclusions" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Predefined extension inclusions. Press <strong>Ctrl/Cmd</strong> key to <strong>replace</strong> content, instead adding them."><span class="codicon codicon-kebab-vertical"></span></vscode-button>
+                <div class="filter-actions-header">
+                    <span class="field-label" data-tooltip="Regex checklist specifying file extensions to let through during discovery.">🟢 Include exts</span>
+                    <div class="filter-btn-group">
+                        <vscode-button id="btn-sort-incExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically"><span class="codicon codicon-sort-ascending"></span></vscode-button>
+                        <vscode-button id="btn-group-incExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Group extensions by category categories structure"><span class="codicon codicon-library"></span></vscode-button>
+                        <vscode-button id="btn-explode-incExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Explode unified expressions block layout to individual lines components"><span class="codicon codicon-unfold"></span></vscode-button>
+                        <vscode-button id="btn-predefined-inclusions" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Predefined extension inclusions. Press <strong>Ctrl/Cmd</strong> key to <strong>replace</strong> content, instead adding them."><span class="codicon codicon-kebab-vertical"></span></vscode-button>
+                    </div>
                 </div>
                 <div id="predefined-inclusions-menu" style="display: none; position: absolute; top: 24px; right: 0; background: var(--vscode-dropdown-background, #252526); border: 1px solid var(--vscode-dropdown-border, #3c3c3c); border-radius: 3px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 1000; min-width: 160px;"></div>
                 <vscode-text-area id="incExts" class="full-width" rows="4" resize="vertical"></vscode-text-area>
             </div>
             <div style="flex-grow:1;">
-                <span class="field-label"
-                    data-tooltip="Regex blacklisting targeted folder structures (e.g. node_modules, .git) to skip.">🚫
-                    Exclude Paths</span>
+                <div class="filter-actions-header">
+                    <span class="field-label" data-tooltip="Regex blacklisting targeted folder structures (e.g. node_modules, .git) to skip.">🚫 Exclude Paths</span>
+                    <div class="filter-btn-group">
+                        <vscode-button id="btn-sort-excPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically"><span class="codicon codicon-sort-ascending"></span></vscode-button>
+                    </div>
+                </div>
                 <vscode-text-area id="excPaths" class="full-width" rows="4" resize="vertical"></vscode-text-area>
             </div>
             <div style="flex-grow:1;">
-                <span class="field-label"
-                    data-tooltip="Regex mapping identifying forbidden raw formats (e.g. log, exe, png) to skip.">🔴
-                    Exclude exts</span>
+                <div class="filter-actions-header">
+                    <span class="field-label" data-tooltip="Regex mapping identifying forbidden raw formats (e.g. log, exe, png) to skip.">🔴 Exclude exts</span>
+                    <div class="filter-btn-group">
+                        <vscode-button id="btn-sort-excExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically"><span class="codicon codicon-sort-ascending"></span></vscode-button>
+                        <vscode-button id="btn-group-excExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Group extensions by category categories structure"><span class="codicon codicon-library"></span></vscode-button>
+                        <vscode-button id="btn-explode-excExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Explode unified expressions block layout to individual lines components"><span class="codicon codicon-unfold"></span></vscode-button>
+                    </div>
+                </div>
                 <vscode-text-area id="excExts" class="full-width" rows="4" resize="vertical"></vscode-text-area>
             </div>
         </div>
@@ -437,7 +464,7 @@
                             data-tooltip="To copy/paste in your terminal or add to sh script for automation.">⚙️
                             Bash command run by the tool</div>
                     </div>
-                    <div style="display: flex; flex-direction: column; width: 100%;">
+                    <div style="display: flex; flex-grow: 1; width: 100%;">
                         <div
                             style="display: flex; flex-direction: row; align-items: flex-start; background: #1e1e1e; padding: 4px; border-radius: 4px; border: 1px solid var(--vscode-panel-border); box-sizing: border-box; width: 100%;">
                             <vscode-text-area id="terminal-cmd" rows="6" resize="vertical" readonly
@@ -457,7 +484,7 @@
                             data-tooltip="Logs generated by the Python script execution.">🐍 Python
                             script Logs</div>
                     </div>
-                    <div style="display: flex; flex-direction: column; width: 100%;">
+                    <div style="display: flex; flex-grow: 1; width: 100%;">
                         <div class="terminal" id="terminal"
                             style="width: 100%; box-sizing: border-box; background: #1e1e1e; color: #d4d4d4; border-radius: 4px; border: 1px solid var(--vscode-panel-border); padding: 12px; min-height: 150px; height: 280px; resize: vertical; overflow: auto; font-family: var(--vscode-editor-font-family, 'Menlo', monospace); font-size: 12px;"></div>
                     </div>

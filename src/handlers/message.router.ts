@@ -55,7 +55,12 @@ export class MessageRouter {
                 const wsPath = this.configService.getWorkspaceRootPath();
                 const wsName = path.basename(wsPath);
                 const repoNew = this.configService.getRepoName();
-                const fresh = await this.historyService.addNewEntry(defaultSettingsObj, wsName, repoNew);
+                const fresh = await this.historyService.addNewEntry(
+                    message.duplicateConfig || defaultSettingsObj,
+                    wsName,
+                    repoNew,
+                    message.customName
+                );
                 this.panel.webview.postMessage({ command: 'updateHistory', history: fresh.history, selectedId: fresh.newId });
                 break;
             case 'toggleFreezeHistory':
@@ -105,7 +110,6 @@ export class MessageRouter {
     private async handleOpenPathAtCursor(message: any) {
         const { path: rawPath, lineNum } = message;
 
-        // Validation Control 1: Empty line check
         if (!rawPath || !rawPath.trim()) {
             vscode.window.showErrorMessage(`No path defined on line n° ${lineNum}`);
             return;
@@ -115,12 +119,10 @@ export class MessageRouter {
         let cleanPath = rawPath.replace(/^['"]|['"]$/g, '').trim();
         if (!cleanPath) return;
 
-        // Resolve absolute locations if a relative structure definition is present
         if (!path.isAbsolute(cleanPath)) {
             cleanPath = path.join(wsPath, cleanPath);
         }
 
-        // Validation Control 2: Storage visibility/existence check
         if (!fs.existsSync(cleanPath)) {
             vscode.window.showWarningMessage(`The path '${rawPath}' at line n° ${lineNum} does not exist`);
             return;
@@ -129,10 +131,8 @@ export class MessageRouter {
         try {
             const pathStat = fs.statSync(cleanPath);
             if (pathStat.isDirectory()) {
-                // Folder logic routine: reveal natively within standard OS Explorer frameworks
                 await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(cleanPath));
             } else {
-                // File logic routine: trigger immediate text workspace document canvas focus inside edit windows
                 const targetDoc = await vscode.workspace.openTextDocument(cleanPath);
                 await vscode.window.showTextDocument(targetDoc);
             }
