@@ -39,6 +39,7 @@ const resetRunButton = () => {
         btn.classList.remove('loading');
         btn.disabled = false;
         btn.innerHTML = '<span class="codicon codicon-play"></span> RUN EXPORT';
+        UIController.checkSyncStatus();
     }
 };
 
@@ -87,9 +88,9 @@ const convertToRegexPattern = (ext) => {
     return clean;
 };
 
-const processPredefinedInclusions = (inclusions) => {
-    return (inclusions || []).map(cat => ({
-        label: cat.label,
+const processFileExtsCategoryGroups = (groups) => {
+    return (groups || []).map(cat => ({
+        ...cat,
         extensions: cat.extensions.map(convertToRegexPattern)
     }));
 };
@@ -128,17 +129,24 @@ const renderExchangeIconButtons = (exchangeItems) => {
     });
 };
 
-const renderPredefinedInclusionsMenu = () => {
-    const menu = document.getElementById('predefined-inclusions-menu');
+const renderPredefinedMenu = (menuId, targetFieldId, flagKey) => {
+    const menu = document.getElementById(menuId);
     if (!menu) return;
     menu.innerHTML = '';
 
-    if (!state.predefinedInclusions || state.predefinedInclusions.length === 0) {
-        menu.innerHTML = '<div style="padding: 6px 10px; font-size: 11px; font-style: italic; color: var(--vscode-descriptionForeground);">No inclusions configured</div>';
+    if (!state.fileExtsCategoryGroups || state.fileExtsCategoryGroups.length === 0) {
+        menu.innerHTML = '<div style="padding: 6px 10px; font-size: 11px; font-style: italic; color: var(--vscode-descriptionForeground);">No categories configured</div>';
         return;
     }
 
-    state.predefinedInclusions.forEach(item => {
+    const validCategories = state.fileExtsCategoryGroups.filter(cat => cat[flagKey] === true);
+
+    if (validCategories.length === 0) {
+        menu.innerHTML = '<div style="padding: 6px 10px; font-size: 11px; font-style: italic; color: var(--vscode-descriptionForeground);">No categories enabled for this menu</div>';
+        return;
+    }
+
+    validCategories.forEach(item => {
         const row = document.createElement('div');
         row.className = 'predefined-item-row';
         row.style.cssText = 'padding: 6px 10px; cursor: pointer; font-size: 12px; font-family: var(--vscode-font-family); border-radius: 2px; margin: 1px 2px; transition: background 0.15s, color 0.15s;';
@@ -177,7 +185,7 @@ const renderPredefinedInclusionsMenu = () => {
         row.addEventListener('click', (e) => {
             e.stopPropagation();
             const shouldReplace = e.ctrlKey || e.metaKey || isModifierPressed;
-            applyPredefinedExtensions(item.extensions, shouldReplace);
+            applyPredefinedExtensions(item.extensions, shouldReplace, targetFieldId);
             menu.style.display = 'none';
         });
 
@@ -186,28 +194,31 @@ const renderPredefinedInclusionsMenu = () => {
 };
 
 const updateMenuHotkeysLayout = () => {
-    const menu = document.getElementById('predefined-inclusions-menu');
-    const kebabBtn = document.getElementById('btn-predefined-inclusions');
+    const incBtn = document.getElementById('btn-predefined-inclusions');
+    const excBtn = document.getElementById('btn-predefined-exclusions');
 
-    if (kebabBtn) {
-        if (isModifierPressed) {
-            kebabBtn.setAttribute('data-tooltip', 'Predefined extensions (REPLACE mode active)');
-        } else {
-            kebabBtn.setAttribute('data-tooltip', 'Predefined extension inclusions');
-        }
+    if (isModifierPressed) {
+        if (incBtn) incBtn.setAttribute('data-tooltip', 'Predefined extensions (REPLACE mode active)');
+        if (excBtn) excBtn.setAttribute('data-tooltip', 'Predefined extensions (REPLACE mode active)');
+    } else {
+        if (incBtn) incBtn.setAttribute('data-tooltip', 'Predefined extension inclusions');
+        if (excBtn) excBtn.setAttribute('data-tooltip', 'Predefined extension exclusions');
     }
 
-    if (!menu || menu.style.display !== 'block') return;
-    renderPredefinedInclusionsMenu();
+    const incMenu = document.getElementById('predefined-inclusions-menu');
+    const excMenu = document.getElementById('predefined-exclusions-menu');
+
+    if (incMenu && incMenu.style.display === 'block') renderPredefinedMenu('predefined-inclusions-menu', 'incExts', 'includeExtsMenuEnabled');
+    if (excMenu && excMenu.style.display === 'block') renderPredefinedMenu('predefined-exclusions-menu', 'excExts', 'excludeExtsMenuEnabled');
 };
 
-const applyPredefinedExtensions = (extensions, shouldReplace) => {
-    const incExtsEl = document.getElementById('incExts');
-    if (!incExtsEl || !extensions) return;
+const applyPredefinedExtensions = (extensions, shouldReplace, targetFieldId) => {
+    const extsEl = document.getElementById(targetFieldId);
+    if (!extsEl || !extensions) return;
 
     let lines = [];
     if (!shouldReplace) {
-        let currentVal = incExtsEl.value.trim();
+        let currentVal = extsEl.value.trim();
         lines = currentVal ? currentVal.split('\n').map(l => l.trim()) : [];
     }
 
@@ -219,9 +230,9 @@ const applyPredefinedExtensions = (extensions, shouldReplace) => {
         }
     });
 
-    incExtsEl.value = lines.join('\n');
-    incExtsEl.dispatchEvent(new Event('input', { bubbles: true }));
-    incExtsEl.dispatchEvent(new Event('change', { bubbles: true }));
+    extsEl.value = lines.join('\n');
+    extsEl.dispatchEvent(new Event('input', { bubbles: true }));
+    extsEl.dispatchEvent(new Event('change', { bubbles: true }));
     UIController.checkSyncStatus();
 };
 
@@ -328,7 +339,6 @@ function explodeRegexFilter(regexStr) {
 
     // Step 2: Iterate through each root part and extract grouped extensions
     parts.forEach(part => {
-        // This regex safely parses "(log|tmp)" or "(?:log|tmp)" capturing the inner list
         const groupMatch = part.match(/\((?:\?:)?([^)]+)\)/);
 
         if (groupMatch) {
@@ -399,7 +409,7 @@ const explodeTextAreaRegex = (id) => {
 
 const groupTextAreaExtensions = (id) => {
     const el = document.getElementById(id);
-    if (!el || !state.predefinedInclusions) return;
+    if (!el || !state.fileExtsCategoryGroups) return;
     const btn = document.getElementById("btn-group-" + id);
     let isGrouped = btn?.getAttribute("data-grouped") === "true";
 
@@ -414,7 +424,7 @@ const groupTextAreaExtensions = (id) => {
         }
     } else {
         const groupedLines = [];
-        state.predefinedInclusions.forEach(category => {
+        state.fileExtsCategoryGroups.forEach(category => {
             const catRegexes = category.extensions.map(ext => ext.trim());
             const matchedInCat = [];
 
@@ -432,7 +442,7 @@ const groupTextAreaExtensions = (id) => {
         });
 
         const matchedWithCat = [];
-        state.predefinedInclusions.forEach(category => {
+        state.fileExtsCategoryGroups.forEach(category => {
             const catRegexes = category.extensions.map(ext => ext.trim());
             lines.forEach(line => {
                 if (catRegexes.includes(line)) {
@@ -525,7 +535,21 @@ const init = () => {
         if (menu) {
             const isOpening = menu.style.display !== 'block';
             if (isOpening) {
-                renderPredefinedInclusionsMenu();
+                renderPredefinedMenu('predefined-inclusions-menu', 'incExts', 'includeExtsMenuEnabled');
+                menu.style.display = 'block';
+            } else {
+                menu.style.display = 'none';
+            }
+        }
+    });
+
+    document.getElementById('btn-predefined-exclusions')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const menu = document.getElementById('predefined-exclusions-menu');
+        if (menu) {
+            const isOpening = menu.style.display !== 'block';
+            if (isOpening) {
+                renderPredefinedMenu('predefined-exclusions-menu', 'excExts', 'excludeExtsMenuEnabled');
                 menu.style.display = 'block';
             } else {
                 menu.style.display = 'none';
@@ -534,8 +558,10 @@ const init = () => {
     });
 
     document.addEventListener('click', () => {
-        const menu = document.getElementById('predefined-inclusions-menu');
-        if (menu) menu.style.display = 'none';
+        const incMenu = document.getElementById('predefined-inclusions-menu');
+        const excMenu = document.getElementById('predefined-exclusions-menu');
+        if (incMenu) incMenu.style.display = 'none';
+        if (excMenu) excMenu.style.display = 'none';
     });
 
     document.getElementById('btn-toggle-history-view')?.addEventListener('click', () => {
@@ -683,7 +709,7 @@ const init = () => {
         console.log("[runExport] Aggregated form validation outcome: " + (isFormValid ? "VALID" : "INVALID"));
         if (!isFormValid) {
             const message = "Export aborted: Please fix the highlighted fields in red pastel before running.";
-            bridge.postMessage("showNotification", { type: "error", text: message });
+            bridge.postMessage("showNotification", { type: "error", text: "❌  " + message });
             triggerValidationErrorModal("❌  " + message);
             terminalTab.append("\n" + "❌  " + message + "\n");
             return;
@@ -897,49 +923,49 @@ window.addEventListener('message', (event) => {
     const message = event.data;
     switch (message.command) {
 
-            case 'excludeExplorerPathSelection':
-                try {
-                    const excPathsEl = document.getElementById('excPaths');
-                    if (excPathsEl && message.path) {
-                        const currentVal = excPathsEl.value.trim();
-                        const cleanRaw = message.path.replace(/\\/g, '/');
-                        const wsRootPath = state.defaultSettings?.src ? state.defaultSettings.src.replace(/\\/g, '/') : '';
+        case 'excludeExplorerPathSelection':
+            try {
+                const excPathsEl = document.getElementById('excPaths');
+                if (excPathsEl && message.path) {
+                    const currentVal = excPathsEl.value.trim();
+                    const cleanRaw = message.path.replace(/\\/g, '/');
+                    const wsRootPath = state.defaultSettings?.src ? state.defaultSettings.src.replace(/\\/g, '/') : '';
 
-                        let relativePath = cleanRaw;
-                        if (wsRootPath && cleanRaw.startsWith(wsRootPath)) {
-                            relativePath = cleanRaw.slice(wsRootPath.length);
-                        }
-                        relativePath = relativePath.replace(/^\/+/, '');
-                        const escapedPath = relativePath.replace(/[-\\^\$*+?.()|[\]{}]/g, '\\$&');
-
-                        let isFolder = true;
-                        if (cleanRaw.includes('.')) {
-                            const lastSegment = cleanRaw.split('/').pop();
-                            if (lastSegment && lastSegment.includes('.')) isFolder = false;
-                        }
-
-                        const regexEntry = isFolder ? `.*/${escapedPath}/.*` : `.*/${escapedPath}$`;
-
-                        if (currentVal === '') {
-                            excPathsEl.value = regexEntry;
-                        } else {
-                            const lines = currentVal.split('\n');
-                            if (!lines.includes(regexEntry)) {
-                                excPathsEl.value = currentVal + '\n' + regexEntry;
-                            }
-                        }
-
-                        excPathsEl.dispatchEvent(new Event('input', { bubbles: true }));
-                        excPathsEl.dispatchEvent(new Event('change', { bubbles: true }));
-                        UIController.checkSyncStatus();
-
-                        bridge.postMessage('showNotification', {
-                            type: 'info',
-                            text: 'Added pattern to Exclude Paths: ' + regexEntry
-                        });
+                    let relativePath = cleanRaw;
+                    if (wsRootPath && cleanRaw.startsWith(wsRootPath)) {
+                        relativePath = cleanRaw.slice(wsRootPath.length);
                     }
-                } catch(err) { console.error(err); }
-                break;
+                    relativePath = relativePath.replace(/^\/+/, '');
+                    const escapedPath = relativePath.replace(/[-\\^\$*+?.()|[\]{}]/g, '\\$&');
+
+                    let isFolder = true;
+                    if (cleanRaw.includes('.')) {
+                        const lastSegment = cleanRaw.split('/').pop();
+                        if (lastSegment && lastSegment.includes('.')) isFolder = false;
+                    }
+
+                    const regexEntry = isFolder ? `.*/${escapedPath}/.*` : `.*/${escapedPath}$`;
+
+                    if (currentVal === '') {
+                        excPathsEl.value = regexEntry;
+                    } else {
+                        const lines = currentVal.split('\n');
+                        if (!lines.includes(regexEntry)) {
+                            excPathsEl.value = currentVal + '\n' + regexEntry;
+                        }
+                    }
+
+                    excPathsEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    excPathsEl.dispatchEvent(new Event('change', { bubbles: true }));
+                    UIController.checkSyncStatus();
+
+                    bridge.postMessage('showNotification', {
+                        type: 'info',
+                        text: 'Added pattern to Exclude Paths: ' + regexEntry
+                    });
+                }
+            } catch(err) { console.error(err); }
+            break;
         case 'checkPathsResult':
             state.invalidPathsPayload = message.invalidPaths || [];
             // Trigger the validator to handle the UI rendering, but skip sending a new backend request
@@ -959,7 +985,7 @@ window.addEventListener('message', (event) => {
             state.currentSelectedId = message.selectedId || 'default';
             state.historyViewMode = message.historyViewMode || 'scope-current-repo';
             state.currentRepo = message.currentRepo || '';
-            state.predefinedInclusions = processPredefinedInclusions(message.predefinedInclusions);
+            state.fileExtsCategoryGroups = processFileExtsCategoryGroups(message.fileExtsCategoryGroups);
 
             const matchedEntriesCount = state.historyList.filter(h => state.historyViewMode === 'scope-all-repo' || h.repo === state.currentRepo).length;
             console.log(`[History Combo Init] ViewMode: "${state.historyViewMode}" | RepoName: "${state.currentRepo}" | MatchingEntries: ${matchedEntriesCount} / Total: ${state.historyList.length}`);
@@ -973,7 +999,8 @@ window.addEventListener('message', (event) => {
             }
 
             renderExchangeIconButtons(message.exchange);
-            renderPredefinedInclusionsMenu();
+            renderPredefinedMenu('predefined-inclusions-menu', 'incExts', 'includeExtsMenuEnabled');
+            renderPredefinedMenu('predefined-exclusions-menu', 'excExts', 'excludeExtsMenuEnabled');
 
             setTimeout(() => {
                 state.isInitializing = false;
@@ -982,9 +1009,10 @@ window.addEventListener('message', (event) => {
                 ValidatorService.executeFieldValidation('destDir');
             }, 50);
             break;
-        case 'updatePredefinedInclusions':
-            state.predefinedInclusions = processPredefinedInclusions(message.predefinedInclusions);
-            renderPredefinedInclusionsMenu();
+        case 'updateFileExtsCategoryGroups':
+            state.fileExtsCategoryGroups = processFileExtsCategoryGroups(message.fileExtsCategoryGroups);
+            renderPredefinedMenu('predefined-inclusions-menu', 'incExts', 'includeExtsMenuEnabled');
+            renderPredefinedMenu('predefined-exclusions-menu', 'excExts', 'excludeExtsMenuEnabled');
             break;
         case 'updateHistory':
             state.historyList = message.history || [];

@@ -60,10 +60,10 @@ public show(launchType: 'open' | 'add') {
         this.registerMessageRouter();
 
         this._configListener = vscode.workspace.onDidChangeConfiguration((e) => {
-            if (e.affectsConfiguration('filesExporter.inclusionsPredefinies')) {
+            if (e.affectsConfiguration('filesExporter.fileExtsCategoryGroups')) {
                 this._panel?.webview.postMessage({
-                    command: 'updatePredefinedInclusions',
-                    predefinedInclusions: this.configService.getPredefinedInclusions()
+                    command: 'updateFileExtsCategoryGroups',
+                    fileExtsCategoryGroups: this.configService.getFileExtsCategoryGroups()
                 });
             }
         });
@@ -126,7 +126,7 @@ public show(launchType: 'open' | 'add') {
 
         const exchangeFromHistory = wrapper.config?.exchange;
         const exchangeFromConfig = extensionConfig.get<any[]>('exchange');
-        const predefinedInclusions = this.configService.getPredefinedInclusions();
+        const fileExtsCategoryGroups = this.configService.getFileExtsCategoryGroups();
 
         const exchange = (exchangeFromHistory && exchangeFromHistory.length > 0)
             ? exchangeFromHistory
@@ -143,7 +143,7 @@ public show(launchType: 'open' | 'add') {
             historyViewMode,
             currentRepo,
             exchange,
-            predefinedInclusions
+            fileExtsCategoryGroups
         });
     }
 

@@ -48,9 +48,9 @@ export class ConfigService {
         }
     }
 
-    public getPredefinedInclusions(): any[] {
+    public getFileExtsCategoryGroups(): any[] {
         const config = this.getConfiguration();
-        return config.get<any[]>('inclusionsPredefinies') ||
-               config.get<any[]>('inclusionspredefinies') || [];
+        return config.get<any[]>('fileExtsCategoryGroups') ||
+               config.get<any[]>('fileextscategorygroups') || [];
     }
 }

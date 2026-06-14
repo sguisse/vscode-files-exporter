@@ -162,67 +162,6 @@
                     "default": true,
                     "description": "Automatically pin the browser tab when opened to prevent it from being overwritten or closed as a preview tab."
                 },
-                "filesExporter.inclusionsPredefinies": {
-                    "type": "array",
-                    "description": "Predefined inclusion selection categories map layout containing label groupings and explicit matching extension scopes.",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "label": {
-                                "type": "string",
-                                "description": "Display name label criteria of the target selection entry configuration block."
-                            },
-                            "extensions": {
-                                "type": "array",
-                                "items": {
-                                    "type": "string"
-                                },
-                                "description": "File extensions array listed as wildcards or literal parameters."
-                            }
-                        },
-                        "required": [
-                            "label",
-                            "extensions"
-                        ]
-                    },
-                    "default": [
-                        {
-                            "label": "Configurations",
-                            "extensions": [
-                                ".*\\.json$",
-                                ".*\\.yaml$",
-                                ".*\\.yml$",
-                                ".*\\.xml$",
-                                ".*\\.toml$"
-                            ]
-                        },
-                        {
-                            "label": "Documentation",
-                            "extensions": [
-                                ".*\\.md$",
-                                ".*\\.txt$"
-                            ]
-                        },
-                        {
-                            "label": "Front-end Sources",
-                            "extensions": [
-                                ".*\\.js$",
-                                ".*\\.ts$",
-                                ".*\\.tsx$",
-                                ".*\\.jsx$",
-                                ".*\\.css$",
-                                ".*\\.html$"
-                            ]
-                        },
-                        {
-                            "label": "Back-end Sources",
-                            "extensions": [
-                                ".*\\.java$",
-                                ".*\\.py$"
-                            ]
-                        }
-                    ]
-                },
                 "filesExporter.exchange": {
                     "type": "array",
                     "description": "A list of custom exchange tools and links.",
@@ -277,6 +216,84 @@
                             "height": "45px",
                             "width": "45px",
                             "openInVSCode": false
+                        }
+                    ]
+                },
+                "filesExporter.fileExtsCategoryGroups": {
+                    "type": "array",
+                    "description": "Group file extensions by categories map layout containing label groupings and explicit matching extension scopes and a flag named includeExtsMenuEnabled and a flag excludeExtsMenuEnabled to manage predefines extentions present in Predefines menus",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "label": {
+                                "type": "string"
+                            },
+                            "includeExtsMenuEnabled": {
+                                "type": "boolean"
+                            },
+                            "excludeExtsMenuEnabled": {
+                                "type": "boolean"
+                            },
+                            "extensions": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "required": [
+                            "label",
+                            "extensions"
+                        ]
+                    },
+                    "default": [
+                        {
+                            "label": "Configurations",
+                            "includeExtsMenuEnabled": true,
+                            "excludeExtsMenuEnabled": false,
+                            "extensions": [
+                                ".*\\.json$",
+                                ".*\\.yaml$",
+                                ".*\\.yml$",
+                                ".*\\.xml$",
+                                ".*\\.toml$"
+                            ]
+                        },
+                        {
+                            "label": "Documentation",
+                            "includeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.md$",
+                                ".*\\.txt$"
+                            ]
+                        },
+                        {
+                            "label": "Front-end Sources",
+                            "includeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.js$",
+                                ".*\\.ts$",
+                                ".*\\.tsx$",
+                                ".*\\.jsx$",
+                                ".*\\.css$",
+                                ".*\\.html$"
+                            ]
+                        },
+                        {
+                            "label": "Back-end Sources",
+                            "includeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.java$",
+                                ".*\\.py$"
+                            ]
+                        },
+                        {
+                            "label": "Images",
+                            "excludeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.png$",
+                                ".*\\.gif$"
+                            ]
                         }
                     ]
                 }

@@ -32,6 +32,7 @@ export const UIController = {
             }
         });
     },
+
     positionTooltipAtCursor(e, tooltipEl) {
         const mouseX = e.clientX, mouseY = e.clientY, offset = 15;
         const rect = tooltipEl.getBoundingClientRect();
@@ -42,16 +43,24 @@ export const UIController = {
         if (mouseX + offset + rect.width > window.innerWidth) tooltipEl.style.left = `${mouseX - rect.width - offset}px`;
         else tooltipEl.style.left = `${mouseX + offset}px`;
     },
+
     checkSyncStatus() {
         if (state.isInitializing) return true;
         const combo = document.getElementById('historyCombo');
         const resetBtn = document.getElementById('btn-reset-config');
         if (!combo) return true;
+
         let currentConfig = state.defaultSettings;
+        let isFrozen = false;
+
         if (state.currentSelectedId !== 'default') {
             const selected = state.historyList.find(h => h.id === state.currentSelectedId);
-            if (selected) currentConfig = selected.config;
+            if (selected) {
+                currentConfig = selected.config;
+                isFrozen = !!selected.frozen;
+            }
         }
+
         const getVal = (id) => document.getElementById(id)?.value || '';
         const getCheck = (id) => !!document.getElementById(id)?.checked;
         const pathsStr = (document.getElementById('pathList')?.value || '').split('\n').map(p => p.trim()).filter(p => p).join(', ');
@@ -66,6 +75,7 @@ export const UIController = {
             inc_paths: getVal('incPaths'), exc_paths: getVal('excPaths'),
             inc_ext: getVal('incExts'), exc_ext: getVal('excExts')
         };
+
         const targetConfig = {
             src: currentConfig.src || '', dest: currentConfig.dest || '',
             format: currentConfig.format || 'yaml', max_file: currentConfig.max_file || '50',
@@ -76,21 +86,49 @@ export const UIController = {
             inc_paths: currentConfig.inc_paths || '', exc_paths: currentConfig.exc_paths || '',
             inc_ext: currentConfig.inc_ext || '', exc_ext: currentConfig.exc_ext || ''
         };
+
         let isSync = true;
-        for (const key in screenConfig) if (String(screenConfig[key]) !== String(targetConfig[key])) { isSync = false; break; }
+        for (const key in screenConfig) {
+            if (String(screenConfig[key]) !== String(targetConfig[key])) {
+                isSync = false;
+                break;
+            }
+        }
+
         if (!isSync) {
             combo.classList.add('combo-warning');
-            combo.setAttribute('data-tooltip', 'config file and screen fields are not sync, to sync unlock and run an export to save the config');
+            combo.setAttribute('data-tooltip', 'Config file and screen fields are not synchronized.');
         } else {
             combo.classList.remove('combo-warning');
             combo.removeAttribute('data-tooltip');
         }
+
         if (resetBtn) resetBtn.disabled = isSync;
+
+        // Dynamically update the RUN EXPORT button icon composition based on frozen/sync state
+        const runBtn = document.getElementById('btn-run');
+        if (runBtn && !runBtn.classList.contains('loading')) {
+            let iconHtml = '<span class="codicon codicon-play"></span>';
+            if (!isSync) {
+                if (!isFrozen) {
+                    iconHtml = '<span class="codicon codicon-save" data-tooltip="Configuration is modified and will be auto-saved on run." style="margin-right: 6px; cursor: help;"></span>' + iconHtml;
+                } else {
+                    iconHtml = '<span class="codicon codicon-beaker" data-tooltip="Profile is locked. Modifications will not be saved (Test/Tuning mode)." style="margin-right: 6px; cursor: help;"></span>' + iconHtml;
+                }
+            }
+            runBtn.innerHTML = iconHtml + ' RUN EXPORT';
+        }
+
         return isSync;
     },
+
     syncButtonsState(val) {
-        const btnFreeze = document.getElementById('btn-freeze-history'), btnEdit = document.getElementById('btn-edit-history'), btnDup = document.getElementById('btn-duplicate-history');
-        if (btnDup) btnDup.disabled = false; // Always enable duplication routine configuration blocks parameters
+        const btnFreeze = document.getElementById('btn-freeze-history');
+        const btnEdit = document.getElementById('btn-edit-history');
+        const btnDup = document.getElementById('btn-duplicate-history');
+
+        if (btnDup) btnDup.disabled = false;
+
         if (!val || val === 'default') {
             if(btnFreeze) { btnFreeze.disabled = true; btnFreeze.innerHTML = '<span class="codicon codicon-unlock"></span>'; }
             if(btnEdit) btnEdit.disabled = true;
@@ -103,6 +141,7 @@ export const UIController = {
             }
         }
     },
+
     injectShadowDomStyles() {
         if (document.getElementById('qa-validation-styles')) return;
         const style = document.createElement('style');

@@ -258,15 +258,17 @@
                 </div>
                 <vscode-text-area id="excPaths" class="full-width" rows="4" resize="vertical"></vscode-text-area>
             </div>
-            <div style="flex-grow:1;">
+            <div style="flex-grow:1; position: relative;">
                 <div class="filter-actions-header">
                     <span class="field-label" data-tooltip="Regex mapping identifying forbidden raw formats (e.g. log, exe, png) to skip.">🔴 Exclude exts</span>
                     <div class="filter-btn-group">
                         <vscode-button id="btn-sort-excExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically" data-dir="asc"><span class="codicon codicon-arrow-down"></span></vscode-button>
                         <vscode-button id="btn-group-excExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Group extensions by category categories structure"><span class="codicon codicon-library"></span></vscode-button>
                         <vscode-button id="btn-explode-excExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Explode unified expressions block layout to individual lines components"><span class="codicon codicon-unfold"></span></vscode-button>
+                        <vscode-button id="btn-predefined-exclusions" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Predefined extension exclusions. Press <strong>Ctrl/Cmd</strong> key to <strong>replace</strong> content, instead adding them."><span class="codicon codicon-kebab-vertical"></span></vscode-button>
                     </div>
                 </div>
+                <div id="predefined-exclusions-menu" style="display: none; position: absolute; top: 24px; right: 0; background: var(--vscode-dropdown-background, #252526); border: 1px solid var(--vscode-dropdown-border, #3c3c3c); border-radius: 3px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 1000; min-width: 160px;"></div>
                 <vscode-text-area id="excExts" class="full-width" rows="4" resize="vertical"></vscode-text-area>
             </div>
         </div>
