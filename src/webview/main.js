@@ -77,6 +77,23 @@ const enterInlineRenameMode = () => {
     }
 };
 
+const convertToRegexPattern = (ext) => {
+    let clean = ext.trim();
+    if (clean.startsWith('*') && clean.endsWith('*') && clean.length > 1) {
+        return '.*' + clean.slice(1, -1) + '.*';
+    } else if (clean.startsWith('*.')) {
+        return '.*\\.' + clean.slice(2) + '$';
+    }
+    return clean;
+};
+
+const processPredefinedInclusions = (inclusions) => {
+    return (inclusions || []).map(cat => ({
+        label: cat.label,
+        extensions: cat.extensions.map(convertToRegexPattern)
+    }));
+};
+
 const renderExchangeIconButtons = (exchangeItems) => {
     const container = document.getElementById('exchange-buttons-container');
     if (!container) return;
@@ -195,13 +212,8 @@ const applyPredefinedExtensions = (extensions, shouldReplace) => {
     }
 
     extensions.forEach(ext => {
-        let cleanExt = ext.replace(/^\*/, '').trim();
-        if (cleanExt.startsWith('.')) {
-            cleanExt = cleanExt.slice(1);
-        }
-        if (!cleanExt) return;
-
-        const pattern = `.*\\.${cleanExt}$`;
+        const pattern = ext.trim();
+        if (!pattern) return;
         if (!lines.includes(pattern)) {
             lines.push(pattern);
         }
@@ -335,7 +347,6 @@ function explodeRegexFilter(regexStr) {
     return results;
 }
 
-
 const sortTextAreaLines = (id) => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -404,12 +415,11 @@ const groupTextAreaExtensions = (id) => {
     } else {
         const groupedLines = [];
         state.predefinedInclusions.forEach(category => {
-            const catExtensions = category.extensions.map(ext => ext.replace(/^\*/, "").trim().replace(/^\\./, ""));
+            const catRegexes = category.extensions.map(ext => ext.trim());
             const matchedInCat = [];
 
             lines.forEach(line => {
-                const extMatch = line.match(/\.\*\\\.([^$]+)\$/);
-                if (extMatch && catExtensions.includes(extMatch[1])) {
+                if (catRegexes.includes(line)) {
                     matchedInCat.push(line);
                 }
             });
@@ -423,11 +433,10 @@ const groupTextAreaExtensions = (id) => {
 
         const matchedWithCat = [];
         state.predefinedInclusions.forEach(category => {
-            const catExtensions = category.extensions.map(ext => ext.replace(/^\*/, "").trim().replace(/^\\./, ""));
+            const catRegexes = category.extensions.map(ext => ext.trim());
             lines.forEach(line => {
-                const extMatch = line.match(/\.\*\\\.([^$]+)\$/);
-                if (extMatch && catExtensions.includes(extMatch[1])) {
-                    matchedInCat.push(line);
+                if (catRegexes.includes(line)) {
+                    matchedWithCat.push(line);
                 }
             });
         });
@@ -950,7 +959,7 @@ window.addEventListener('message', (event) => {
             state.currentSelectedId = message.selectedId || 'default';
             state.historyViewMode = message.historyViewMode || 'scope-current-repo';
             state.currentRepo = message.currentRepo || '';
-            state.predefinedInclusions = message.predefinedInclusions || [];
+            state.predefinedInclusions = processPredefinedInclusions(message.predefinedInclusions);
 
             const matchedEntriesCount = state.historyList.filter(h => state.historyViewMode === 'scope-all-repo' || h.repo === state.currentRepo).length;
             console.log(`[History Combo Init] ViewMode: "${state.historyViewMode}" | RepoName: "${state.currentRepo}" | MatchingEntries: ${matchedEntriesCount} / Total: ${state.historyList.length}`);
@@ -974,7 +983,7 @@ window.addEventListener('message', (event) => {
             }, 50);
             break;
         case 'updatePredefinedInclusions':
-            state.predefinedInclusions = message.predefinedInclusions || [];
+            state.predefinedInclusions = processPredefinedInclusions(message.predefinedInclusions);
             renderPredefinedInclusionsMenu();
             break;
         case 'updateHistory':

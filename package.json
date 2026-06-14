@@ -189,36 +189,36 @@
                         {
                             "label": "Configurations",
                             "extensions": [
-                                "*.json",
-                                "*.yaml",
-                                "*.yml",
-                                "*.xml",
-                                "*.toml"
+                                ".*\\.json$",
+                                ".*\\.yaml$",
+                                ".*\\.yml$",
+                                ".*\\.xml$",
+                                ".*\\.toml$"
                             ]
                         },
                         {
                             "label": "Documentation",
                             "extensions": [
-                                "*.md",
-                                "*.txt"
+                                ".*\\.md$",
+                                ".*\\.txt$"
                             ]
                         },
                         {
                             "label": "Front-end Sources",
                             "extensions": [
-                                "*.js",
-                                "*.ts",
-                                "*.tsx",
-                                "*.jsx",
-                                "*.css",
-                                "*.html"
+                                ".*\\.js$",
+                                ".*\\.ts$",
+                                ".*\\.tsx$",
+                                ".*\\.jsx$",
+                                ".*\\.css$",
+                                ".*\\.html$"
                             ]
                         },
                         {
                             "label": "Back-end Sources",
                             "extensions": [
-                                "*.java",
-                                "*.py"
+                                ".*\\.java$",
+                                ".*\\.py$"
                             ]
                         }
                     ]
