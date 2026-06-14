@@ -655,6 +655,33 @@ const init = () => {
     bridge.postMessage('webviewReady');
 };
 
+const runExport = () => {
+    setRunButtonLoading();
+    terminalTab.clear();
+    terminalTab.append("⏳ Starting export process...\n");
+    const pathsArray = (document.getElementById('pathList')?.value || '').split('\n').map(p => p.trim()).filter(p => p);
+
+    bridge.postMessage('runExport', {
+        currentHistoryId: state.currentSelectedId,
+        data: {
+            paths: pathsArray,
+            destDir: document.getElementById('destDir')?.value || '',
+            format: document.getElementById('format')?.value || 'yaml',
+            maxFile: document.getElementById('maxFile')?.value || '50',
+            maxChunk: document.getElementById('maxChunk')?.value || '0',
+            groupByExt: !!document.getElementById('splitChunkByFileExtension')?.checked,
+            copyGeneratedFilesToClipboard: !!document.getElementById('copyGeneratedFilesToClipboard')?.checked,
+            logConsole: !!document.getElementById('generateLogConsole')?.checked,
+            logFile: !!document.getElementById('generateLogFile')?.checked,
+            generateTreeView: !!document.getElementById('generateTreeView')?.checked,
+            incPaths: document.getElementById('incPaths')?.value || '',
+            excPaths: document.getElementById('excPaths')?.value || '',
+            incExts: document.getElementById('incExts')?.value || '',
+            excExts: document.getElementById('excExts')?.value || ''
+        }
+    });
+};
+
 const applyHistorySelection = (val) => {
     reportTab.clear(); filesTab.clear(); treeViewTab.clear(); terminalTab.clear();
     const targetConfig = val === 'default' ? state.defaultSettings : state.historyList.find(h => h.id === val)?.config;
