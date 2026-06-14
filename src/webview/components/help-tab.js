@@ -144,7 +144,7 @@ export class HelpTab {
                                 <li>For the <strong>EXISTING</strong> related files, DO NOT overwrite them completely. Instead, write precise automated modification commands (using <em>sed</em>, <em>awk</em>, or robust line-matching replacements) to inject only the necessary delta (the new tab import and navigation link).</li>
                                 <li><strong>CRITICAL</strong>: Safely manage the syntax conflict between the triple-backticks of the LLM chat GUI Markdown and any backticks or template literals that the Bash script must write to the JavaScript/HTML files. Ensure the generated shell script does not prematurely close the LLM's code block response.</li>
                                 <li>Ensure that the script is 100% compliant, complete, and directly executable locally in workspace root after a '<em>chmod +x</em>'.</li>
-                                <li>At the end of the script, you should provide a summary of changes in one short line started with emoji of the changes made and any next steps for the user.</li>
+                                <li>At the end of the script, you should provide a summary of changes in one short line started with emoji of the changes made and any next steps for the user.<br/> Like : <em>✅ Script created/modified. Hovering over the KILL capsule now correctly shows the interactive hand pointer cursor!</em></li>
                             </ul>
                         </ul>
                             <li>Then <strong>copy/paste</strong> the generated Bash script into a file named '<strong><em>patch.sh</em></strong>' in workspace root and execute it!</li>
@@ -186,7 +186,11 @@ export class HelpTab {
                             <li><a href="https://github.com/sguisse/vscode-files-exporter/blob/main/user-guide.md" target="_blank">Files Exporter - User Guide</a></li>
                             <li><a href="https://github.com/sguisse/vscode-files-exporter/blob/main/scenario.md" target="_blank">Sample complete Use-Case: How to add a new feature to your application</a></li>
                             <li><a href="https://github.com/sguisse/vscode-files-exporter/blob/main/faq.md" target="_blank">FAQ</a></li>
+                            <li>To use for settings, config, development</li>
+                            <ul>
                             <li><a href="https://zonalogo.com/" target="_blank">Zonalogo - Find other brand icons to use in exchange config</a></li>
+                            <li><a href="https://github.com/microsoft/vscode-codicons" target="_blank">VSCode specific icons - codicons</a></li>
+                            </ul>
                         </ul>
                     </div>
                   </div>
