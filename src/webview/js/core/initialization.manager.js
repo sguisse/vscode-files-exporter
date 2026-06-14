@@ -1,0 +1,235 @@
+import { HandlerManager } from '../services/handler-manager.js';
+import { bridge } from './vscode.bridge.js';
+import { state } from './state.manager.js';
+import { ValidatorService } from '../services/validator.service.js';
+import { UIController } from './ui.controller.js';
+import { HistoryManager } from '../services/history-manager.js';
+import { SourcePathsManager } from '../services/source-paths-manager.js';
+import { FiltersManager } from '../services/filters-manager.js';
+import { DestinationManager } from '../services/destination-manager.js';
+import { ExportManager } from '../services/export-manager.js';
+
+let isModifierPressed = false;
+
+export const InitializationManager = {
+    init(tabs) {
+        window.reportTab = tabs.reportTab;
+        window.filesTab = tabs.filesTab;
+        window.treeViewTab = tabs.treeViewTab;
+        window.terminalTab = tabs.terminalTab;
+
+        UIController.injectShadowDomStyles();
+        UIController.initCursorTooltipTracker();
+
+        if (tabs.helpTab) tabs.helpTab.render();
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Control' || e.key === 'Meta') {
+                if (!isModifierPressed) {
+                    isModifierPressed = true;
+                    FiltersManager.updateMenuHotkeysLayout(isModifierPressed);
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'Control' || e.key === 'Meta') {
+                if (isModifierPressed) {
+                    isModifierPressed = false;
+                    FiltersManager.updateMenuHotkeysLayout(isModifierPressed);
+                }
+            }
+        });
+
+        document.getElementById('btn-sort-incPaths')?.addEventListener('click', () => FiltersManager.sortTextAreaLines('incPaths'));
+        document.getElementById('btn-sort-excPaths')?.addEventListener('click', () => FiltersManager.sortTextAreaLines('excPaths'));
+        document.getElementById('btn-sort-incExts')?.addEventListener('click', () => FiltersManager.sortTextAreaLines('incExts'));
+        document.getElementById('btn-sort-excExts')?.addEventListener('click', () => FiltersManager.sortTextAreaLines('excExts'));
+
+        document.getElementById('btn-explode-incExts')?.addEventListener('click', () => FiltersManager.explodeTextAreaRegex('incExts'));
+        document.getElementById('btn-explode-incPaths')?.addEventListener('click', () => FiltersManager.explodeTextAreaRegex('incPaths'));
+        document.getElementById('btn-explode-excPaths')?.addEventListener('click', () => FiltersManager.explodeTextAreaRegex('excPaths'));
+        document.getElementById('btn-explode-excExts')?.addEventListener('click', () => FiltersManager.explodeTextAreaRegex('excExts'));
+
+        document.getElementById('btn-group-incExts')?.addEventListener('click', () => FiltersManager.groupTextAreaExtensions('incExts'));
+        document.getElementById('btn-group-excExts')?.addEventListener('click', () => FiltersManager.groupTextAreaExtensions('excExts'));
+
+        document.getElementById('btn-predefined-inclusions')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const menu = document.getElementById('predefined-inclusions-menu');
+            if (menu) {
+                const isOpening = menu.style.display !== 'block';
+                if (isOpening) {
+                    FiltersManager.renderPredefinedMenu('predefined-inclusions-menu', 'incExts', 'includeExtsMenuEnabled', isModifierPressed);
+                    menu.style.display = 'block';
+                } else {
+                    menu.style.display = 'none';
+                }
+            }
+        });
+
+        document.getElementById('btn-predefined-exclusions')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const menu = document.getElementById('predefined-exclusions-menu');
+            if (menu) {
+                const isOpening = menu.style.display !== 'block';
+                if (isOpening) {
+                    FiltersManager.renderPredefinedMenu('predefined-exclusions-menu', 'excExts', 'excludeExtsMenuEnabled', isModifierPressed);
+                    menu.style.display = 'block';
+                } else {
+                    menu.style.display = 'none';
+                }
+            }
+        });
+
+        document.addEventListener('click', () => {
+            const incMenu = document.getElementById('predefined-inclusions-menu');
+            const excMenu = document.getElementById('predefined-exclusions-menu');
+            if (incMenu) incMenu.style.display = 'none';
+            if (excMenu) excMenu.style.display = 'none';
+        });
+
+        document.getElementById('btn-toggle-history-view')?.addEventListener('click', () => {
+            state.historyViewMode = state.historyViewMode === 'scope-current-repo' ? 'scope-all-repo' : 'scope-current-repo';
+            HistoryManager.updateHistoryViewToggleButton();
+            HistoryManager.updateHistoryCombo(state.currentSelectedId);
+            bridge.postMessage('updateHistoryViewMode', { mode: state.historyViewMode });
+        });
+
+        document.getElementById('historyCombo')?.addEventListener('change', (e) => {
+            const val = e.target.value;
+            if (!val || state.isInitializing) return;
+            state.currentSelectedId = val;
+            HistoryManager.applyHistorySelection(val);
+            UIController.syncButtonsState(val);
+            ValidatorService.clearAllValidationStyles();
+            UIController.checkSyncStatus();
+        });
+
+        document.getElementById('btn-freeze-history')?.addEventListener('click', () => {
+            if (state.currentSelectedId && state.currentSelectedId !== 'default') {
+                const entry = state.historyList.find(h => h.id === state.currentSelectedId);
+                if (entry) bridge.postMessage('toggleFreezeHistory', { id: state.currentSelectedId, frozen: !entry.frozen });
+            }
+        });
+
+        document.getElementById('btn-reset-config')?.addEventListener('click', () => {
+            HistoryManager.resetCurrentConfigFields();
+        });
+
+        document.getElementById('btn-edit-history')?.addEventListener('click', HistoryManager.enterInlineRenameMode);
+
+        document.getElementById('historyRenameInput')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const val = e.target.value.trim();
+                if (val && state.currentSelectedId && state.currentSelectedId !== 'default') {
+                    bridge.postMessage('editHistoryName', { id: state.currentSelectedId, newName: val });
+                }
+                HistoryManager.cancelInlineHistoryRename();
+            } else if (e.key === 'Escape') {
+                HistoryManager.cancelInlineHistoryRename();
+            }
+        });
+
+        document.getElementById('historyRenameInput')?.addEventListener('blur', () => {
+            setTimeout(() => { HistoryManager.cancelInlineHistoryRename(); }, 180);
+        });
+
+        document.getElementById('btn-duplicate-history')?.addEventListener('click', () => {
+            const getVal = (id) => document.getElementById(id)?.value || '';
+            const getCheck = (id) => !!document.getElementById(id)?.checked;
+            const pathsStr = (document.getElementById('pathList')?.value || '').split('\n').map(p => p.trim()).filter(p => p).join(', ');
+
+            const screenConfig = {
+                src: pathsStr, dest: getVal('destDir'), format: getVal('format'),
+                max_file: getVal('maxFile'), max_chunk: getVal('maxChunk'),
+                groupByExt: getCheck('splitChunkByFileExtension'),
+                copyGeneratedFilesToClipboard: getCheck('copyGeneratedFilesToClipboard'),
+                generateTreeView: getCheck('generateTreeView'),
+                logConsole: getCheck('generateLogConsole'), logFile: getCheck('generateLogFile'),
+                inc_paths: getVal('incPaths'), exc_paths: getVal('excPaths'),
+                inc_ext: getVal('incExts'), exc_ext: getVal('excExts')
+            };
+
+            let customDisplayName = null;
+            if (state.currentSelectedId && state.currentSelectedId !== 'default') {
+                const selectedEntry = state.historyList.find(h => h.id === state.currentSelectedId);
+                if (selectedEntry) customDisplayName = `${selectedEntry.display} - copy`;
+            }
+
+            bridge.postMessage('addNewConfigProfile', { duplicateConfig: screenConfig, customName: customDisplayName });
+        });
+
+        document.getElementById('btn-add-history')?.addEventListener('click', () => bridge.postMessage('addNewConfigProfile'));
+        document.getElementById('btn-open-history-file')?.addEventListener('click', () => bridge.postMessage('openHistoryInVSCode'));
+        document.getElementById('btn-reveal-history-folder')?.addEventListener('click', () => bridge.postMessage('revealHistoryInOS'));
+        document.getElementById('btn-clear-history')?.addEventListener('click', () => bridge.postMessage('clearHistory', { selectedId: state.currentSelectedId }));
+
+        document.getElementById('btn-clear-paths')?.addEventListener('click', SourcePathsManager.clearPaths);
+        document.getElementById('btn-add-open-files')?.addEventListener('click', SourcePathsManager.addOpenFiles);
+        document.getElementById('btn-add-git-diff')?.addEventListener('click', SourcePathsManager.addGitDiffFiles);
+
+        const pathListTextArea = document.getElementById('pathList');
+        if (pathListTextArea) {
+            const targetTextarea = pathListTextArea.shadowRoot?.querySelector('textarea') || pathListTextArea;
+            targetTextarea.addEventListener('blur', SourcePathsManager.saveActiveTextareaCursorIndex);
+            targetTextarea.addEventListener('keyup', SourcePathsManager.saveActiveTextareaCursorIndex);
+            targetTextarea.addEventListener('click', SourcePathsManager.saveActiveTextareaCursorIndex);
+        }
+
+        document.getElementById('btn-open-cursor-line')?.addEventListener('click', SourcePathsManager.openPathAtCursor);
+        document.getElementById('btn-run')?.addEventListener('click', () => ExportManager.runExport());
+
+        document.getElementById('btn-copy-cmd')?.addEventListener('click', () => tabs.terminalTab?.copyCommand());
+        document.getElementById('btn-copy-latest-files')?.addEventListener('click', DestinationManager.copyLatestExportedFiles);
+        document.getElementById('btn-open-finder-dest')?.addEventListener('click', DestinationManager.openFinder);
+        document.getElementById('btn-clear-dest')?.addEventListener('click', DestinationManager.clearDestDirectory);
+
+        document.getElementById('btn-filter-files')?.addEventListener('click', () => {
+            if (!state.lastGeneratedFilesPayload) return;
+            bridge.postMessage('applyFileFilter', {
+                data: {
+                    fileNameRegex: document.getElementById('filterFileName').value,
+                    fileContentRegex: document.getElementById('filterFileContent').value,
+                    destDir: document.getElementById('destDir').value,
+                    files: state.lastGeneratedFilesPayload.exports || []
+                }
+            });
+        });
+
+        document.getElementById('btn-reset-filter')?.addEventListener('click', () => {
+            if (document.getElementById('filterFileName')) document.getElementById('filterFileName').value = '';
+            if (document.getElementById('filterFileContent')) document.getElementById('filterFileContent').value = '';
+            if (state.lastGeneratedFilesPayload && tabs.filesTab) {
+                tabs.filesTab.render(
+                    state.lastGeneratedFilesPayload,
+                    document.getElementById('destDir').value,
+                    (p) => bridge.postMessage('openFile', {path:p}),
+                    (p) => bridge.postMessage('openFinder', {path:p}),
+                    document.getElementById('splitChunkByFileExtension').checked,
+                    state.totalExportedSourceFiles
+                );
+            }
+            if (state.lastReportPayload && tabs.treeViewTab) {
+                tabs.treeViewTab.render(state.lastReportPayload, (p) => bridge.postMessage('openFile',{path:p}), (p) => bridge.postMessage('openFinder',{path:p}));
+            }
+        });
+
+        bridge.postMessage('webviewReady');
+    },
+
+    handleMessage(message, tabs) {
+        switch (message.command) {
+            case 'excludeExplorerPathSelection': HandlerManager.handleExcludeExplorerPathSelection(message, tabs); break;
+            case 'checkPathsResult': HandlerManager.handleCheckPathsResult(message, tabs); break;
+            case 'updatePaths': HandlerManager.handleUpdatePaths(message, tabs); break;
+            case 'initSettings': HandlerManager.handleInitSettings(message, tabs, isModifierPressed); break;
+            case 'updateFileExtsCategoryGroups': HandlerManager.handleUpdateFileExtsCategoryGroups(message, tabs, isModifierPressed); break;
+            case 'updateHistory': HandlerManager.handleUpdateHistory(message, tabs); break;
+            case 'terminalLog': HandlerManager.handleTerminalLog(message, tabs); break;
+            case 'updateCommand': HandlerManager.handleUpdateCommand(message, tabs); break;
+            case 'updateExportReport': HandlerManager.handleUpdateExportReport(message, tabs); break;
+            case 'filteredFilesResult': HandlerManager.handleFilteredFilesResult(message, tabs); break;
+        }
+    }
+};

@@ -4,6 +4,7 @@ import { HistoryService } from './services/history.service';
 import { ProcessRunnerService } from './services/process-runner.service';
 import { ExporterWebviewPanel } from './webview/webview.panel';
 import { ExtensionState } from './interfaces/export.interface';
+import { registerCommands } from './commands/extension-commands';
 
 export function activate(context: vscode.ExtensionContext) {
     const configService = new ConfigService();
@@ -20,32 +21,6 @@ export function activate(context: vscode.ExtensionContext) {
         state
     );
 
-    const openCmd = vscode.commands.registerCommand('files-exporter.openTool', () => {
-        webviewPanelManager.show('open');
-    });
-
-    const addCmd = vscode.commands.registerCommand('files-exporter.addFromExplorer', (uri: vscode.Uri, selectedUris: vscode.Uri[]) => {
-        const uris = selectedUris || (uri ? [uri] : []);
-
-        uris.forEach(u => {
-            if (u && !state.selectedPaths.includes(u.fsPath)) {
-                state.selectedPaths.push(u.fsPath);
-            }
-        });
-
-        webviewPanelManager.show('add');
-    });
-
-    const excludeCmd = vscode.commands.registerCommand('files-exporter.ExcludeFromExplorer', (uri: vscode.Uri, selectedUris: vscode.Uri[]) => {
-        const uris = selectedUris || (uri ? [uri] : []);
-        uris.forEach(u => {
-            if (u) {
-                webviewPanelManager.excludePathFromExplorer(u.fsPath);
-            }
-        });
-    });
-
-    context.subscriptions.push(openCmd, addCmd, excludeCmd);
+    registerCommands(context, webviewPanelManager, state);
 }
-
 export function deactivate() {}

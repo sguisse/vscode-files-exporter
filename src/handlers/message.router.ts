@@ -1,3 +1,5 @@
+import { HistoryCommandHandler } from './history.handler';
+import { ExportHandler } from './export.handler';
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -7,8 +9,12 @@ import { ConfigService } from '../services/config.service';
 import { ExportOrchestratorService } from '../services/export-orchestrator.service';
 import { ExtensionState } from '../interfaces/export.interface';
 import { ProcessRunnerService } from '../services/process-runner.service';
+import { GitService } from '../services/git.service';
+import { FileSystemService } from '../services/file-system.service';
 
 export class MessageRouter {
+    private exportHandler!: ExportHandler;
+    private historyCommandHandler!: HistoryCommandHandler;
     constructor(
         private panel: vscode.WebviewPanel,
         private historyService: HistoryService,
@@ -16,7 +22,10 @@ export class MessageRouter {
         private orchestrator: ExportOrchestratorService,
         private state: ExtensionState,
         private processRunner: ProcessRunnerService
-    ) {}
+    ) {
+        this.exportHandler = new ExportHandler(this.panel, this.orchestrator, this.historyService, this.configService);
+        this.historyCommandHandler = new HistoryCommandHandler(this.panel, this.historyService, this.configService);
+    }
 
     public async handleMessage(message: any) {
         switch (message.command) {
@@ -26,43 +35,13 @@ export class MessageRouter {
                 const activeRepo = this.configService.getRepoName();
                 await this.historyService.setHistoryViewMode(message.mode, activeRepo);
                 break;
-            case 'runExport':
-                const repoRun = this.configService.getRepoName();
-                const result = await this.historyService.saveHistory(message.data, message.currentHistoryId, repoRun);
-                this.panel.webview.postMessage({ command: 'updateHistory', history: result.history, selectedId: result.selectedId, skipFieldSync: true });
-                await this.orchestrator.run(message.data);
-                break;
-            case 'killExport':
-                const killed = this.orchestrator.cancelActiveExport();
-                if (killed) {
-                    this.panel.webview.postMessage({ command: 'terminalLog', text: `\n🛑 Export process killed manually via interface selection parameters.\n` });
-                    this.panel.webview.postMessage({ command: 'terminalLog', text: 'Export aborted.' });
-                    vscode.window.showWarningMessage("Export Process Terminated Successfully.");
-                }
-                break;
+            case 'runExport': await this.exportHandler.handleRunExport(message); break;
+            case 'killExport': this.exportHandler.handleKillExport(); break;
             case 'openPathAtCursor':
                 await this.handleOpenPathAtCursor(message);
                 break;
-            case 'duplicateHistory':
-                if (message.id) {
-                    const repoDup = this.configService.getRepoName();
-                    const dup = await this.historyService.duplicateEntry(message.id, repoDup);
-                    this.panel.webview.postMessage({ command: 'updateHistory', history: dup.history, selectedId: dup.newId });
-                }
-                break;
-            case 'addNewConfigProfile':
-                const defaultSettingsObj = this.getDefaultSettings();
-                const wsPath = this.configService.getWorkspaceRootPath();
-                const wsName = path.basename(wsPath);
-                const repoNew = this.configService.getRepoName();
-                const fresh = await this.historyService.addNewEntry(
-                    message.duplicateConfig || defaultSettingsObj,
-                    wsName,
-                    repoNew,
-                    message.customName
-                );
-                this.panel.webview.postMessage({ command: 'updateHistory', history: fresh.history, selectedId: fresh.newId });
-                break;
+            case 'duplicateHistory': await this.historyCommandHandler.handleDuplicateHistory(message); break;
+            case 'addNewConfigProfile': await this.historyCommandHandler.handleAddNewConfigProfile(message); break;
             case 'toggleFreezeHistory':
                 if (message.id) {
                     const modifiedHistory = await this.historyService.toggleFreeze(message.id, message.frozen);
@@ -196,14 +175,8 @@ export class MessageRouter {
 
     private async handleCheckPaths(message: any) {
         try {
-            const invalidPaths: string[] = [];
             const wsPath = this.configService.getWorkspaceRootPath();
-            for (const rawPath of message.paths) {
-                let cleanPath = rawPath.replace(/^['"]|['"]$/g, '').trim();
-                if (!cleanPath) continue;
-                if (!path.isAbsolute(cleanPath)) cleanPath = path.join(wsPath, cleanPath);
-                if (!fs.existsSync(cleanPath)) invalidPaths.push(rawPath);
-            }
+            const invalidPaths = this.fileSystemService.getInvalidPaths(message.paths || [], wsPath);
             this.panel.webview.postMessage({ command: 'checkPathsResult', invalidPaths });
         } catch (e) { console.error(e); }
     }
@@ -223,42 +196,30 @@ export class MessageRouter {
         this.panel.webview.postMessage({ command: 'updatePaths', paths: this.state.selectedPaths });
     }
 
+    private gitService = new GitService();
+    private fileSystemService = new FileSystemService();
+
     private async handleAddGitDiffFiles(message: any) {
         const existingPaths: string[] = message.currentPaths || [];
-        const gitFiles: string[] = [...existingPaths];
         const wsPath = this.configService.getWorkspaceRootPath();
 
-        exec('git fetch', { cwd: wsPath }, (fetchErr) => {
-            const diffCommand = 'git diff $(git merge-base HEAD @{upstream})..HEAD --name-only';
+        const result = await this.gitService.getModifiedFiles(wsPath);
 
-            exec(diffCommand, { cwd: wsPath }, (err: any, stdout: string) => {
-                if (err) {
-                    exec('git diff origin/HEAD..HEAD --name-only', { cwd: wsPath }, (fallbackErr, fallbackStdout) => {
-                        if (!fallbackErr && fallbackStdout) {
-                            this.processGitOutput(fallbackStdout, gitFiles, wsPath);
-                        } else {
-                            this.panel.webview.postMessage({ command: 'terminalLog', text: `\x1b[93m[Git Diff Warning]: No upstream tracking configuration found for the active branch.\x1b[0m\n` });
-                        }
-                    });
-                    return;
-                }
+        if (!result.success) {
+            this.panel.webview.postMessage({ command: 'terminalLog', text: `\x1b[93m${result.message}\x1b[0m\n` });
+            return;
+        }
 
-                if (stdout) {
-                    this.processGitOutput(stdout, gitFiles, wsPath);
-                } else {
-                    this.panel.webview.postMessage({ command: 'terminalLog', text: `\n✨ [Git Diff Sync]: Up-to-date. No changes detected between active branch and remote origin.\n` });
-                }
-            });
-        });
-    }
+        if (result.files.length === 0 && result.message) {
+            this.panel.webview.postMessage({ command: 'terminalLog', text: `\n✨ [Git Diff Sync]: ${result.message}\n` });
+            return;
+        }
 
-    private processGitOutput(stdout: string, gitFiles: string[], wsPath: string) {
-        const lines = stdout.split('\n').map(l => l.trim()).filter(l => l);
+        const gitFiles = [...existingPaths];
         let additionsCount = 0;
 
-        lines.forEach(line => {
-            const fullPath = path.isAbsolute(line) ? line : path.join(wsPath, line);
-            if (!gitFiles.includes(fullPath) && fs.existsSync(fullPath)) {
+        result.files.forEach(fullPath => {
+            if (!gitFiles.includes(fullPath)) {
                 gitFiles.push(fullPath);
                 additionsCount++;
             }
@@ -268,7 +229,6 @@ export class MessageRouter {
         this.panel.webview.postMessage({ command: 'updatePaths', paths: this.state.selectedPaths });
         this.panel.webview.postMessage({ command: 'terminalLog', text: `\n🌿 [Git Diff Sync Complete]: Injected ${additionsCount} remote delta file(s) into Source Manifest layout.\n` });
     }
-
     private async handleCopyLatestExportedFiles(message: any) {
         try {
             const destDir = message.path;
@@ -311,20 +271,17 @@ export class MessageRouter {
     private async handleClearDestDirectory(message: any) {
         try {
             const destDir = message.path;
-            if (!destDir || !fs.existsSync(destDir)) {
-                vscode.window.showWarningMessage("Destination directory does not exist or is empty.");
+            if (!destDir || !this.fileSystemService.exists(destDir)) {
+                vscode.window.showWarningMessage('Destination directory does not exist or is empty.');
                 return;
             }
             const choice = await vscode.window.showWarningMessage(
                 `Are you sure you want to permanently delete all contents inside: ${destDir}?`,
-                { modal: true }, "Clean Directory"
+                { modal: true }, 'Clean Directory'
             );
-            if (choice === "Clean Directory") {
-                const files = await fs.promises.readdir(destDir);
-                for (const file of files) {
-                    await fs.promises.rm(path.join(destDir, file), { recursive: true, force: true });
-                }
-                vscode.window.showInformationMessage("Destination directory content successfully cleaned.");
+            if (choice === 'Clean Directory') {
+                await this.fileSystemService.clearDirectory(destDir);
+                vscode.window.showInformationMessage('Destination directory content successfully cleaned.');
                 this.panel.webview.postMessage({ command: 'terminalLog', text: `\n🧹 Destination directory cleared: ${destDir}\n` });
             }
         } catch (err: any) { vscode.window.showErrorMessage(`Failed to clean destination directory: ${err.message}`); }
