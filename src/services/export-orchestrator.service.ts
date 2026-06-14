@@ -64,7 +64,7 @@ export class ExportOrchestratorService {
                 (err) => this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\x1b[91mERROR: ${err}\x1b[0m` })
             );
 
-            // Halt immediately to suppress completion alerts if process termination signals are caught
+            // If the user killed the process or it exited via signal, abort and suppress confirmation alert maps
             if (signal !== null || code === null) {
                 return;
             }

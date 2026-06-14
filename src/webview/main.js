@@ -353,48 +353,88 @@ const explodeTextAreaRegex = (id) => {
 const groupTextAreaExtensions = (id) => {
     const el = document.getElementById(id);
     if (!el || !state.predefinedInclusions) return;
-    const lines = el.value.split('\n').map(l => l.trim()).filter(l => l);
-    const groupedLines = [];
+    const btn = document.getElementById("btn-group-" + id);
+    let isGrouped = btn?.getAttribute("data-grouped") === "true";
 
-    state.predefinedInclusions.forEach(category => {
-        const catExtensions = category.extensions.map(ext => ext.replace(/^\*/, '').trim().replace(/^\./, ''));
-        const matchedInCat = [];
+    let lines = el.value.split("\n").map(l => l.trim()).filter(l => l && !l.startsWith("#"));
 
-        lines.forEach(line => {
-            const extMatch = line.match(/\.\*\\\.([^$]+)\$/);
-            if (extMatch && catExtensions.includes(extMatch[1])) {
-                matchedInCat.push(line);
-            }
-        });
-
-        if (matchedInCat.length > 0) {
-            matchedInCat.sort((a, b) => a.localeCompare(b));
-            groupedLines.push(`# --- ${category.label} ---`);
-            groupedLines.push(...matchedInCat);
+    if (isGrouped) {
+        lines.sort((a, b) => a.localeCompare(b));
+        el.value = lines.join("\n");
+        if (btn) {
+            btn.setAttribute("data-grouped", "false");
+            btn.style.background = "";
         }
-    });
+    } else {
+        const groupedLines = [];
+        state.predefinedInclusions.forEach(category => {
+            const catExtensions = category.extensions.map(ext => ext.replace(/^\*/, "").trim().replace(/^\\./, ""));
+            const matchedInCat = [];
 
-    const matchedWithCat = [];
-    state.predefinedInclusions.forEach(category => {
-        const catExtensions = category.extensions.map(ext => ext.replace(/^\*/, '').trim().replace(/^\./, ''));
-        lines.forEach(line => {
-            const extMatch = line.match(/\.\*\\\.([^$]+)\$/);
-            if (extMatch && catExtensions.includes(extMatch[1])) {
-                matchedWithCat.push(line);
+            lines.forEach(line => {
+                const extMatch = line.match(/\.\*\\\.([^$]+)\$/);
+                if (extMatch && catExtensions.includes(extMatch[1])) {
+                    matchedInCat.push(line);
+                }
+            });
+
+            if (matchedInCat.length > 0) {
+                matchedInCat.sort((a, b) => a.localeCompare(b));
+                groupedLines.push("# --- " + category.label + " ---");
+                groupedLines.push(...matchedInCat);
             }
         });
-    });
 
-    const remaining = lines.filter(l => !matchedWithCat.includes(l) && !l.startsWith('#'));
-    if (remaining.length > 0) {
-        remaining.sort((a, b) => a.localeCompare(b));
-        groupedLines.push('# --- Miscellaneous ---');
-        groupedLines.push(...remaining);
+        const matchedWithCat = [];
+        state.predefinedInclusions.forEach(category => {
+            const catExtensions = category.extensions.map(ext => ext.replace(/^\*/, "").trim().replace(/^\\./, ""));
+            lines.forEach(line => {
+                const extMatch = line.match(/\.\*\\\.([^$]+)\$/);
+                if (extMatch && catExtensions.includes(extMatch[1])) {
+                    matchedInCat.push(line);
+                }
+            });
+        });
+
+        const remaining = lines.filter(l => !matchedWithCat.includes(l));
+        if (remaining.length > 0) {
+            remaining.sort((a, b) => a.localeCompare(b));
+            groupedLines.push("# --- Miscellaneous ---");
+            groupedLines.push(...remaining);
+        }
+
+        el.value = groupedLines.join("\n");
+        if (btn) {
+            btn.setAttribute("data-grouped", "true");
+            btn.style.background = "var(--vscode-button-background, #007fd4)";
+        }
     }
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+    UIController.checkSyncStatus();
+};
 
-    el.value = groupedLines.join('\n');
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
+const triggerValidationErrorModal = (errorText) => {
+    const backdrop = document.createElement('div');
+    backdrop.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999999; display: flex; align-items: center; justify-content: center;';
+
+    const modal = document.createElement('div');
+    modal.style.cssText = 'background: var(--vscode-editor-background, #1e1e1e); color: var(--vscode-foreground, #cccccc); padding: 20px; border-radius: 6px; border: 1px solid var(--vscode-panel-border); min-width: 400px; max-width: 500px; box-shadow: 0 4px 16px rgba(0,0,0,0.6); font-family: var(--vscode-font-family); box-sizing: border-box;';
+
+    modal.innerHTML = `
+        <div style="font-weight: 600; margin-bottom: 12px; font-size: 14px; color: #f44336; display: flex; align-items: center; gap: 6px;">🛑 Validation Failure</div>
+        <div style="font-size: 12px; margin-bottom: 20px; line-height: 1.5; white-space: normal; word-wrap: break-word;">${errorText}</div>
+        <div style="display: flex; justify-content: flex-end;">
+            <vscode-button id="btn-validation-error-close" appearance="primary">Close</vscode-button>
+        </div>
+    `;
+
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+
+    document.getElementById('btn-validation-error-close')?.addEventListener('click', () => {
+        document.body.removeChild(backdrop);
+    });
 };
 
 const init = () => {
@@ -582,13 +622,25 @@ const init = () => {
         const btn = document.getElementById('btn-run');
         if (btn && btn.classList.contains('loading')) return;
 
+        terminalTab.clear();
+        console.log("[runExport] Starting form validation pipeline diagnostics...");
         let isFormValid = true;
+
         Object.keys(ValidatorService.validators).forEach(id => {
-            if (!ValidatorService.executeFieldValidation(id)) isFormValid = false;
+            const isValid = ValidatorService.executeFieldValidation(id);
+            console.log("[runExport] Field [" + id + "] validation status: " + (isValid ? "PASSED" : "FAILED"));
+            if (!isValid) isFormValid = false;
         });
+
+        console.log("[runExport] Backend path list state validity status: " + (state.pathListInvalid ? "FAILED" : "PASSED"));
         if (state.pathListInvalid) isFormValid = false;
+
+        console.log("[runExport] Aggregated form validation outcome: " + (isFormValid ? "VALID" : "INVALID"));
         if (!isFormValid) {
-            terminalTab.append("\n❌ Export aborted: Please fix the highlighted fields in red pastel before running.\n");
+            const message = "Export aborted: Please fix the highlighted fields in red pastel before running.";
+            bridge.postMessage("showNotification", { type: "error", text: message });
+            triggerValidationErrorModal("❌  " + message);
+            terminalTab.append("\n" + "❌  " + message + "\n");
             return;
         }
 
@@ -685,7 +737,6 @@ const init = () => {
 
 const runExport = () => {
     setRunButtonLoading();
-    terminalTab.clear();
     terminalTab.append("⏳ Starting export process...\n");
     const pathsArray = (document.getElementById('pathList')?.value || '').split('\n').map(p => p.trim()).filter(p => p);
 
@@ -845,23 +896,9 @@ window.addEventListener('message', (event) => {
                 } catch(err) { console.error(err); }
                 break;
         case 'checkPathsResult':
-            const pathEl = document.getElementById('pathList');
-            if (!pathEl) return;
-            if (message.invalidPaths && message.invalidPaths.length > 0) {
-                state.pathListInvalid = true;
-                pathEl.classList.add('field-invalid');
-                if (!pathEl.hasAttribute('data-orig-tooltip')) pathEl.setAttribute('data-orig-tooltip', pathEl.getAttribute('data-tooltip') || '');
-                pathEl.setAttribute('data-tooltip', `⚠️ Error: The following paths do not exist:\n${message.invalidPaths.join('\n')}`);
-            } else {
-                state.pathListInvalid = false;
-                if (pathEl.value.trim().length > 0) {
-                    pathEl.classList.remove('field-invalid');
-                    if (pathEl.hasAttribute('data-orig-tooltip')) {
-                        pathEl.setAttribute('data-tooltip', pathEl.getAttribute('data-orig-tooltip'));
-                        pathEl.removeAttribute('data-orig-tooltip');
-                    }
-                }
-            }
+            state.invalidPathsPayload = message.invalidPaths || [];
+            // Trigger the validator to handle the UI rendering, but skip sending a new backend request
+            ValidatorService.executeFieldValidation('pathList', false, true);
             break;
         case 'updatePaths':
             state.selectedPaths = message.paths || [];

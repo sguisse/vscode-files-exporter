@@ -14,8 +14,30 @@ export const ValidatorService = {
         }
         return null;
     },
+    validatePathList(val) {
+        // Always reset path validity state before performing evaluations
+        state.pathListInvalid = false;
+
+        if (!val || !val.trim()) {
+            state.pathListInvalid = true;
+            return "At least one source path is required.";
+        }
+
+        // Split paths by structural separators
+        const paths = val.split(/[\n,;]/).map(p => p.trim()).filter(p => p);
+
+        // Iterate through paths, if an asynchronous invalid marker exists in payload matching the line item, drop run immediately
+        for (const rawPath of paths) {
+            if (state.invalidPathsPayload && state.invalidPathsPayload.includes(rawPath)) {
+                state.pathListInvalid = true;
+                return "The path '" + rawPath + "' does not exist on the local file system.";
+            }
+        }
+
+        return null;
+    },
     validators: {
-        pathList: (val) => val.trim().length > 0 ? null : "At least one source path is required.",
+        pathList: (val) => ValidatorService.validatePathList(val),
         destDir: (val) => val.trim().length > 0 ? null : "Destination directory path is required.",
         maxFile: (val) => {
             const cleanVal = val.trim();
@@ -34,7 +56,7 @@ export const ValidatorService = {
         filterFileName: (val) => ValidatorService.validateRegexSyntax(val),
         filterFileContent: (val) => ValidatorService.validateRegexSyntax(val)
     },
-    executeFieldValidation(id, silentMode = false) {
+    executeFieldValidation(id, silentMode = false, skipBackend = false) {
         const el = document.getElementById(id);
         if (!el) return true;
         const validator = this.validators[id];
@@ -50,7 +72,7 @@ export const ValidatorService = {
             if (id === 'pathList') state.pathListInvalid = true;
             return false;
         } else {
-            if (id === 'pathList' && !silentMode) {
+            if (id === 'pathList' && !silentMode && !skipBackend) {
                 const paths = el.value.split(/[\n,;]/).map(p => p.trim()).filter(p => p);
                 if (paths.length > 0) bridge.postMessage('checkPaths', { paths });
             }
@@ -61,9 +83,8 @@ export const ValidatorService = {
                 else el.removeAttribute('data-tooltip');
                 el.removeAttribute('data-orig-tooltip');
             }
-            if (id === 'pathList') state.pathListInvalid = false; // Will be overwritten by backend if invalid
+            if (id === 'pathList' && !state.invalidPathsPayload?.length) state.pathListInvalid = false;
 
-            // --- Dedicated Workspace Alignment Validation Layer ---
             if (id === 'destDir' || id === 'pathList') {
                 const workspaceRoot = state.defaultSettings?.src || '';
                 const linesToCheck = id === 'pathList' ? el.value.split('\n').map(p => p.trim()).filter(p => p) : [el.value.trim()];
@@ -72,20 +93,17 @@ export const ValidatorService = {
                 linesToCheck.forEach(line => {
                     if (line && !line.startsWith('#') && workspaceRoot) {
                         let cleanLine = line.replace(/^['"]|['"]$/g, '').trim();
-                        // Verify absolute alignment boundaries natively
                         if (!cleanLine.toLowerCase().startsWith(workspaceRoot.toLowerCase())) {
                             isOutsideWorkspace = true;
                         }
                     }
                 });
 
-                // Clear out pre-existing workspace warnings to prevent multi-injection pollution
                 let baseTooltip = el.getAttribute('data-tooltip') || '';
                 const warningMsg = "⚠️ You reference a folder outside current Workspace";
                 baseTooltip = baseTooltip.replace(new RegExp('\\s*' + warningMsg.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g'), '').trim();
 
                 if (isOutsideWorkspace && linesToCheck.length > 0 && linesToCheck[0] !== '') {
-                    // Set pure background color configurations without modifying borders directly
                     el.style.setProperty('--input-background', '#fff9c4', 'important');
                     el.style.setProperty('--background-color', '#fff9c4', 'important');
                     el.style.backgroundColor = '#fff9c4';
@@ -93,7 +111,6 @@ export const ValidatorService = {
                     const finalTooltip = baseTooltip ? `${baseTooltip}\n${warningMsg}` : warningMsg;
                     el.setAttribute('data-tooltip', finalTooltip);
                 } else {
-                    // Reset inputs background configurations clean
                     el.style.removeProperty('--input-background');
                     el.style.removeProperty('--background-color');
                     el.style.backgroundColor = '';
@@ -123,7 +140,6 @@ export const ValidatorService = {
                     el.removeAttribute('data-orig-tooltip');
                 }
 
-                // Clear any residual workspace path warnings on reset configurations operations
                 let currentTooltip = el.getAttribute('data-tooltip') || '';
                 const warningMsg = "⚠️ You reference a folder outside current Workspace";
                 currentTooltip = currentTooltip.replace(new RegExp('\\s*' + warningMsg.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g'), '').trim();
@@ -135,5 +151,6 @@ export const ValidatorService = {
             }
         });
         state.pathListInvalid = false;
+        state.invalidPathsPayload = [];
     }
 };
