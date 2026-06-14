@@ -293,35 +293,61 @@ const saveActiveTextareaCursorIndex = () => {
 
 function explodeRegexFilter(regexStr) {
     const [noExtensionPart, extensionsPart] = regexStr.split('|');
-    if (!extensionsPart) {
-        return [regexStr];
-    }
+    if (!extensionsPart) return [regexStr];
     const extensionsMatch = extensionsPart.match(/\((?:\?:)?([^)]+)\)/);
-    if (!extensionsMatch) {
-        return [regexStr];
-    }
+    if (!extensionsMatch) return [regexStr];
     const extensions = extensionsMatch[1].split('|');
-    const individualExtensions = extensions.map(ext => `.*\\.${ext}$`);
-    return [noExtensionPart, ...individualExtensions];
+    return [noExtensionPart, ...extensions.map(ext => ".*\\." + ext + "$")];
 }
 
 const sortTextAreaLines = (id) => {
     const el = document.getElementById(id);
     if (!el) return;
-    const lines = el.value.split('\n').map(l => l.trim()).filter(l => l);
-    lines.sort((a, b) => a.localeCompare(b));
-    el.value = lines.join('\n');
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
+    const btn = document.getElementById("btn-sort-" + id);
+    const icon = btn?.querySelector(".codicon");
+    let dir = btn?.getAttribute("data-dir") || "asc";
+
+    let lines = el.value.split("\n").map(l => l.trim()).filter(l => l);
+
+    if (dir === "asc") {
+        lines.sort((a, b) => a.localeCompare(b));
+        if (btn) btn.setAttribute("data-dir", "desc");
+        if (icon) {
+            icon.classList.remove("codicon-arrow-down");
+            icon.classList.add("codicon-arrow-up");
+        }
+    } else {
+        lines.sort((a, b) => b.localeCompare(a));
+        if (btn) btn.setAttribute("data-dir", "asc");
+        if (icon) {
+            icon.classList.remove("codicon-arrow-up");
+            icon.classList.add("codicon-arrow-down");
+        }
+    }
+
+    el.value = lines.join("\n");
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+    UIController.checkSyncStatus();
 };
 
 const explodeTextAreaRegex = (id) => {
     const el = document.getElementById(id);
     if (!el) return;
-    const exploded = explodeRegexFilter(el.value);
-    el.value = exploded.join('\n');
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
+    let lines = el.value.split("\n").map(l => l.trim()).filter(l => l);
+    let explodedLines = [];
+    lines.forEach(line => {
+        if (line.startsWith("#")) {
+            explodedLines.push(line);
+        } else {
+            explodedLines.push(...explodeRegexFilter(line));
+        }
+    });
+    explodedLines = Array.from(new Set(explodedLines)).sort((a, b) => a.localeCompare(b));
+    el.value = explodedLines.join("\n");
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+    UIController.checkSyncStatus();
 };
 
 const groupTextAreaExtensions = (id) => {
@@ -401,6 +427,8 @@ const init = () => {
     document.getElementById('btn-sort-excExts')?.addEventListener('click', () => sortTextAreaLines('excExts'));
 
     document.getElementById('btn-explode-incExts')?.addEventListener('click', () => explodeTextAreaRegex('incExts'));
+    document.getElementById('btn-explode-incPaths')?.addEventListener('click', () => explodeTextAreaRegex('incPaths'));
+    document.getElementById('btn-explode-excPaths')?.addEventListener('click', () => explodeTextAreaRegex('excPaths'));
     document.getElementById('btn-explode-excExts')?.addEventListener('click', () => explodeTextAreaRegex('excExts'));
 
     document.getElementById('btn-group-incExts')?.addEventListener('click', () => groupTextAreaExtensions('incExts'));

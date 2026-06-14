@@ -229,7 +229,8 @@
                 <div class="filter-actions-header">
                     <span class="field-label" data-tooltip="Regex mapping specifying inside-folder structures to explicitly allow.">✅ Include Paths</span>
                     <div class="filter-btn-group">
-                        <vscode-button id="btn-sort-incPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically"><span class="codicon codicon-sort-ascending"></span></vscode-button>
+                        <vscode-button id="btn-sort-incPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically" data-dir="asc"><span class="codicon codicon-arrow-down"></span></vscode-button>
+                            <vscode-button id="btn-explode-incPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Explode unified expressions block layout to individual lines components"><span class="codicon codicon-unfold"></span></vscode-button>
                     </div>
                 </div>
                 <vscode-text-area id="incPaths" class="full-width" rows="4" resize="vertical"></vscode-text-area>
@@ -238,7 +239,7 @@
                 <div class="filter-actions-header">
                     <span class="field-label" data-tooltip="Regex checklist specifying file extensions to let through during discovery.">🟢 Include exts</span>
                     <div class="filter-btn-group">
-                        <vscode-button id="btn-sort-incExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically"><span class="codicon codicon-sort-ascending"></span></vscode-button>
+                        <vscode-button id="btn-sort-incExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically" data-dir="asc" data-dir="asc" data-dir="asc"><span class="codicon codicon-arrow-down"></span></vscode-button>
                         <vscode-button id="btn-group-incExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Group extensions by category categories structure"><span class="codicon codicon-library"></span></vscode-button>
                         <vscode-button id="btn-explode-incExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Explode unified expressions block layout to individual lines components"><span class="codicon codicon-unfold"></span></vscode-button>
                         <vscode-button id="btn-predefined-inclusions" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Predefined extension inclusions. Press <strong>Ctrl/Cmd</strong> key to <strong>replace</strong> content, instead adding them."><span class="codicon codicon-kebab-vertical"></span></vscode-button>
@@ -251,7 +252,8 @@
                 <div class="filter-actions-header">
                     <span class="field-label" data-tooltip="Regex blacklisting targeted folder structures (e.g. node_modules, .git) to skip.">🚫 Exclude Paths</span>
                     <div class="filter-btn-group">
-                        <vscode-button id="btn-sort-excPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically"><span class="codicon codicon-sort-ascending"></span></vscode-button>
+                        <vscode-button id="btn-sort-excPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically" data-dir="asc"><span class="codicon codicon-arrow-down"></span></vscode-button>
+                            <vscode-button id="btn-explode-excPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Explode unified expressions block layout to individual lines components"><span class="codicon codicon-unfold"></span></vscode-button>
                     </div>
                 </div>
                 <vscode-text-area id="excPaths" class="full-width" rows="4" resize="vertical"></vscode-text-area>
@@ -260,7 +262,7 @@
                 <div class="filter-actions-header">
                     <span class="field-label" data-tooltip="Regex mapping identifying forbidden raw formats (e.g. log, exe, png) to skip.">🔴 Exclude exts</span>
                     <div class="filter-btn-group">
-                        <vscode-button id="btn-sort-excExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically"><span class="codicon codicon-sort-ascending"></span></vscode-button>
+                        <vscode-button id="btn-sort-excExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically" data-dir="asc" data-dir="asc" data-dir="asc"><span class="codicon codicon-arrow-down"></span></vscode-button>
                         <vscode-button id="btn-group-excExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Group extensions by category categories structure"><span class="codicon codicon-library"></span></vscode-button>
                         <vscode-button id="btn-explode-excExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Explode unified expressions block layout to individual lines components"><span class="codicon codicon-unfold"></span></vscode-button>
                     </div>
