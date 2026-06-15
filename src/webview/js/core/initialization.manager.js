@@ -1,4 +1,3 @@
-import { HandlerManager } from '../services/handler-manager.js';
 import { bridge } from './vscode.bridge.js';
 import { state } from './state.manager.js';
 import { ValidatorService } from '../services/validator.service.js';
@@ -8,6 +7,7 @@ import { SourcePathsManager } from '../services/source-paths-manager.js';
 import { FiltersManager } from '../services/filters-manager.js';
 import { DestinationManager } from '../services/destination-manager.js';
 import { ExportManager } from '../services/export-manager.js';
+import { HandlerManager } from '../services/handler-manager.js';
 
 let isModifierPressed = false;
 
@@ -212,6 +212,23 @@ export const InitializationManager = {
             }
             if (state.lastReportPayload && tabs.treeViewTab) {
                 tabs.treeViewTab.render(state.lastReportPayload, (p) => bridge.postMessage('openFile',{path:p}), (p) => bridge.postMessage('openFinder',{path:p}));
+            }
+        });
+
+        // FIX VALIDATION : Rattachement direct à l'élément pour contourner l'asynchronisme du Shadow DOM
+        const observedFields = ['pathList', 'destDir', 'maxFile', 'maxChunk', 'incPaths', 'excPaths', 'incExts', 'excExts'];
+        observedFields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('blur', () => {
+                    ValidatorService.executeFieldValidation(id);
+                    UIController.checkSyncStatus();
+                });
+
+                el.addEventListener('input', () => {
+                    ValidatorService.executeFieldValidation(id);
+                    UIController.checkSyncStatus();
+                });
             }
         });
 

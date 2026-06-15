@@ -7,6 +7,45 @@ import { FiltersManager } from './filters-manager.js';
 import { ExportManager } from './export-manager.js';
 
 export const HandlerManager = {
+    // Réutilisation exacte de ta logique de rendu d'icônes/images et de routage d'URL
+    buildExchangeButtons(exchangeItems) {
+        const container = document.getElementById('exchange-buttons-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (!exchangeItems || !Array.isArray(exchangeItems)) return;
+
+        exchangeItems.forEach(item => {
+            const btn = document.createElement('vscode-button');
+            btn.setAttribute('appearance', 'icon');
+            btn.style.width = item.width || '64px';
+            btn.style.height = item.height || '64px';
+
+            if (item.tooltip) {
+                btn.setAttribute('data-tooltip', item.tooltip);
+                btn.setAttribute('title', item.tooltip);
+                btn.classList.add('tooltip-bottom'); // Maintien du tracker de curseur custom
+            }
+
+            const img = document.createElement('img');
+            img.src = item.icon;
+            img.alt = item.tooltip || 'Exchange Link';
+            img.style.width = item.width || '64px';
+            img.style.height = item.height || '64px';
+
+            btn.appendChild(img);
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                bridge.postMessage('openBrowserTab', {
+                    url: item.url,
+                    openInVSCode: item.openInVSCode !== false
+                });
+            });
+
+            container.appendChild(btn);
+        });
+    },
+
     handleExcludeExplorerPathSelection(message, tabs) {
         try {
             const excPathsEl = document.getElementById('excPaths');
@@ -72,6 +111,7 @@ export const HandlerManager = {
         HistoryManager.updateHistoryViewToggleButton();
         HistoryManager.updateHistoryCombo(state.currentSelectedId);
         HistoryManager.applyFormFields(message.currentSettings);
+
         if (message.paths && message.paths.length > 0) {
             state.selectedPaths = message.paths;
             const pathListEl = document.getElementById('pathList');
@@ -80,6 +120,9 @@ export const HandlerManager = {
 
         FiltersManager.renderPredefinedMenu('predefined-inclusions-menu', 'incExts', 'includeExtsMenuEnabled', isModifierPressed);
         FiltersManager.renderPredefinedMenu('predefined-exclusions-menu', 'excExts', 'excludeExtsMenuEnabled', isModifierPressed);
+
+        const exchangeList = message.exchange || (message.defaultSettings && message.defaultSettings.exchange) || [];
+        this.buildExchangeButtons(exchangeList);
 
         setTimeout(() => {
             state.isInitializing = false;
@@ -98,10 +141,14 @@ export const HandlerManager = {
     handleUpdateHistory(message, tabs) {
         state.historyList = message.history || [];
         state.currentSelectedId = message.selectedId || state.currentSelectedId || 'default';
+
         HistoryManager.updateHistoryCombo(state.currentSelectedId);
         if (!message.skipFieldSync) HistoryManager.applyHistorySelection(state.currentSelectedId);
+
         UIController.checkSyncStatus();
-        if (state.currentSelectedId && state.currentSelectedId.endsWith('-new')) HistoryManager.enterInlineRenameMode();
+        if (state.currentSelectedId && state.currentSelectedId.endsWith('-new')) {
+            HistoryManager.enterInlineRenameMode();
+        }
     },
 
     handleTerminalLog(message, tabs) {

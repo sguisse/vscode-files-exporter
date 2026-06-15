@@ -90,7 +90,6 @@ export const HistoryManager = {
 
         const defOpt = document.createElement('vscode-option');
         defOpt.value = 'default'; defOpt.textContent = '< Default Configuration >';
-        if (selectedId === 'default' || !selectedId) defOpt.selected = true;
         combo.appendChild(defOpt);
 
         state.historyList.forEach(item => {
@@ -99,7 +98,6 @@ export const HistoryManager = {
             }
             const opt = document.createElement('vscode-option');
             opt.value = item.id; opt.textContent = item.display;
-            if (item.id === selectedId) opt.selected = true;
             combo.appendChild(opt);
         });
 
@@ -113,7 +111,13 @@ export const HistoryManager = {
             this.applyHistorySelection('default');
         }
 
-        combo.value = finalId;
-        UIController.syncButtonsState(finalId);
+        // ====================================================================
+        // FIX CRITIQUE : Le WebComponent a besoin d'un court délai pour
+        // mapper les <vscode-option> créés avec sa propriété interne 'value'.
+        // ====================================================================
+        setTimeout(() => {
+            combo.value = finalId;
+            UIController.syncButtonsState(finalId);
+        }, 50);
     }
 };
