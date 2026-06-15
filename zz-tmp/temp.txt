@@ -53,3 +53,13 @@ console.log(result);
   '.*\\.vsix$'
 ]
 */
+
+
+"llms": [
+    {
+        "label": "Gemini",
+        "model": "PRO 2.5",
+        "price": 12,
+
+    },
+    ...

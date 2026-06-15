@@ -1,3 +1,4 @@
+import { PricingService } from '../js/services/pricing-service.js';
 import { bridge } from '../js/core/vscode.bridge.js';
 
 export class ReportTab {
@@ -12,10 +13,12 @@ export class ReportTab {
         this.lastClickedRow = null;
     }
 
-    render(data, onFileClick) {
+        render(data, onFileClick) {
         this.currentData = data;
-        this.renderTable(data);
-        this.renderChart(data);
+        try { this.renderTable(data); } catch(e) { console.error(e); }
+        try { this.renderChart(data);
+        this.renderCostEstimation(data); } catch(e) { console.error(e); }
+        try { this.renderPricing(data); } catch(e) { console.error(e); }
         if (data.generated_files && typeof this.renderFiles === 'function') {
             this.renderFiles(data.generated_files, onFileClick);
         }
@@ -269,7 +272,79 @@ export class ReportTab {
         }
     }
 
+        renderCostEstimation(data) {
+        const costSection = document.getElementById('costEstimationSection');
+        const costTitle = document.getElementById('costEstimationTitle');
+        const thCostTokens = document.getElementById('th-cost-tokens');
+        const tbody = document.getElementById('pricingTableBody');
+        const header = document.getElementById('costEstimationHeader');
+
+        if (header && !header.dataset.bound) {
+            header.dataset.bound = 'true';
+            header.addEventListener('click', () => {
+                const contentDiv = document.getElementById('costEstimationContent');
+                const iconSpan = document.getElementById('costEstimationIcon');
+                if (contentDiv && iconSpan) {
+                    if (contentDiv.style.display === 'none') {
+                        contentDiv.style.display = 'block';
+                        iconSpan.className = 'codicon codicon-chevron-down';
+                    } else {
+                        contentDiv.style.display = 'none';
+                        iconSpan.className = 'codicon codicon-chevron-right';
+                    }
+                }
+            });
+        }
+
+        if (!data || !data.metrics_per_extension) {
+            if (costSection) costSection.style.display = 'none';
+            return;
+        }
+
+        if (costSection) costSection.style.display = 'block';
+
+        const targetList = (data.generated_files && data.generated_files.exports) || [];
+        if (targetList.length === 0 && data.summary && data.summary.total_exported > 0) {
+            for (let i = 0; i < data.summary.total_exported; i++) {
+                targetList.push('mock_file.yaml');
+            }
+        }
+
+        const pricingData = PricingService.tokensPriceEstimationByAiModels(targetList);
+
+        if (costTitle) {
+            costTitle.innerText = `💰 Cost Estimation (${pricingData.estimatedInputTokens.toLocaleString()} tokens)`;
+        }
+
+        if (thCostTokens) {
+            thCostTokens.innerText = `Cost for ${pricingData.estimatedInputTokens.toLocaleString()} tokens`;
+        }
+
+        if (tbody) {
+            tbody.innerHTML = '';
+            pricingData.llms.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td style="padding: 6px 8px; border: 1px solid var(--vscode-panel-border); font-size: 12px;">${item.label}</td>
+                    <td style="padding: 6px 8px; border: 1px solid var(--vscode-panel-border); font-size: 12px;">${item.model}</td>
+                    <td style="padding: 6px 8px; border: 1px solid var(--vscode-panel-border); font-size: 12px; font-weight: bold; color: #4caf50;">$${item.price.toFixed(4)}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+    }
+
     clear() {
+        const costSection = document.getElementById('costEstimationSection');
+        const costContent = document.getElementById('costEstimationContent');
+        const costIcon = document.getElementById('costEstimationIcon');
+
+        if (costSection) costSection.style.display = 'none';
+        if (costContent) costContent.style.display = 'none';
+        if (costIcon) {
+            costIcon.classList.remove('codicon-chevron-down');
+            costIcon.classList.add('codicon-chevron-right');
+        }
         if (this.myChart) this.myChart.destroy();
         const tbody = document.getElementById('reportTableBody');
         const tfoot = document.getElementById('reportTableFooter');

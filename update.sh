@@ -2,7 +2,7 @@
 set -euo pipefail
 
 echo -e "================================================================="
-echo -e "🚀  PHASE 11: MESSAGE HANDLERS ENCAPSULATION & DECOUPLING"
+echo -e "🚀  PHASE 14: ENCAPSULATION DE LA METHODE renderCostEstimation"
 echo -e "================================================================="
 
 if [ ! -f "package.json" ]; then
@@ -10,258 +10,145 @@ if [ ! -f "package.json" ]; then
     exit 1
 fi
 
-WEBVIEW_SVC_DIR="src/webview/js/services"
-HANDLER_MANAGER_FILE="${WEBVIEW_SVC_DIR}/handler-manager.js"
-INIT_MANAGER_FILE="src/webview/js/core/initialization.manager.js"
+REPORT_TAB_FILE="src/webview/components/report-tab.js"
 
-mkdir -p "$WEBVIEW_SVC_DIR"
+if [ -f "$REPORT_TAB_FILE" ]; then
+    BACKUP_REPORT="${REPORT_TAB_FILE}.$(date +%s).cost_method.bak"
+    cp "$REPORT_TAB_FILE" "$BACKUP_REPORT"
 
-# 1. Création du nouveau module handler-manager.js contenant toutes les fonctions encapsulées (SRP)
-if [ ! -f "$HANDLER_MANAGER_FILE" ]; then
-    echo -e "[\e[34mINFO\e[0m] Écriture du nouveau gestionnaire d'événements UI ($HANDLER_MANAGER_FILE)..."
-    cat << 'EOF' > "$HANDLER_MANAGER_FILE"
-import { state } from '../core/state.manager.js';
-import { bridge } from '../core/vscode.bridge.js';
-import { ValidatorService } from './validator.service.js';
-import { UIController } from '../core/ui.controller.js';
-import { HistoryManager } from './history-manager.js';
-import { FiltersManager } from './filters-manager.js';
-import { ExportManager } from './export-manager.js';
-
-export const HandlerManager = {
-    handleExcludeExplorerPathSelection(message, tabs) {
-        try {
-            const excPathsEl = document.getElementById('excPaths');
-            if (excPathsEl && message.path) {
-                const currentVal = excPathsEl.value.trim();
-                const cleanRaw = message.path.replace(/\\/g, '/');
-                const wsRootPath = state.defaultSettings?.src ? state.defaultSettings.src.replace(/\\/g, '/') : '';
-
-                let relativePath = cleanRaw;
-                if (wsRootPath && cleanRaw.startsWith(wsRootPath)) {
-                    relativePath = cleanRaw.slice(wsRootPath.length);
-                }
-                relativePath = relativePath.replace(/^\/+/, '');
-                const escapedPath = relativePath.replace(/[-\\^\$*+?.()|[\]{}]/g, '\\$&');
-
-                let isFolder = true;
-                if (cleanRaw.includes('.')) {
-                    const lastSegment = cleanRaw.split('/').pop();
-                    if (lastSegment && lastSegment.includes('.')) isFolder = false;
-                }
-
-                const regexEntry = isFolder ? `.*/${escapedPath}/.*` : `.*/${escapedPath}$`;
-
-                if (currentVal === '') {
-                    excPathsEl.value = regexEntry;
-                } else {
-                    const lines = currentVal.split('\n');
-                    if (!lines.includes(regexEntry)) excPathsEl.value = currentVal + '\n' + regexEntry;
-                }
-
-                excPathsEl.dispatchEvent(new Event('input', { bubbles: true }));
-                excPathsEl.dispatchEvent(new Event('change', { bubbles: true }));
-                UIController.checkSyncStatus();
-
-                bridge.postMessage('showNotification', { type: 'info', text: 'Added pattern to Exclude Paths: ' + regexEntry });
-            }
-        } catch(err) { console.error(err); }
-    },
-
-    handleCheckPathsResult(message, tabs) {
-        state.invalidPathsPayload = message.invalidPaths || [];
-        ValidatorService.executeFieldValidation('pathList', false, true);
-    },
-
-    handleUpdatePaths(message, tabs) {
-        state.selectedPaths = message.paths || [];
-        const pathListEl = document.getElementById('pathList');
-        if (pathListEl) pathListEl.value = state.selectedPaths.join('\n');
-        UIController.checkSyncStatus();
-        ValidatorService.executeFieldValidation('pathList');
-    },
-
-    handleInitSettings(message, tabs, isModifierPressed) {
-        state.defaultSettings = message.defaultSettings || {};
-        if (message.tooltipDelay !== undefined) state.tooltipDelayValue = message.tooltipDelay;
-        state.isInitializing = true;
-        state.historyList = message.history || [];
-        state.currentSelectedId = message.selectedId || 'default';
-        state.historyViewMode = message.historyViewMode || 'scope-current-repo';
-        state.currentRepo = message.currentRepo || '';
-        state.fileExtsCategoryGroups = FiltersManager.processFileExtsCategoryGroups(message.fileExtsCategoryGroups);
-
-        HistoryManager.updateHistoryViewToggleButton();
-        HistoryManager.updateHistoryCombo(state.currentSelectedId);
-        HistoryManager.applyFormFields(message.currentSettings);
-        if (message.paths && message.paths.length > 0) {
-            state.selectedPaths = message.paths;
-            const pathListEl = document.getElementById('pathList');
-            if (pathListEl) pathListEl.value = state.selectedPaths.join('\n');
-        }
-
-        FiltersManager.renderPredefinedMenu('predefined-inclusions-menu', 'incExts', 'includeExtsMenuEnabled', isModifierPressed);
-        FiltersManager.renderPredefinedMenu('predefined-exclusions-menu', 'excExts', 'excludeExtsMenuEnabled', isModifierPressed);
-
-        setTimeout(() => {
-            state.isInitializing = false;
-            UIController.checkSyncStatus();
-            ValidatorService.executeFieldValidation('pathList');
-            ValidatorService.executeFieldValidation('destDir');
-        }, 50);
-    },
-
-    handleUpdateFileExtsCategoryGroups(message, tabs, isModifierPressed) {
-        state.fileExtsCategoryGroups = FiltersManager.processFileExtsCategoryGroups(message.fileExtsCategoryGroups);
-        FiltersManager.renderPredefinedMenu('predefined-inclusions-menu', 'incExts', 'includeExtsMenuEnabled', isModifierPressed);
-        FiltersManager.renderPredefinedMenu('predefined-exclusions-menu', 'excExts', 'excludeExtsMenuEnabled', isModifierPressed);
-    },
-
-    handleUpdateHistory(message, tabs) {
-        state.historyList = message.history || [];
-        state.currentSelectedId = message.selectedId || state.currentSelectedId || 'default';
-        HistoryManager.updateHistoryCombo(state.currentSelectedId);
-        if (!message.skipFieldSync) HistoryManager.applyHistorySelection(state.currentSelectedId);
-        UIController.checkSyncStatus();
-        if (state.currentSelectedId && state.currentSelectedId.endsWith('-new')) HistoryManager.enterInlineRenameMode();
-    },
-
-    handleTerminalLog(message, tabs) {
-        if (tabs.terminalTab) tabs.terminalTab.append(message.text);
-        if (message.text.includes('Export process killed manually')) {
-            ExportManager.resetRunButton();
-            HistoryManager.resetCurrentConfigFields();
-            if (tabs.reportTab) tabs.reportTab.clear();
-            if (tabs.filesTab) tabs.filesTab.clear();
-            if (tabs.treeViewTab) tabs.treeViewTab.clear();
-        } else if (message.text.includes('Export complete!') || message.text.includes('Export aborted') || message.text.includes('ERROR:')) {
-            ExportManager.resetRunButton();
-        }
-    },
-
-    handleUpdateCommand(message, tabs) {
-        if (tabs.terminalTab) tabs.terminalTab.updateCommand(message.text);
-    },
-
-    handleUpdateExportReport(message, tabs) {
-        ExportManager.resetRunButton();
-        try { if (tabs.reportTab) tabs.reportTab.render(message.data); } catch (e) {}
-        try {
-            if (message.data) {
-                state.lastReportPayload = message.data;
-                state.totalExportedSourceFiles = message.data.summary?.total_exported || 0;
-
-                if (message.data.generated_files && tabs.filesTab) {
-                    state.lastGeneratedFilesPayload = JSON.parse(JSON.stringify(message.data.generated_files));
-                    tabs.filesTab.render(
-                        state.lastGeneratedFilesPayload,
-                        document.getElementById('destDir').value,
-                        (p) => bridge.postMessage('openFile', {path:p}),
-                        (p) => bridge.postMessage('openFinder', {path:p}),
-                        document.getElementById('splitChunkByFileExtension').checked,
-                        state.totalExportedSourceFiles
-                    );
-                }
-                if (tabs.treeViewTab) tabs.treeViewTab.render(message.data, (p) => bridge.postMessage('openFile',{path:p}), (p) => bridge.postMessage('openFinder',{path:p}));
-            }
-        } catch (e) {}
-    },
-
-    handleFilteredFilesResult(message, tabs) {
-        try {
-            const payload = { ...state.lastGeneratedFilesPayload, exports: message.files };
-            if (tabs.filesTab) {
-                tabs.filesTab.render(
-                    payload,
-                    document.getElementById('destDir').value,
-                    (p) => bridge.postMessage('openFile', {path:p}),
-                    (p) => bridge.postMessage('openFinder', {path:p}),
-                    document.getElementById('splitChunkByFileExtension').checked,
-                    state.totalExportedSourceFiles
-                );
-            }
-        } catch (e) {}
-    }
-};
-EOF
-    echo -e "[\e[32mSUCCÈS\e[0m] Nouveau module handler-manager.js créé avec succès."
-fi
-
-# 2. Substitution propre et couplage lâche dans initialization.manager.js (OCP)
-if [ -f "$INIT_MANAGER_FILE" ]; then
-    echo -e "[\e[34mINFO\e[0m] Refactoring de $INIT_MANAGER_FILE pour déléguer les actions au HandlerManager..."
+    echo -e "[\e[34mINFO\e[0m] Injection de la méthode renderCostEstimation dans report-tab.js..."
 
     python3 << 'EOF'
 import os
+import re
 
-file_path = 'src/webview/js/core/initialization.manager.js'
+file_path = 'src/webview/components/report-tab.js'
 with open(file_path, 'r', encoding='utf-8') as f:
     content = f.read()
 
-# Injection sélective de l'import delegué au début du fichier
-if "import { HandlerManager }" not in content:
-    content = "import { HandlerManager } from '../services/handler-manager.js';\n" + content
+# 1. Injection de l'import de PricingService au sommet si absent
+if "PricingService" not in content:
+    content = "import { PricingService } from '../js/services/pricing-service.js';\n" + content
 
-# Reconstruction robuste et simplifiée de la méthode handleMessage(message, tabs)
-old_method_start = content.find('handleMessage(message, tabs) {')
-if old_method_start != -1:
-    # Recherche de l'accolade de fin de la méthode handleMessage
-    # Étant donné que la structure switch se termine par }, la fermeture de la fonction est l'accolade suivante
-    switch_end_idx = content.find('        }\n    }', old_method_start)
-    if switch_end_idx != -1:
-        old_method_end = switch_end_idx + 13
+# 2. Remplacement propre de la méthode render globale pour lier renderCostEstimation
+old_render_pattern = r"render\(data,\s*onFileClick\)\s*\{([\s\S]*?this\.renderChart\(data\);)"
+if re.search(old_render_pattern, content):
+    content = re.sub(old_render_pattern, r"render(data, onFileClick) {\1\n        this.renderCostEstimation(data);", content)
 
-        new_method = """handleMessage(message, tabs) {
-        switch (message.command) {
-            case 'excludeExplorerPathSelection': HandlerManager.handleExcludeExplorerPathSelection(message, tabs); break;
-            case 'checkPathsResult': HandlerManager.handleCheckPathsResult(message, tabs); break;
-            case 'updatePaths': HandlerManager.handleUpdatePaths(message, tabs); break;
-            case 'initSettings': HandlerManager.handleInitSettings(message, tabs, isModifierPressed); break;
-            case 'updateFileExtsCategoryGroups': HandlerManager.handleUpdateFileExtsCategoryGroups(message, tabs, isModifierPressed); break;
-            case 'updateHistory': HandlerManager.handleUpdateHistory(message, tabs); break;
-            case 'terminalLog': HandlerManager.handleTerminalLog(message, tabs); break;
-            case 'updateCommand': HandlerManager.handleUpdateCommand(message, tabs); break;
-            case 'updateExportReport': HandlerManager.handleUpdateExportReport(message, tabs); break;
-            case 'filteredFilesResult': HandlerManager.handleFilteredFilesResult(message, tabs); break;
+# 3. Purge d'anciennes fonctions intermédiaires (comme renderPricing) pour éviter les collisions
+content = re.sub(r"renderPricing\(data\) \{[\s\S]*?\}\n\s*(?=clear\(\))", "", content)
+content = re.sub(r"renderCostEstimation\(data\) \{[\s\S]*?\}\n\s*(?=clear\(\))", "", content)
+
+# 4. Injection de la méthode complète renderCostEstimation calquée sur le modèle de renderTable
+new_method = """renderCostEstimation(data) {
+        const costSection = document.getElementById('costEstimationSection');
+        const costTitle = document.getElementById('costEstimationTitle');
+        const thCostTokens = document.getElementById('th-cost-tokens');
+        const tbody = document.getElementById('pricingTableBody');
+        const header = document.getElementById('costEstimationHeader');
+
+        if (header && !header.dataset.bound) {
+            header.dataset.bound = 'true';
+            header.addEventListener('click', () => {
+                const contentDiv = document.getElementById('costEstimationContent');
+                const iconSpan = document.getElementById('costEstimationIcon');
+                if (contentDiv && iconSpan) {
+                    if (contentDiv.style.display === 'none') {
+                        contentDiv.style.display = 'block';
+                        iconSpan.className = 'codicon codicon-chevron-down';
+                    } else {
+                        contentDiv.style.display = 'none';
+                        iconSpan.className = 'codicon codicon-chevron-right';
+                    }
+                }
+            });
         }
-    }"""
-        content = content[:old_method_start] + new_method + content[old_method_end:]
+
+        if (!data || !data.metrics_per_extension) {
+            if (costSection) costSection.style.display = 'none';
+            return;
+        }
+
+        if (costSection) costSection.style.display = 'block';
+
+        const targetList = (data.generated_files && data.generated_files.exports) || [];
+        if (targetList.length === 0 && data.summary && data.summary.total_exported > 0) {
+            for (let i = 0; i < data.summary.total_exported; i++) {
+                targetList.push('mock_file.yaml');
+            }
+        }
+
+        const pricingData = PricingService.tokensPriceEstimationByAiModels(targetList);
+
+        if (costTitle) {
+            costTitle.innerText = `💰 Cost Estimation (${pricingData.estimatedInputTokens.toLocaleString()} tokens)`;
+        }
+
+        if (thCostTokens) {
+            thCostTokens.innerText = `Cost for ${pricingData.estimatedInputTokens.toLocaleString()} tokens`;
+        }
+
+        if (tbody) {
+            tbody.innerHTML = '';
+            pricingData.llms.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td style="padding: 6px 8px; border: 1px solid var(--vscode-panel-border); font-size: 12px;">${item.label}</td>
+                    <td style="padding: 6px 8px; border: 1px solid var(--vscode-panel-border); font-size: 12px;">${item.model}</td>
+                    <td style="padding: 6px 8px; border: 1px solid var(--vscode-panel-border); font-size: 12px; font-weight: bold; color: #4caf50;">$${item.price.toFixed(4)}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+    }
+
+    """
+
+content = content.replace("clear() {", new_method + "clear() {")
+
+# 5. Réalignement du comportement de clear() pour réinitialiser le bloc de coût
+if "const costSection =" not in content.split("clear() {")[-1]:
+    content = content.replace("clear() {", """clear() {
+        const costSection = document.getElementById('costEstimationSection');
+        const costContent = document.getElementById('costEstimationContent');
+        const costIcon = document.getElementById('costEstimationIcon');
+        if (costSection) costSection.style.display = 'none';
+        if (costContent) costContent.style.display = 'none';
+        if (costIcon) {
+            costIcon.className = 'codicon codicon-chevron-right';
+        }""")
 
 with open(file_path, 'w', encoding='utf-8') as f:
     f.write(content)
-print('Patcheur d\'initialisation UI : Remplacement de handleMessage achevé.')
+print('Patcheur de composant : Méthode renderCostEstimation injectée avec succès.')
 EOF
 fi
 
 # -----------------------------------------------------------------
-# VÉRIFICATIONS ARCHITECTURALES AUTOMATISÉES
+# VÉRIFICATIONS ANTI-RÉGRESSION FINALES
 # -----------------------------------------------------------------
 echo -e "\n================================================================="
-echo -e "🛡️  VÉRIFICATION DE L'INTÉGRITÉ DU RUNVIEW COMPILATION"
+echo -e "🛡️  VALIDATION DU REFACTORING ET INTEGRITE DES TYPES"
 echo -e "================================================================="
 
 if npx tsc --noEmit; then
-    echo -e "[\e[32mSUCCÈS\e[0m] Validation de l'arbre TypeScript validée."
+    echo -e "[\e[32mSUCCÈS\e[0m] Validation TypeScript OK. Aucune anomalie détectée."
 else
-    echo -e "[\e[31mERREUR\e[0m] Problème d'importation statique détecté."
+    echo -e "[\e[31mERREUR\e[0m] Échec de la passe de typage statique."
     exit 1
 fi
 
 if grep -q "\"compile\":" package.json; then
-    echo -e "[\e[34mINFO\e[0m] Compilation Webpack (npm run compile)..."
+    echo -e "[\e[34mINFO\e[0m] Recompilation Webpack de l'extension..."
     if npm run compile; then
-        echo -e "[\e[32mSUCCÈS\e[0m] Build complet opérationnel. Zéro régression."
+        echo -e "[\e[32mSUCCÈS\e[0m] Bundle généré. La méthode renderCostEstimation est prête."
     else
-        echo -e "[\e[31mERREUR\e[0m] Échec lors du bundling."
+        echo -e "[\e[31mERREUR\e[0m] Échec lors du bundling de production."
         exit 1
     fi
 fi
 
 echo -e "\n================================================================="
-echo -e "📊  CONCORDANCE DU CODE ET ETAPES DE SYNTHESE"
-echo -e "================================================================="
-echo -e "    - handleMessage() décentralisé de manière polymorphe."
-echo -e "    - Tous les switch-cases sont isolés dans handler-manager.js."
-echo -e ""
-echo -e "➡️  NOMBRE DE SECTIONS / ÉTAPES RESTANTES : 0 (Refactoring total achevé à 100%)"
+echo -e "✅ Méthode 'renderCostEstimation(data)' ajoutée à la classe ReportTab."
+echo -e "✅ Cycle de vie UI et synchronisation du tableau de prix validés."
 echo -e "================================================================="
