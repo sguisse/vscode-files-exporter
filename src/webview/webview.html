@@ -10,10 +10,9 @@
     <script type="module" src="https://cdn.jsdelivr.net/npm/@vscode/webview-ui-toolkit@latest/dist/toolkit.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+        body { padding: 10px; display: flex; flex-direction: column; gap: 0px; }
         .grid-2-col { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .full-width { width: 100%; }
-        .section-title { font-size: 14px; font-weight: 600; margin-bottom: 10px; border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: 5px; box-shadow: 0px 4px 5px -3px rgba(0, 0, 0, 0.25); }
         .paths-list { background: var(--vscode-input-background); padding: 10px; border: 1px solid var(--vscode-input-border); border-radius: 3px; max-height: 150px; overflow-y: auto; font-family: var(--vscode-editor-font-family); font-size: 12px;}
         .terminal { background: #1e1e1e; color: #d4d4d4; padding: 10px; font-family: 'Menlo', monospace; font-size: 12px; height: 100%; overflow-y: auto; border-radius: 4px; }
         .terminal-container { display: flex; flex-direction: column; flex-grow: 1; height: 100%; }
@@ -148,195 +147,220 @@
             gap: 2px;
             align-items: center;
         }
+
+        /* Classes unifiées pour les structures de blocs rétractables */
+        .collapsible-block-header {
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 1px solid var(--vscode-panel-border);
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            user-select: none;
+            box-shadow: 0px 4px 5px -3px rgba(0, 0, 0, 0.25);
+        }
+        .collapsible-title-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .collapsible-summary-text {
+            font-size: 11px;
+            font-weight: normal;
+            color: var(--vscode-descriptionForeground, #858585);
+            font-style: italic;
+            padding-left: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 65%;
+        }
+        .collapsible-block-content {
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
     <input type="hidden" id="hiddenPathListCursorIndex" value="0" />
 
-    <div>
-        <div class="tooltip-bottom section-title"
-            data-tooltip="History log containing previously executed configuration profiles">🕒 Configuration
-            History (Auto-Saved on Run)</div>
-        <div class="history-actions-container">
-            <vscode-button id="btn-toggle-history-view" appearance="secondary" class="tooltip-right icon-btn"
-                data-tooltip="Toggle history scope:<br/>- 🏠 Current Repo<br/>- 🌐 All Repos">🏠</vscode-button>
-            <vscode-dropdown id="historyCombo" style="flex-grow: 1;"></vscode-dropdown>
-            <vscode-text-field id="historyRenameInput" style="display: none; flex-grow: 1;" placeholder="Enter profile name display identifier..." data-tooltip="Press 'Enter' to confirm or 'Escape' to cancel layout edits"></vscode-text-field>
-            <vscode-button id="btn-freeze-history" appearance="secondary" class="tooltip-right icon-btn"
-                data-tooltip="Freeze or unfreeze profile. Unfreezing allows overwriting and re-naming configurations"
-                disabled><span class="codicon codicon-unlock"></span></vscode-button>
-            <vscode-button id="btn-reset-config" appearance="secondary" class="tooltip-right icon-btn"
-                data-tooltip="Reset configuration to last saved values."
-                disabled><span class="codicon codicon-debug-restart"></span></vscode-button>
-            <vscode-button id="btn-edit-history" appearance="secondary" class="tooltip-right icon-btn"
-                data-tooltip="Rename the selected profile item display name" disabled><span
-                    class="codicon codicon-edit"></span></vscode-button>
-            <vscode-button id="btn-duplicate-history" appearance="secondary" class="tooltip-right icon-btn"
-                data-tooltip="Duplicate current screen configuration elements parameters values"><span
-                    class="codicon codicon-files"></span></vscode-button>
-            <vscode-button id="btn-add-history" appearance="secondary" class="tooltip-right icon-btn"
-                data-tooltip="Create a new fresh profile configuration from default settings"><span
-                    class="codicon codicon-add"></span></vscode-button>
-
-            <div class="vertical-divider"></div>
-
-            <vscode-button id="btn-open-history-file" appearance="secondary" class="tooltip-right icon-btn"
-                data-tooltip="Open history log file config directly in VS Code"><span
-                    class="codicon codicon-file"></span></vscode-button>
-            <vscode-button id="btn-reveal-history-folder" appearance="secondary" class="tooltip-right icon-btn"
-                data-tooltip="Reveal the physical history log file database in OS Finder / Explorer"><span
-                    class="codicon codicon-folder-opened"></span></vscode-button>
-            <vscode-button id="btn-clear-history" appearance="secondary" class="tooltip-right icon-btn"
-                data-tooltip="Remove items or clear all saved configuration history entries"><span
-                    class="codicon codicon-trash"></span></vscode-button>
+    <div class="collapsible-block" id="block-history">
+        <div class="collapsible-block-header tooltip-bottom" data-tooltip="History profile logs containing previously saved and automated configuration entries parameters values.">
+            <div class="collapsible-title-group">
+                <span class="codicon codicon-chevron-down" id="icon-block-history"></span>
+                <span>🕒 Configuration History</span>
+            </div>
+            <span class="collapsible-summary-text" id="summary-block-history"></span>
+        </div>
+        <div class="collapsible-block-content" id="content-block-history">
+            <div class="history-actions-container">
+                <vscode-button id="btn-toggle-history-view" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Toggle history scope: Current Repo (🏠) / All Repos (🌐)">🏠</vscode-button>
+                <vscode-dropdown id="historyCombo" style="flex-grow: 1;"></vscode-dropdown>
+                <vscode-text-field id="historyRenameInput" style="display: none; flex-grow: 1;" placeholder="Enter profile name display identifier..." data-tooltip="Press 'Enter' to confirm or 'Escape' to cancel layout edits"></vscode-text-field>
+                <vscode-button id="btn-freeze-history" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Freeze or unfreeze profile. Unfreezing allows overwriting and re-naming configurations" disabled><span class="codicon codicon-unlock"></span></vscode-button>
+                <vscode-button id="btn-reset-config" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Reset configuration to last saved values." disabled><span class="codicon codicon-debug-restart"></span></vscode-button>
+                <vscode-button id="btn-edit-history" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Rename the selected profile item display name" disabled><span class="codicon codicon-edit"></span></vscode-button>
+                <vscode-button id="btn-duplicate-history" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Duplicate current screen configuration elements parameters values"><span class="codicon codicon-files"></span></vscode-button>
+                <vscode-button id="btn-add-history" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Create a new fresh profile configuration from default settings"><span class="codicon codicon-add"></span></vscode-button>
+                <div class="vertical-divider"></div>
+                <vscode-button id="btn-open-history-file" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Open history log file config directly in VS Code"><span class="codicon codicon-file"></span></vscode-button>
+                <vscode-button id="btn-reveal-history-folder" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Reveal the physical history log file database in OS Finder / Explorer"><span class="codicon codicon-folder-opened"></span></vscode-button>
+                <vscode-button id="btn-clear-history" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Remove items or clear all saved configuration history entries"><span class="codicon codicon-trash"></span></vscode-button>
+            </div>
         </div>
     </div>
 
-    <div>
-        <div class="section-title"
-            data-tooltip="Absolute folder or files locations targeted for compilation (one path per line)">📁 Source
-            Paths (Editable)</div>
-        <div style="display: flex; gap: 5px; align-items: center;">
-            <vscode-text-area id="pathList" rows="4" resize="vertical"
-                placeholder="Enter source paths (one per line)"
-                style="flex-grow: 1; width: 100%;"></vscode-text-area>
-            <vscode-button id="btn-add-open-files" appearance="secondary" class="tooltip-right icon-btn"
-                data-tooltip="Add all currently open files to source path selection"><span
-                    class="codicon-go-to-file codicon"></span></vscode-button>
-            <vscode-button id="btn-add-git-diff" appearance="secondary" class="tooltip-right icon-btn"
-                data-tooltip="Identify and add files changed with git diff to source path selection"><span
-                    class="codicon codicon-git-compare"></span></vscode-button>
-            <vscode-button id="btn-open-cursor-line" appearance="secondary" class="tooltip-right icon-btn"
-                data-tooltip="Open path defined by current text cursor line index selection context"><span
-                    class="codicon codicon-link-external"></span></vscode-button>
-            <vscode-button id="btn-clear-paths" appearance="secondary" class="tooltip-right icon-btn"
-                data-tooltip="Clear current source paths selection"><span
-                    class="codicon-clear-all codicon"></span></vscode-button>
+    <div class="collapsible-block" id="block-sourcepaths">
+        <div class="collapsible-block-header tooltip-bottom" data-tooltip="Absolute directory or single files locations targeted for aggregation and token estimation context.">
+            <div class="collapsible-title-group">
+                <span class="codicon codicon-chevron-down" id="icon-block-sourcepaths"></span>
+                <span>📁 Source Paths</span>
+            </div>
+            <span class="collapsible-summary-text" id="summary-block-sourcepaths"></span>
+        </div>
+        <div class="collapsible-block-content" id="content-block-sourcepaths">
+            <div style="display: flex; gap: 5px; align-items: center;">
+                <vscode-text-area id="pathList" rows="4" resize="vertical" placeholder="Enter source paths (one per line)" style="flex-grow: 1; width: 100%;"></vscode-text-area>
+                <vscode-button id="btn-add-open-files" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Add all currently open files to source path selection"><span class="codicon-go-to-file codicon"></span></vscode-button>
+                <vscode-button id="btn-add-git-diff" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Identify and add files changed with git diff to source path selection"><span class="codicon codicon-git-compare"></span></vscode-button>
+                <vscode-button id="btn-open-cursor-line" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Open path defined by current text cursor line index selection context"><span class="codicon codicon-link-external"></span></vscode-button>
+                <vscode-button id="btn-clear-paths" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Clear current source paths selection"><span class="codicon-clear-all codicon"></span></vscode-button>
+            </div>
         </div>
     </div>
 
-    <div id="source-paths-filters" style="display: flex; gap: 15px; width: 100%;">
-        <div>
-            <span class="field-label"
-                data-tooltip="Max authorized physical size for a single file in Kilobytes. Larger files are skipped.">🏋️
-                Max File (KB)</span><br />
-            <vscode-text-field id="maxFile" value="50" style="width: 110px;"></vscode-text-field>
+    <div class="collapsible-block" id="block-filters">
+        <div class="collapsible-block-header tooltip-bottom" data-tooltip="Regular Expression masks defining targeted directories and source formatting inclusions or exclusions lists.">
+            <div class="collapsible-title-group">
+                <span class="codicon codicon-chevron-down" id="icon-block-filters"></span>
+                <span>🔍 Filters & Scope Constraints</span>
+            </div>
+            <span class="collapsible-summary-text" id="summary-block-filters"></span>
         </div>
-        <div style="flex-grow:1;">
-            <div class="filter-actions-header">
-                <span class="field-label" data-tooltip="Regex mapping specifying inside-folder structures to explicitly allow.">✅ Include Paths</span>
-                <div class="filter-btn-group">
-                    <vscode-button id="btn-sort-incPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically" data-dir="asc"><span class="codicon codicon-arrow-down"></span></vscode-button>
-                    <vscode-button id="btn-explode-incPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Explode unified expressions block layout to individual lines components"><span class="codicon codicon-unfold"></span></vscode-button>
+        <div class="collapsible-block-content" id="content-block-filters">
+            <div id="source-paths-filters" style="display: flex; gap: 15px; width: 100%;">
+                <div>
+                    <span class="field-label" data-tooltip="Max authorized physical size for a single file in Kilobytes. Larger files are skipped.">🏋️ Max File (KB)</span><br />
+                    <vscode-text-field id="maxFile" value="50" style="width: 110px;"></vscode-text-field>
+                </div>
+                <div style="flex-grow:1;">
+                    <div class="filter-actions-header">
+                        <span class="field-label" data-tooltip="Regex mapping specifying inside-folder structures to explicitly allow.">✅ Include Paths</span>
+                        <div class="filter-btn-group">
+                            <vscode-button id="btn-sort-incPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically" data-dir="asc"><span class="codicon codicon-arrow-down"></span></vscode-button>
+                            <vscode-button id="btn-explode-incPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Explode unified expressions block layout to individual lines components"><span class="codicon codicon-unfold"></span></vscode-button>
+                        </div>
+                    </div>
+                    <vscode-text-area id="incPaths" class="full-width" rows="4" resize="vertical"></vscode-text-area>
+                </div>
+                <div style="flex-grow:1; position: relative;">
+                    <div class="filter-actions-header">
+                        <span class="field-label" data-tooltip="Regex checklist specifying file extensions to let through during discovery.">🟢 Include exts</span>
+                        <div class="filter-btn-group">
+                            <vscode-button id="btn-sort-incExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically" data-dir="asc"><span class="codicon codicon-arrow-down"></span></vscode-button>
+                            <vscode-button id="btn-group-incExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Group extensions by category categories structure"><span class="codicon codicon-library"></span></vscode-button>
+                            <vscode-button id="btn-explode-incExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Explode unified expressions block layout to individual lines components"><span class="codicon codicon-unfold"></span></vscode-button>
+                            <vscode-button id="btn-predefined-inclusions" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Predefined extension inclusions."><span class="codicon codicon-kebab-vertical"></span></vscode-button>
+                        </div>
+                    </div>
+                    <div id="predefined-inclusions-menu" style="display: none; position: absolute; top: 24px; right: 0; background: var(--vscode-dropdown-background, #252526); border: 1px solid var(--vscode-dropdown-border, #3c3c3c); border-radius: 3px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 1000; min-width: 160px;"></div>
+                    <vscode-text-area id="incExts" class="full-width" rows="4" resize="vertical"></vscode-text-area>
+                </div>
+                <div style="flex-grow:1;">
+                    <div class="filter-actions-header">
+                        <span class="field-label" data-tooltip="Regex blacklisting targeted folder structures (e.g. node_modules, .git) to skip.">🚫 Exclude Paths</span>
+                        <div class="filter-btn-group">
+                            <vscode-button id="btn-sort-excPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically" data-dir="asc"><span class="codicon codicon-arrow-down"></span></vscode-button>
+                            <vscode-button id="btn-explode-excPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Explode unified expressions block layout to individual lines components"><span class="codicon codicon-unfold"></span></vscode-button>
+                        </div>
+                    </div>
+                    <vscode-text-area id="excPaths" class="full-width" rows="4" resize="vertical"></vscode-text-area>
+                </div>
+                <div style="flex-grow:1; position: relative;">
+                    <div class="filter-actions-header">
+                        <span class="field-label" data-tooltip="Regex mapping identifying forbidden raw formats (e.g. log, exe, png) to skip.">🔴 Exclude exts</span>
+                        <div class="filter-btn-group">
+                            <vscode-button id="btn-sort-excExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically" data-dir="asc"><span class="codicon codicon-arrow-down"></span></vscode-button>
+                            <vscode-button id="btn-group-excExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Group extensions by category categories structure"><span class="codicon codicon-library"></span></vscode-button>
+                            <vscode-button id="btn-explode-excExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Explode unified expressions block layout to individual lines components"><span class="codicon codicon-unfold"></span></vscode-button>
+                            <vscode-button id="btn-predefined-exclusions" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Predefined extension exclusions."><span class="codicon codicon-kebab-vertical"></span></vscode-button>
+                        </div>
+                    </div>
+                    <div id="predefined-exclusions-menu" style="display: none; position: absolute; top: 24px; right: 0; background: var(--vscode-dropdown-background, #252526); border: 1px solid var(--vscode-dropdown-border, #3c3c3c); border-radius: 3px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 1000; min-width: 160px;"></div>
+                    <vscode-text-area id="excExts" class="full-width" rows="4" resize="vertical"></vscode-text-area>
                 </div>
             </div>
-            <vscode-text-area id="incPaths" class="full-width" rows="4" resize="vertical"></vscode-text-area>
-        </div>
-        <div style="flex-grow:1; position: relative;">
-            <div class="filter-actions-header">
-                <span class="field-label" data-tooltip="Regex checklist specifying file extensions to let through during discovery.">🟢 Include exts</span>
-                <div class="filter-btn-group">
-                    <vscode-button id="btn-sort-incExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically" data-dir="asc"><span class="codicon codicon-arrow-down"></span></vscode-button>
-                    <vscode-button id="btn-group-incExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Group extensions by category categories structure"><span class="codicon codicon-library"></span></vscode-button>
-                    <vscode-button id="btn-explode-incExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Explode unified expressions block layout to individual lines components"><span class="codicon codicon-unfold"></span></vscode-button>
-                    <vscode-button id="btn-predefined-inclusions" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Predefined extension inclusions. Press <strong>Ctrl/Cmd</strong> key to <strong>replace</strong> content, instead adding them."><span class="codicon codicon-kebab-vertical"></span></vscode-button>
-                </div>
-            </div>
-            <div id="predefined-inclusions-menu" style="display: none; position: absolute; top: 24px; right: 0; background: var(--vscode-dropdown-background, #252526); border: 1px solid var(--vscode-dropdown-border, #3c3c3c); border-radius: 3px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 1000; min-width: 160px;"></div>
-            <vscode-text-area id="incExts" class="full-width" rows="4" resize="vertical"></vscode-text-area>
-        </div>
-        <div style="flex-grow:1;">
-            <div class="filter-actions-header">
-                <span class="field-label" data-tooltip="Regex blacklisting targeted folder structures (e.g. node_modules, .git) to skip.">🚫 Exclude Paths</span>
-                <div class="filter-btn-group">
-                    <vscode-button id="btn-sort-excPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically" data-dir="asc"><span class="codicon codicon-arrow-down"></span></vscode-button>
-                    <vscode-button id="btn-explode-excPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Explode unified expressions block layout to individual lines components"><span class="codicon codicon-unfold"></span></vscode-button>
-                </div>
-            </div>
-            <vscode-text-area id="excPaths" class="full-width" rows="4" resize="vertical"></vscode-text-area>
-        </div>
-        <div style="flex-grow:1; position: relative;">
-            <div class="filter-actions-header">
-                <span class="field-label" data-tooltip="Regex mapping identifying forbidden raw formats (e.g. log, exe, png) to skip.">🔴 Exclude exts</span>
-                <div class="filter-btn-group">
-                    <vscode-button id="btn-sort-excExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically" data-dir="asc"><span class="codicon codicon-arrow-down"></span></vscode-button>
-                    <vscode-button id="btn-group-excExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Group extensions by category categories structure"><span class="codicon codicon-library"></span></vscode-button>
-                    <vscode-button id="btn-explode-excExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Explode unified expressions block layout to individual lines components"><span class="codicon codicon-unfold"></span></vscode-button>
-                    <vscode-button id="btn-predefined-exclusions" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Predefined extension exclusions. Press <strong>Ctrl/Cmd</strong> key to <strong>replace</strong> content, instead adding them."><span class="codicon codicon-kebab-vertical"></span></vscode-button>
-                </div>
-            </div>
-            <div id="predefined-exclusions-menu" style="display: none; position: absolute; top: 24px; right: 0; background: var(--vscode-dropdown-background, #252526); border: 1px solid var(--vscode-dropdown-border, #3c3c3c); border-radius: 3px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 1000; min-width: 160px;"></div>
-            <vscode-text-area id="excExts" class="full-width" rows="4" resize="vertical"></vscode-text-area>
         </div>
     </div>
 
-    <div>
-        <div class="section-title"
-            data-tooltip="Absolute storage target destination where compiled text files will be written.">💾
-            Destination Directory</div>
-        <div style="display: flex; gap: 5px; align-items: center;">
-            <vscode-text-field id="destDir" class="full-width"
-                placeholder="/absolute/path/to/output"></vscode-text-field>
-            <vscode-button id="btn-copy-latest-files" appearance="secondary" class="tooltip-right icon-btn"
-                data-tooltip="Copy last exported files to OS clipboard"><span
-                    class="codicon codicon-clippy"></span></vscode-button>
-            <vscode-button id="btn-open-finder-dest" appearance="secondary" class="tooltip-right icon-btn"
-                data-tooltip="Open destination directory in OS Finder / Explorer"><span
-                    class="codicon codicon-folder-opened"></span></vscode-button>
-            <vscode-button id="btn-clear-dest" appearance="secondary" class="tooltip-right icon-btn"
-                data-tooltip="Clean destination directory content"><span
-                    class="codicon codicon-trash"></span></vscode-button>
+    <div class="collapsible-block" id="block-destination">
+        <div class="collapsible-block-header tooltip-bottom" data-tooltip="Absolute distribution path folder location where structured files will be generated.">
+            <div class="collapsible-title-group">
+                <span class="codicon codicon-chevron-down" id="icon-block-destination"></span>
+                <span>💾 Destination Directory</span>
+            </div>
+            <span class="collapsible-summary-text" id="summary-block-destination"></span>
+        </div>
+        <div class="collapsible-block-content" id="content-block-destination">
+            <div style="display: flex; gap: 5px; align-items: center;">
+                <vscode-text-field id="destDir" class="full-width" placeholder="/absolute/path/to/output"></vscode-text-field>
+                <vscode-button id="btn-copy-latest-files" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Copy last exported files to OS clipboard"><span class="codicon codicon-clippy"></span></vscode-button>
+                <vscode-button id="btn-open-finder-dest" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Open destination directory in OS Finder / Explorer"><span class="codicon codicon-folder-opened"></span></vscode-button>
+                <vscode-button id="btn-clear-dest" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Clean destination directory content"><span class="codicon codicon-trash"></span></vscode-button>
+            </div>
         </div>
     </div>
 
-    <div
-        style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; align-items: end; margin-bottom: 10px;">
-        <div style="margin-bottom: 1px;">
-            <span class="field-label"
-                data-tooltip="Structured file format schema template applied to aggregate the files contents.">Output
-                Format</span>
-            <vscode-dropdown id="format" class="full-width">
-                <vscode-option value="yaml">YAML</vscode-option>
-                <vscode-option value="json">JSON</vscode-option>
-                <vscode-option value="xml">XML</vscode-option>
-                <vscode-option value="toml">TOML</vscode-option>
-                <vscode-option value="txt">TXT</vscode-option>
-            </vscode-dropdown>
+    <div class="collapsible-block" id="block-options">
+        <div class="collapsible-block-header tooltip-bottom" data-tooltip="Aggregated output payload formats schemas, text partitions thresholds, chunk splits and logging rules.">
+            <div class="collapsible-title-group">
+                <span class="codicon codicon-chevron-down" id="icon-block-options"></span>
+                <span>⚙️ Output Formatting & Rules</span>
+            </div>
+            <span class="collapsible-summary-text" id="summary-block-options"></span>
         </div>
-        <div>
-            <span class="field-label"
-                data-tooltip="Maximum payload slice limit for chunk splitting in Kilobytes (0 means unlimitted size).">Max
-                Chunk (KB)</span>
-            <vscode-text-field id="maxChunk" class="full-width" value="0"></vscode-text-field>
-        </div>
-        <div style="margin-bottom: 2px;">
-            <vscode-checkbox id="splitChunkByFileExtension"
-                data-tooltip="Force the export runner to partition output chunks whenever a change of file extension occurs.">Split&nbsp;by&nbsp;ext</vscode-checkbox>
-        </div>
-        <div style="margin-bottom: 2px;">
-            <vscode-checkbox id="copyGeneratedFilesToClipboard"
-                data-tooltip="Automatically copy generated export files to the <strong>OS clipboard</strong> after each successful run, making them easy to paste into Finder, Explorer, LLM chat interfaces, and other tools.">Copy&nbsp;to&nbsp;clip</vscode-checkbox>
-        </div>
-        <div style="margin-bottom: 2px;">
-            <vscode-checkbox id="generateTreeView"
-                data-tooltip="Instruct the backend engine to build an isolated hierarchical JSON manifest describing all processed source components."
-                checked>Tree&nbsp;View</vscode-checkbox>
-        </div>
-        <div style="margin-bottom: 5px;">
-            <vscode-checkbox id="generateLogConsole"
-                data-tooltip="Enable standard output logging directly streaming into this extension terminal window view.">Log&nbsp;Console</vscode-checkbox>
-        </div>
-        <div style="margin-bottom: 5px;">
-            <vscode-checkbox id="generateLogFile"
-                data-tooltip="Instruct the exporter engine to save a physical log tracing history report in the destination directory.">Log&nbsp;File</vscode-checkbox>
+        <div class="collapsible-block-content" id="content-block-options">
+            <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; align-items: end; margin-bottom: 10px;">
+                <div style="margin-bottom: 1px;">
+                    <span class="field-label" data-tooltip="Structured file format schema template applied to aggregate the files contents.">Output Format</span>
+                    <vscode-dropdown id="format" class="full-width">
+                        <vscode-option value="yaml">YAML</vscode-option>
+                        <vscode-option value="json">JSON</vscode-option>
+                        <vscode-option value="xml">XML</vscode-option>
+                        <vscode-option value="toml">TOML</vscode-option>
+                        <vscode-option value="txt">TXT</vscode-option>
+                    </vscode-dropdown>
+                </div>
+                <div>
+                    <span class="field-label" data-tooltip="Maximum payload slice limit for chunk splitting in Kilobytes (0 means unlimitted size).">Max Chunk (KB)</span>
+                    <vscode-text-field id="maxChunk" class="full-width" value="0"></vscode-text-field>
+                </div>
+                <div style="margin-bottom: 2px;">
+                    <vscode-checkbox id="splitChunkByFileExtension" data-tooltip="Force the export runner to partition output chunks whenever a change of file extension occurs.">Split&nbsp;by&nbsp;ext</vscode-checkbox>
+                </div>
+                <div style="margin-bottom: 2px;">
+                    <vscode-checkbox id="copyGeneratedFilesToClipboard" data-tooltip="Automatically copy generated export files to the OS clipboard after each successful run.">Copy&nbsp;to&nbsp;clip</vscode-checkbox>
+                </div>
+                <div style="margin-bottom: 2px;">
+                    <vscode-checkbox id="generateTreeView" data-tooltip="Instruct the backend engine to build an isolated hierarchical JSON manifest describing all processed source components." checked>Tree&nbsp;View</vscode-checkbox>
+                </div>
+                <div style="margin-bottom: 5px;">
+                    <vscode-checkbox id="generateLogConsole" data-tooltip="Enable standard output logging directly streaming into this extension terminal window view.">Log&nbsp;Console</vscode-checkbox>
+                </div>
+                <div style="margin-bottom: 5px;">
+                    <vscode-checkbox id="generateLogFile" data-tooltip="Instruct the exporter engine to save a physical log tracing history report in the destination directory.">Log&nbsp;File</vscode-checkbox>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;">
-        <button id="btn-run" class="btn-run-custom" style="margin: 10px; width: 150px;">
-            <span class="codicon codicon-play"></span> RUN EXPORT
+    <div style="display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; margin: 10px 0;">
+        <button id="btn-run" class="btn-run-custom" style="width: 150px; flex-shrink: 0;">
+            <span class="codicon codicon-play"></span> RUN<br/> EXPORT
         </button>
-        <div id="exchange-buttons-container" style="display: flex; gap: 10px; align-items: center;"></div>
+        <div id="exchange-buttons-container" style="display: flex; gap: 6px; align-items: center; flex-shrink: 0;"></div>
     </div>
 
     <vscode-panels>
@@ -348,12 +372,15 @@
 
         <vscode-panel-view id="view-report">
             <div style="width: 100%; display: flex; flex-direction: column; gap: 0px;">
-                <div id="costEstimationSection" style="display: none; margin-bottom: 15px; width: 100%;">
-                    <div id="costEstimationHeader" style="font-size: 14px; font-weight: 600; cursor: pointer; border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: 5px; margin-bottom: 0px; display: flex; align-items: center; gap: 6px; user-select: none;">
-                        <span id="costEstimationIcon" class="codicon-chevron-right codicon"></span>
-                        <span id="costEstimationTitle">💰 Cost Estimation (0 tokens)</span>
+                <div class="collapsible-block" id="costEstimationSection" style="display: none; margin-bottom: 15px; width: 100%;">
+                    <div class="collapsible-block-header">
+                        <div class="collapsible-title-group">
+                            <span class="codicon-chevron-right codicon" id="icon-costEstimationSection"></span>
+                            <span id="costEstimationTitle">💰 Cost Estimation (0 tokens)</span>
+                        </div>
+                        <span class="collapsible-summary-text" id="summary-costEstimationSection"></span>
                     </div>
-                    <div id="costEstimationContent" style="display: none; padding-top: 10px; margin-bottom: 15px;">
+                    <div class="collapsible-block-content" id="content-costEstimationSection" style="display: none; padding-top: 10px;">
                         <table id="pricingTable" style="width: 100%; border-collapse: collapse; font-family: var(--vscode-editor-font-family); font-size: 12px; border: 1px solid var(--vscode-panel-border);">
                             <thead>
                                 <tr style="background: var(--vscode-sideBar-background); color: #00bcd4; text-align: left;">
@@ -367,100 +394,155 @@
                     </div>
                 </div>
 
-                <div id="reportTableSection" style="display: none;">
-                    <div class="section-title">📊 Export Report (by Extension)</div>
-                    <table id="reportTable"
-                        style="width: 100%; border-collapse: collapse; font-family: var(--vscode-editor-font-family); font-size: 12px; border: 1px solid var(--vscode-panel-border);">
-                        <thead>
-                            <tr style="background: var(--vscode-sideBar-background); color: #00bcd4; text-align: left;">
-                                <th id="th-ext" style="padding: 8px; border: 1px solid var(--vscode-panel-border);">Extension ↕</th>
-                                <th id="th-exported" style="padding: 8px; border: 1px solid var(--vscode-panel-border);">Exported ↕</th>
-                                <th id="th-rejected" style="padding: 8px; border: 1px solid var(--vscode-panel-border);">Size Rejected ↕</th>
-                                <th id="th-excluded" style="padding: 8px; border: 1px solid var(--vscode-panel-border);">Excluded ↕</th>
-                            </tr>
-                        </thead>
-                        <tbody id="reportTableBody"></tbody>
-                        <tfoot id="reportTableFooter"></tfoot>
-                    </table>
+                <div class="collapsible-block" id="reportTableSection" style="display: none; margin-bottom: 15px; width: 100%;">
+                    <div class="collapsible-block-header">
+                        <div class="collapsible-title-group">
+                            <span class="codicon codicon-chevron-down" id="icon-reportTableSection"></span>
+                            <span>📊 Export Report (by Extension)</span>
+                        </div>
+                        <span class="collapsible-summary-text" id="summary-reportTableSection"></span>
+                    </div>
+                    <div class="collapsible-block-content" id="content-reportTableSection" style="padding-top: 10px;">
+                        <table id="reportTable" style="width: 100%; border-collapse: collapse; font-family: var(--vscode-editor-font-family); font-size: 12px; border: 1px solid var(--vscode-panel-border);">
+                            <thead>
+                                <tr style="background: var(--vscode-sideBar-background); color: #00bcd4; text-align: left;">
+                                    <th id="th-ext" style="padding: 8px; border: 1px solid var(--vscode-panel-border);">Extension ↕</th>
+                                    <th id="th-exported" style="padding: 8px; border: 1px solid var(--vscode-panel-border);">Exported ↕</th>
+                                    <th id="th-rejected" style="padding: 8px; border: 1px solid var(--vscode-panel-border);">Size Rejected ↕</th>
+                                    <th id="th-excluded" style="padding: 8px; border: 1px solid var(--vscode-panel-border);">Excluded ↕</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reportTableBody"></tbody>
+                            <tfoot id="reportTableFooter"></tfoot>
+                        </table>
+                    </div>
                 </div>
-                <div id="reportGraphSection" style="display: none;">
-                    <div class="section-title">🥧 Distribution (Pie Chart)</div>
-                    <div class="chart-container"><canvas id="reportChart"></canvas></div>
+
+                <div class="collapsible-block" id="reportGraphSection" style="display: none; margin-bottom: 15px; width: 100%;">
+                    <div class="collapsible-block-header">
+                        <div class="collapsible-title-group">
+                            <span class="codicon codicon-chevron-down" id="icon-reportGraphSection"></span>
+                            <span>🥧 Distribution (Pie Chart)</span>
+                        </div>
+                        <span class="collapsible-summary-text" id="summary-reportGraphSection"></span>
+                    </div>
+                    <div class="collapsible-block-content" id="content-reportGraphSection" style="padding-top: 10px;">
+                        <div class="chart-container"><canvas id="reportChart"></canvas></div>
+                    </div>
                 </div>
             </div>
         </vscode-panel-view>
 
         <vscode-panel-view id="view-files">
-            <div style="width: 100%; display: flex; flex-direction: column; gap: 10px;">
-                <div id="exportedFilesTitle" class="section-title"
-                    data-tooltip="Alphabetical listing of all chunks generated during the last cycle. Display (NB gen Files / NB Filtered Files)">📂
-                    Exported Files</div>
-                <div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 5px; width: 100%;">
-                    <div style="flex-grow: 1;">
-                        <span data-tooltip="Filter on generated files by their name using a regular expression." class="field-label">File Name</span>
-                        <vscode-text-field id="filterFileName" placeholder="Regex pattern" class="full-width"></vscode-text-field>
+            <div style="width: 100%; display: flex; flex-direction: column; gap: 0px;">
+                <div class="collapsible-block" id="section-exported-files" style="width: 100%;">
+                    <div class="collapsible-block-header">
+                        <div class="collapsible-title-group">
+                            <span class="codicon codicon-chevron-down" id="icon-section-exported-files"></span>
+                            <span id="exportedFilesTitle">📂 Exported Files</span>
+                        </div>
+                        <span class="collapsible-summary-text" id="summary-section-exported-files"></span>
                     </div>
-                    <div style="flex-grow: 1;">
-                        <span data-tooltip="Filter on generated files by their content using a regular expression." class="field-label">File Content</span>
-                        <vscode-text-field id="filterFileContent" placeholder="Regex pattern" class="full-width"></vscode-text-field>
+                    <div class="collapsible-block-content" id="content-section-exported-files" style="padding-top: 5px;">
+                        <div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 10px; width: 100%;">
+                            <div style="flex-grow: 1;">
+                                <span class="field-label">File Name</span>
+                                <vscode-text-field id="filterFileName" placeholder="Regex pattern" class="full-width"></vscode-text-field>
+                            </div>
+                            <div style="flex-grow: 1;">
+                                <span class="field-label">File Content</span>
+                                <vscode-text-field id="filterFileContent" placeholder="Regex pattern" class="full-width"></vscode-text-field>
+                            </div>
+                            <vscode-button id="btn-filter-files" appearance="primary">Filter</vscode-button>
+                            <vscode-button id="btn-reset-filter" appearance="secondary"><span class="codicon codicon-debug-restart"></span></vscode-button>
+                        </div>
+                        <div id="exportedFilesList" class="paths-list" style="margin-bottom: 15px;"></div>
                     </div>
-                    <vscode-button id="btn-filter-files" appearance="primary">Filter</vscode-button>
-                    <vscode-button id="btn-reset-filter" appearance="secondary"><span class="codicon codicon-debug-restart"></span></vscode-button>
                 </div>
-                <div id="exportedFilesList" class="paths-list"></div>
-                <div class="section-title">📝 Logs</div>
-                <div id="logsList" class="paths-list" style="max-height: 100px;"></div>
-                <div class="section-title">📑 Reports</div>
-                <div id="reportsList" class="paths-list" style="max-height: 100px;"></div>
+
+                <div class="collapsible-block" id="section-logs-block" style="width: 100%;">
+                    <div class="collapsible-block-header">
+                        <div class="collapsible-title-group">
+                            <span class="codicon codicon-chevron-down" id="icon-section-logs-block"></span>
+                            <span>📝 Logs</span>
+                        </div>
+                        <span class="collapsible-summary-text" id="summary-section-logs-block"></span>
+                    </div>
+                    <div class="collapsible-block-content" id="content-section-logs-block">
+                        <div id="logsList" class="paths-list" style="max-height: 100px;"></div>
+                    </div>
+                </div>
+
+                <div class="collapsible-block" id="section-reports-block" style="width: 100%;">
+                    <div class="collapsible-block-header">
+                        <div class="collapsible-title-group">
+                            <span class="codicon codicon-chevron-down" id="icon-section-reports-block"></span>
+                            <span>📑 Reports</span>
+                        </div>
+                        <span class="collapsible-summary-text" id="summary-section-reports-block"></span>
+                    </div>
+                    <div class="collapsible-block-content" id="content-section-reports-block">
+                        <div id="reportsList" class="paths-list" style="max-height: 100px;"></div>
+                    </div>
+                </div>
             </div>
         </vscode-panel-view>
 
         <vscode-panel-view id="view-tree">
-            <div style="width: 100%; display: flex; flex-direction: column; gap: 10px; height: 100%;">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: 5px; margin-bottom: 2px; box-shadow: 0px 4px 5px -3px rgba(0, 0, 0, 0.25);">
-                    <div style="font-size: 14px; font-weight: 600;" class="tooltip-bottom" data-tooltip="Hierarchical structure view of all processed outputs dynamically organized by directories.">🪾 Exported Source Files Explorer</div>
+            <div style="width: 100%; display: flex; flex-direction: column; gap: 0px;">
+                <div class="collapsible-block" id="section-tree-explorer" style="width: 100%;">
+                    <div class="collapsible-block-header">
+                        <div class="collapsible-title-group">
+                            <span class="codicon codicon-chevron-down" id="icon-section-tree-explorer"></span>
+                            <span>🪾 Exported Source Files Explorer</span>
+                        </div>
+                        <span class="collapsible-summary-text" id="summary-section-tree-explorer"></span>
+                    </div>
+                    <div class="collapsible-block-content" id="content-section-tree-explorer" style="padding-top: 5px;">
+                        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;">
+                            <vscode-button id="btnTreeToggleMode" appearance="icon" class="tooltip-bottom icon-btn" data-tooltip="Toggle structure mapping mode"><span class="codicon-list-flat codicon"></span></vscode-button>
+                            <vscode-text-field id="treeSearchInput" placeholder="Search files/extensions..." style="flex-grow: 1;"></vscode-text-field>
+                            <vscode-checkbox id="cbTreeRegexp">.*</vscode-checkbox>
+                            <vscode-button id="btnTreeClearSearch" appearance="icon" class="tooltip-bottom icon-btn"><span class="codicon-clear-all codicon"></span></vscode-button>
+                            <vscode-button id="btnTreeExpandAll" appearance="icon" class="tooltip-bottom icon-btn"><span class="codicon codicon-expand-all"></span></vscode-button>
+                            <vscode-button id="btnTreeCollapseAll" appearance="icon" class="tooltip-bottom icon-btn"><span class="codicon-collapse-all codicon"></span></vscode-button>
+                            <vscode-button id="btnTreeExport" appearance="icon" class="tooltip-left icon-btn"><span class="codicon codicon-export"></span></vscode-button>
+                        </div>
+                        <div id="view-tree-content" style="overflow-y: auto; max-height: 400px; font-family: var(--vscode-editor-font-family); font-size: 13px;"></div>
+                    </div>
                 </div>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <vscode-button id="btnTreeToggleMode" appearance="icon" class="tooltip-bottom icon-btn" data-tooltip="Toggle structure mapping mode">
-                        <span class="codicon-list-flat codicon"></span>
-                    </vscode-button>
-                    <vscode-text-field id="treeSearchInput" placeholder="Search files/extensions..." style="flex-grow: 1;"></vscode-text-field>
-                    <vscode-checkbox id="cbTreeRegexp" data-tooltip="Use Regular Expression for search">.*</vscode-checkbox>
-                    <vscode-button id="btnTreeClearSearch" appearance="icon" class="tooltip-bottom icon-btn" data-tooltip="Clear search filters and reset views">
-                        <span class="codicon-clear-all codicon"></span>
-                    </vscode-button>
-                    <vscode-button id="btnTreeExpandAll" appearance="icon" class="tooltip-bottom icon-btn" data-tooltip="Expand All">
-                        <span class="codicon codicon-expand-all"></span>
-                    </vscode-button>
-                    <vscode-button id="btnTreeCollapseAll" appearance="icon" class="tooltip-bottom icon-btn" data-tooltip="Collapse All">
-                        <span class="codicon-collapse-all codicon"></span>
-                    </vscode-button>
-                    <vscode-button id="btnTreeExport" appearance="icon" class="tooltip-left icon-btn" data-tooltip="Export checked manifest selection items">
-                        <span class="codicon codicon-export"></span>
-                    </vscode-button>
-                </div>
-                <div id="view-tree-content" style="overflow-y: auto; flex-grow: 1; font-family: var(--vscode-editor-font-family); font-size: 13px;"></div>
             </div>
         </vscode-panel-view>
 
         <vscode-panel-view id="view-terminal">
-            <div class="terminal-container" style="width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: 5px; margin-bottom: 2px; box-shadow: 0px 4px 5px -3px rgba(0, 0, 0, 0.25);">
-                    <div style="font-size: 14px; font-weight: 600;" class="tooltip-bottom" data-tooltip="To copy/paste in your terminal or add to sh script for automation.">⚙️ Bash command run by the tool</div>
-                </div>
-                <div style="display: flex; flex-grow: 1; width: 100%;">
-                    <div style="display: flex; flex-direction: row; align-items: flex-start; background: #1e1e1e; padding: 4px; border-radius: 4px; border: 1px solid var(--vscode-panel-border); box-sizing: border-box; width: 100%;">
-                        <vscode-text-area id="terminal-cmd" rows="6" resize="vertical" readonly style="flex-grow: 1; font-family: var(--vscode-editor-font-family, 'Menlo', monospace); font-size: 11px; margin: 0; --background-color: #1e1e1e; --input-background: #1e1e1e; --control-corner-radius: 4px 0 0 4px; --border-width: 0; --stroke-width: 0; --input-border-width: 0;"></vscode-text-area>
-                        <div style="background: #1e1e1e; display: flex; align-items: flex-start; justify-content: center; padding: 4px 8px 0 4px; border-radius: 0 4px 4px 0;">
-                            <vscode-button id="btn-copy-cmd" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Copy compiled Python command to clipboard"><span class="codicon codicon-copy"></span></vscode-button>
+            <div class="terminal-container" style="width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 0px;">
+                <div class="collapsible-block" id="section-terminal-cmd" style="width: 100%;">
+                    <div class="collapsible-block-header">
+                        <div class="collapsible-title-group">
+                            <span class="codicon codicon-chevron-down" id="icon-section-terminal-cmd"></span>
+                            <span>⚙️ Bash command run by the tool</span>
+                        </div>
+                        <span class="collapsible-summary-text" id="summary-section-terminal-cmd"></span>
+                    </div>
+                    <div class="collapsible-block-content" id="content-section-terminal-cmd" style="padding-top: 5px;">
+                        <div style="display: flex; flex-direction: row; align-items: flex-start; background: #1e1e1e; padding: 4px; border-radius: 4px; border: 1px solid var(--vscode-panel-border); box-sizing: border-box; width: 100%; margin-bottom: 15px;">
+                            <vscode-text-area id="terminal-cmd" rows="4" resize="vertical" readonly style="flex-grow: 1; font-family: var(--vscode-editor-font-family, 'Menlo', monospace); font-size: 11px; margin: 0; --background-color: #1e1e1e; --input-background: #1e1e1e; --border-width: 0;"></vscode-text-area>
+                            <div style="background: #1e1e1e; display: flex; align-items: flex-start; justify-content: center; padding: 4px 8px 0 4px;"><vscode-button id="btn-copy-cmd" appearance="icon" class="tooltip-right icon-btn"><span class="codicon codicon-copy"></span></vscode-button></div>
                         </div>
                     </div>
                 </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: 5px; margin-bottom: 2px; box-shadow: 0px 4px 5px -3px rgba(0, 0, 0, 0.25);">
-                    <div style="font-size: 14px; font-weight: 600;" class="tooltip-bottom" data-tooltip="Logs generated by the Python script execution.">🐍 Python script Logs</div>
-                </div>
-                <div style="display: flex; flex-grow: 1; width: 100%;">
-                    <div class="terminal" id="terminal" style="width: 100%; box-sizing: border-box; background: #1e1e1e; color: #d4d4d4; border-radius: 4px; border: 1px solid var(--vscode-panel-border); padding: 12px; min-height: 150px; height: 280px; resize: vertical; overflow: auto; font-family: var(--vscode-editor-font-family, 'Menlo', monospace); font-size: 12px;"></div>
+
+                <div class="collapsible-block" id="section-terminal-logs" style="width: 100%;">
+                    <div class="collapsible-block-header">
+                        <div class="collapsible-title-group">
+                            <span class="codicon codicon-chevron-down" id="icon-section-terminal-logs"></span>
+                            <span>🐍 Python script Logs</span>
+                        </div>
+                        <span class="collapsible-summary-text" id="summary-section-terminal-logs"></span>
+                    </div>
+                    <div class="collapsible-block-content" id="content-section-terminal-logs" style="padding-top: 5px;">
+                        <div class="terminal" id="terminal" style="width: 100%; box-sizing: border-box; background: #1e1e1e; color: #d4d4d4; border-radius: 4px; border: 1px solid var(--vscode-panel-border); padding: 12px; min-height: 150px; height: 240px; resize: vertical; overflow: auto; font-family: var(--vscode-editor-font-family, 'Menlo', monospace); font-size: 12px;"></div>
+                    </div>
                 </div>
             </div>
         </vscode-panel-view>

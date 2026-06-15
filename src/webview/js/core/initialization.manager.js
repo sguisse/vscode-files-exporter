@@ -8,10 +8,24 @@ import { FiltersManager } from '../services/filters-manager.js';
 import { DestinationManager } from '../services/destination-manager.js';
 import { ExportManager } from '../services/export-manager.js';
 import { HandlerManager } from '../services/handler-manager.js';
+import { BlockSummaryBuilder } from '../services/block-summary-builder.js';
 
 let isModifierPressed = false;
 
 export const InitializationManager = {
+    refreshBlockSummaryUI(blockId, isCollapsed) {
+        const summaryElement = document.getElementById(`summary-${blockId}`);
+        if (!summaryElement) return;
+
+        if (isCollapsed) {
+            summaryElement.innerText = BlockSummaryBuilder.computeBlockSummary(blockId);
+            summaryElement.style.display = 'inline-block';
+        } else {
+            summaryElement.innerText = '';
+            summaryElement.style.display = 'none';
+        }
+    },
+
     init(tabs) {
         window.reportTab = tabs.reportTab;
         window.filesTab = tabs.filesTab;
@@ -22,6 +36,49 @@ export const InitializationManager = {
         UIController.initCursorTooltipTracker();
 
         if (tabs.helpTab) tabs.helpTab.render();
+
+        const allBlocks = [
+            'block-history', 'block-sourcepaths', 'block-filters', 'block-destination', 'block-options',
+            'costEstimationSection', 'reportTableSection', 'reportGraphSection',
+            'section-exported-files', 'section-logs-block', 'section-reports-block',
+            'section-tree-explorer', 'section-terminal-cmd', 'section-terminal-logs'
+        ];
+
+        const collapsedByDefault = ['costEstimationSection'];
+
+        allBlocks.forEach(blockId => {
+            const blockEl = document.getElementById(blockId);
+            if (!blockEl) return;
+
+            const header = blockEl.querySelector('.collapsible-block-header');
+            const content = blockEl.querySelector('.collapsible-block-content');
+            const icon = document.getElementById(`icon-${blockId}`) || blockEl.querySelector('.collapsible-title-group .codicon');
+
+            if (header && content && icon) {
+                const shouldCollapse = collapsedByDefault.includes(blockId);
+                content.style.display = shouldCollapse ? 'none' : 'block';
+                icon.className = shouldCollapse ? 'codicon codicon-chevron-right' : 'codicon codicon-chevron-down';
+                this.refreshBlockSummaryUI(blockId, shouldCollapse);
+
+                header.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const isClosed = content.style.display === 'none';
+                    content.style.display = isClosed ? 'block' : 'none';
+                    icon.className = isClosed ? 'codicon codicon-chevron-down' : 'codicon codicon-chevron-right';
+                    this.refreshBlockSummaryUI(blockId, !isClosed);
+                };
+            }
+        });
+
+        window.forceGlobalSummariesUpdate = () => {
+            allBlocks.forEach(id => {
+                const content = document.getElementById(`content-${id}`);
+                if (content && content.style.display === 'none') {
+                    this.refreshBlockSummaryUI(id, true);
+                }
+            });
+        };
 
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Control' || e.key === 'Meta') {
@@ -104,6 +161,7 @@ export const InitializationManager = {
             UIController.syncButtonsState(val);
             ValidatorService.clearAllValidationStyles();
             UIController.checkSyncStatus();
+            setTimeout(window.forceGlobalSummariesUpdate, 60);
         });
 
         document.getElementById('btn-freeze-history')?.addEventListener('click', () => {
@@ -115,6 +173,7 @@ export const InitializationManager = {
 
         document.getElementById('btn-reset-config')?.addEventListener('click', () => {
             HistoryManager.resetCurrentConfigFields();
+            setTimeout(window.forceGlobalSummariesUpdate, 20);
         });
 
         document.getElementById('btn-edit-history')?.addEventListener('click', HistoryManager.enterInlineRenameMode);
@@ -165,7 +224,10 @@ export const InitializationManager = {
         document.getElementById('btn-reveal-history-folder')?.addEventListener('click', () => bridge.postMessage('revealHistoryInOS'));
         document.getElementById('btn-clear-history')?.addEventListener('click', () => bridge.postMessage('clearHistory', { selectedId: state.currentSelectedId }));
 
-        document.getElementById('btn-clear-paths')?.addEventListener('click', SourcePathsManager.clearPaths);
+        document.getElementById('btn-clear-paths')?.addEventListener('click', () => {
+            SourcePathsManager.clearPaths();
+            setTimeout(window.forceGlobalSummariesUpdate, 20);
+        });
         document.getElementById('btn-add-open-files')?.addEventListener('click', SourcePathsManager.addOpenFiles);
         document.getElementById('btn-add-git-diff')?.addEventListener('click', SourcePathsManager.addGitDiffFiles);
 
@@ -215,19 +277,23 @@ export const InitializationManager = {
             }
         });
 
-        // FIX VALIDATION : Rattachement direct à l'élément pour contourner l'asynchronisme du Shadow DOM
-        const observedFields = ['pathList', 'destDir', 'maxFile', 'maxChunk', 'incPaths', 'excPaths', 'incExts', 'excExts'];
+        // Trigger de validation rattaché directement à l'élément hôte du WebComponent
+        const observedFields = ['pathList', 'destDir', 'maxFile', 'maxChunk', 'incPaths', 'excPaths', 'incExts', 'excExts', 'format', 'splitChunkByFileExtension', 'copyGeneratedFilesToClipboard', 'generateTreeView', 'generateLogConsole', 'generateLogFile'];
         observedFields.forEach(id => {
             const el = document.getElementById(id);
             if (el) {
                 el.addEventListener('blur', () => {
                     ValidatorService.executeFieldValidation(id);
                     UIController.checkSyncStatus();
+                    window.forceGlobalSummariesUpdate();
                 });
-
                 el.addEventListener('input', () => {
                     ValidatorService.executeFieldValidation(id);
                     UIController.checkSyncStatus();
+                    window.forceGlobalSummariesUpdate();
+                });
+                el.addEventListener('change', () => {
+                    window.forceGlobalSummariesUpdate();
                 });
             }
         });
@@ -240,7 +306,10 @@ export const InitializationManager = {
             case 'excludeExplorerPathSelection': HandlerManager.handleExcludeExplorerPathSelection(message, tabs); break;
             case 'checkPathsResult': HandlerManager.handleCheckPathsResult(message, tabs); break;
             case 'updatePaths': HandlerManager.handleUpdatePaths(message, tabs); break;
-            case 'initSettings': HandlerManager.handleInitSettings(message, tabs, isModifierPressed); break;
+            case 'initSettings':
+                HandlerManager.handleInitSettings(message, tabs, isModifierPressed);
+                setTimeout(() => { if (typeof window.forceGlobalSummariesUpdate === 'function') window.forceGlobalSummariesUpdate(); }, 120);
+                break;
             case 'updateFileExtsCategoryGroups': HandlerManager.handleUpdateFileExtsCategoryGroups(message, tabs, isModifierPressed); break;
             case 'updateHistory': HandlerManager.handleUpdateHistory(message, tabs); break;
             case 'terminalLog': HandlerManager.handleTerminalLog(message, tabs); break;

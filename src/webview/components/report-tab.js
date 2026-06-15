@@ -279,22 +279,7 @@ export class ReportTab {
         const tbody = document.getElementById('pricingTableBody');
         const header = document.getElementById('costEstimationHeader');
 
-        if (header && !header.dataset.bound) {
-            header.dataset.bound = 'true';
-            header.addEventListener('click', () => {
-                const contentDiv = document.getElementById('costEstimationContent');
-                const iconSpan = document.getElementById('costEstimationIcon');
-                if (contentDiv && iconSpan) {
-                    if (contentDiv.style.display === 'none') {
-                        contentDiv.style.display = 'block';
-                        iconSpan.className = 'codicon codicon-chevron-down';
-                    } else {
-                        contentDiv.style.display = 'none';
-                        iconSpan.className = 'codicon codicon-chevron-right';
-                    }
-                }
-            });
-        }
+
 
         if (!data || !data.metrics_per_extension) {
             if (costSection) costSection.style.display = 'none';

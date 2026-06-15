@@ -7,7 +7,7 @@ import { FiltersManager } from './filters-manager.js';
 import { ExportManager } from './export-manager.js';
 
 export const HandlerManager = {
-    // Réutilisation exacte de ta logique de rendu d'icônes/images et de routage d'URL
+    // Réintégration exacte de l'implémentation originale (Boutons images 64x64 + openBrowserTab)
     buildExchangeButtons(exchangeItems) {
         const container = document.getElementById('exchange-buttons-container');
         if (!container) return;
@@ -24,7 +24,7 @@ export const HandlerManager = {
             if (item.tooltip) {
                 btn.setAttribute('data-tooltip', item.tooltip);
                 btn.setAttribute('title', item.tooltip);
-                btn.classList.add('tooltip-bottom'); // Maintien du tracker de curseur custom
+                btn.classList.add('tooltip-bottom');
             }
 
             const img = document.createElement('img');
@@ -162,10 +162,12 @@ export const HandlerManager = {
         } else if (message.text.includes('Export complete!') || message.text.includes('Export aborted') || message.text.includes('ERROR:')) {
             ExportManager.resetRunButton();
         }
+        if (typeof window.forceGlobalSummariesUpdate === 'function') window.forceGlobalSummariesUpdate();
     },
 
     handleUpdateCommand(message, tabs) {
         if (tabs.terminalTab) tabs.terminalTab.updateCommand(message.text);
+        if (typeof window.forceGlobalSummariesUpdate === 'function') window.forceGlobalSummariesUpdate();
     },
 
     handleUpdateExportReport(message, tabs) {
@@ -190,6 +192,7 @@ export const HandlerManager = {
                 if (tabs.treeViewTab) tabs.treeViewTab.render(message.data, (p) => bridge.postMessage('openFile',{path:p}), (p) => bridge.postMessage('openFinder',{path:p}));
             }
         } catch (e) {}
+        if (typeof window.forceGlobalSummariesUpdate === 'function') window.forceGlobalSummariesUpdate();
     },
 
     handleFilteredFilesResult(message, tabs) {
@@ -206,5 +209,6 @@ export const HandlerManager = {
                 );
             }
         } catch (e) {}
+        if (typeof window.forceGlobalSummariesUpdate === 'function') window.forceGlobalSummariesUpdate();
     }
 };
