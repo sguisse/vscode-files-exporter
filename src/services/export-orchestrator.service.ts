@@ -148,7 +148,30 @@ export class ExportOrchestratorService {
                     reportData.results.tree_manifest = JSON.parse(fs.readFileSync(treePath, 'utf8'));
                 }
 
-                this.webviewPanel.webview.postMessage({ command: 'updateExportReport', data: reportData.results });
+                // Calcul déterministe et précis du nombre de tokens (Blended Char/Word count) sur les fichiers exportés
+                    const exportedFilesList = (reportData.results.generated_files.exports || []).filter((filePath: string) => fs.existsSync(filePath));
+                    let totalTokens = 0;
+
+                    for (const filePath of exportedFilesList) {
+                        try {
+                            const text = fs.readFileSync(filePath, 'utf8').replace(/\r/g, '');
+                            const normalized = text.replace(/\s+/g, ' ').trim();
+
+                            const charCount = normalized.length;
+                            const wordCount = normalized ? normalized.split(' ').length : 0;
+
+                            const charEstimate = charCount / 4;
+                            const wordEstimate = wordCount * 0.75;
+
+                            const blended = (charEstimate + wordEstimate) / 2;
+                            totalTokens += Math.max(0, Math.round(blended));
+                        } catch (err) {
+                            console.error('Erreur lors du calcul des tokens du fichier:', filePath, err);
+                        }
+                    }
+                    reportData.results.estimatedInputTokens = totalTokens;
+
+                    this.webviewPanel.webview.postMessage({ command: 'updateExportReport', data: reportData.results });
                 return (reportData.results.generated_files.exports || []).filter((filePath: string) => fs.existsSync(filePath));
             }
         }

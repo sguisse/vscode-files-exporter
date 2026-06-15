@@ -303,14 +303,8 @@ export class ReportTab {
 
         if (costSection) costSection.style.display = 'block';
 
-        const targetList = (data.generated_files && data.generated_files.exports) || [];
-        if (targetList.length === 0 && data.summary && data.summary.total_exported > 0) {
-            for (let i = 0; i < data.summary.total_exported; i++) {
-                targetList.push('mock_file.yaml');
-            }
-        }
-
-        const pricingData = PricingService.tokensPriceEstimationByAiModels(targetList);
+        const totalTokens = data.estimatedInputTokens || 0;
+        const pricingData = PricingService.tokensPriceEstimationByAiModels(totalTokens);
 
         if (costTitle) {
             costTitle.innerText = `💰 Cost Estimation (${pricingData.estimatedInputTokens.toLocaleString()} tokens)`;

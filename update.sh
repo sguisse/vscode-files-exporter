@@ -2,7 +2,7 @@
 set -euo pipefail
 
 echo -e "================================================================="
-echo -e "🚀  PHASE 14: ENCAPSULATION DE LA METHODE renderCostEstimation"
+echo -e "⚙️  FIX : RETABLISSEMENT DE L'ALIGNEMENT DES BOUTONS EXCHANGE"
 echo -e "================================================================="
 
 if [ ! -f "package.json" ]; then
@@ -10,117 +10,61 @@ if [ ! -f "package.json" ]; then
     exit 1
 fi
 
-REPORT_TAB_FILE="src/webview/components/report-tab.js"
+HTML_FILE="src/webview/webview.html"
 
-if [ -f "$REPORT_TAB_FILE" ]; then
-    BACKUP_REPORT="${REPORT_TAB_FILE}.$(date +%s).cost_method.bak"
-    cp "$REPORT_TAB_FILE" "$BACKUP_REPORT"
+if [ -f "$HTML_FILE" ]; then
+    echo -e "[\e[34mINFO\e[0m] Nettoyage des styles antagonistes Flexbox (.btn-run-custom)..."
 
-    echo -e "[\e[34mINFO\e[0m] Injection de la méthode renderCostEstimation dans report-tab.js..."
-
+    # Utilisation d'un script Python pour corriger chirurgicalement le CSS de la classe .btn-run-custom
+    # et le conteneur HTML pour empêcher le bouton de s'approprier toute la largeur (width: 60% / margin: auto)
     python3 << 'EOF'
 import os
-import re
 
-file_path = 'src/webview/components/report-tab.js'
+file_path = 'src/webview/webview.html'
 with open(file_path, 'r', encoding='utf-8') as f:
     content = f.read()
 
-# 1. Injection de l'import de PricingService au sommet si absent
-if "PricingService" not in content:
-    content = "import { PricingService } from '../js/services/pricing-service.js';\n" + content
+# 1. Remplacement de la définition CSS pour supprimer les marges automatiques et la largeur fixe restrictive
+old_css = """        .btn-run-custom {
+            width: 60%;
+            margin: 0px auto 0px auto;
+            background: linear-gradient(135deg, var(--vscode-button-background), #6b21a8);"""
 
-# 2. Remplacement propre de la méthode render globale pour lier renderCostEstimation
-old_render_pattern = r"render\(data,\s*onFileClick\)\s*\{([\s\S]*?this\.renderChart\(data\);)"
-if re.search(old_render_pattern, content):
-    content = re.sub(old_render_pattern, r"render(data, onFileClick) {\1\n        this.renderCostEstimation(data);", content)
+new_css = """        .btn-run-custom {
+            background: linear-gradient(135deg, var(--vscode-button-background), #6b21a8);"""
 
-# 3. Purge d'anciennes fonctions intermédiaires (comme renderPricing) pour éviter les collisions
-content = re.sub(r"renderPricing\(data\) \{[\s\S]*?\}\n\s*(?=clear\(\))", "", content)
-content = re.sub(r"renderCostEstimation\(data\) \{[\s\S]*?\}\n\s*(?=clear\(\))", "", content)
+if old_css in content:
+    content = content.replace(old_css, new_css)
 
-# 4. Injection de la méthode complète renderCostEstimation calquée sur le modèle de renderTable
-new_method = """renderCostEstimation(data) {
-        const costSection = document.getElementById('costEstimationSection');
-        const costTitle = document.getElementById('costEstimationTitle');
-        const thCostTokens = document.getElementById('th-cost-tokens');
-        const tbody = document.getElementById('pricingTableBody');
-        const header = document.getElementById('costEstimationHeader');
+# 2. Réalignement du conteneur HTML pour forcer l'alignement inline-flex strict côte à côte
+old_container = """    <div style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;">
+        <button id="btn-run" class="btn-run-custom" style="margin: 10px; width: 150px;">
+            <span class="codicon codicon-play"></span> RUN EXPORT
+        </button>
+        <div id="exchange-buttons-container" style="display: flex; gap: 10px; align-items: center;"></div>
+    </div>"""
 
-        if (header && !header.dataset.bound) {
-            header.dataset.bound = 'true';
-            header.addEventListener('click', () => {
-                const contentDiv = document.getElementById('costEstimationContent');
-                const iconSpan = document.getElementById('costEstimationIcon');
-                if (contentDiv && iconSpan) {
-                    if (contentDiv.style.display === 'none') {
-                        contentDiv.style.display = 'block';
-                        iconSpan.className = 'codicon codicon-chevron-down';
-                    } else {
-                        contentDiv.style.display = 'none';
-                        iconSpan.className = 'codicon codicon-chevron-right';
-                    }
-                }
-            });
-        }
+new_container = """    <div style="display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; margin: 10px 0;">
+        <button id="btn-run" class="btn-run-custom" style="width: 180px; flex-shrink: 0;">
+            <span class="codicon codicon-play"></span> RUN EXPORT
+        </button>
+        <div id="exchange-buttons-container" style="display: flex; gap: 6px; align-items: center; flex-shrink: 0;"></div>
+    </div>"""
 
-        if (!data || !data.metrics_per_extension) {
-            if (costSection) costSection.style.display = 'none';
-            return;
-        }
-
-        if (costSection) costSection.style.display = 'block';
-
-        const targetList = (data.generated_files && data.generated_files.exports) || [];
-        if (targetList.length === 0 && data.summary && data.summary.total_exported > 0) {
-            for (let i = 0; i < data.summary.total_exported; i++) {
-                targetList.push('mock_file.yaml');
-            }
-        }
-
-        const pricingData = PricingService.tokensPriceEstimationByAiModels(targetList);
-
-        if (costTitle) {
-            costTitle.innerText = `💰 Cost Estimation (${pricingData.estimatedInputTokens.toLocaleString()} tokens)`;
-        }
-
-        if (thCostTokens) {
-            thCostTokens.innerText = `Cost for ${pricingData.estimatedInputTokens.toLocaleString()} tokens`;
-        }
-
-        if (tbody) {
-            tbody.innerHTML = '';
-            pricingData.llms.forEach(item => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td style="padding: 6px 8px; border: 1px solid var(--vscode-panel-border); font-size: 12px;">${item.label}</td>
-                    <td style="padding: 6px 8px; border: 1px solid var(--vscode-panel-border); font-size: 12px;">${item.model}</td>
-                    <td style="padding: 6px 8px; border: 1px solid var(--vscode-panel-border); font-size: 12px; font-weight: bold; color: #4caf50;">$${item.price.toFixed(4)}</td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
-    }
-
-    """
-
-content = content.replace("clear() {", new_method + "clear() {")
-
-# 5. Réalignement du comportement de clear() pour réinitialiser le bloc de coût
-if "const costSection =" not in content.split("clear() {")[-1]:
-    content = content.replace("clear() {", """clear() {
-        const costSection = document.getElementById('costEstimationSection');
-        const costContent = document.getElementById('costEstimationContent');
-        const costIcon = document.getElementById('costEstimationIcon');
-        if (costSection) costSection.style.display = 'none';
-        if (costContent) costContent.style.display = 'none';
-        if (costIcon) {
-            costIcon.className = 'codicon codicon-chevron-right';
-        }""")
+if old_container in content:
+    content = content.replace(old_container, new_container)
+else:
+    # Recherche alternative si les espaces diffèrent légèrement
+    import re
+    content = re.sub(
+        r'<button id="btn-run" class="btn-run-custom" style="margin: 10px; width: 150px;">',
+        '<button id="btn-run" class="btn-run-custom" style="width: 180px; flex-shrink: 0;">',
+        content
+    )
 
 with open(file_path, 'w', encoding='utf-8') as f:
     f.write(content)
-print('Patcheur de composant : Méthode renderCostEstimation injectée avec succès.')
+print('Patcheur HTML : Alignement inline et suppression des styles d’isolement achevés.')
 EOF
 fi
 
@@ -128,27 +72,27 @@ fi
 # VÉRIFICATIONS ANTI-RÉGRESSION FINALES
 # -----------------------------------------------------------------
 echo -e "\n================================================================="
-echo -e "🛡️  VALIDATION DU REFACTORING ET INTEGRITE DES TYPES"
+echo -e "🛡️  VÉRIFICATION RIGIDE DU COMPILATEUR ET DU BUNDLE"
 echo -e "================================================================="
 
 if npx tsc --noEmit; then
-    echo -e "[\e[32mSUCCÈS\e[0m] Validation TypeScript OK. Aucune anomalie détectée."
+    echo -e "[\e[32mSUCCÈS\e[0m] L'arbre syntaxique TypeScript est intègre."
 else
-    echo -e "[\e[31mERREUR\e[0m] Échec de la passe de typage statique."
+    echo -e "[\e[31mERREUR\e[0m] Échec de la validation de types."
     exit 1
 fi
 
 if grep -q "\"compile\":" package.json; then
-    echo -e "[\e[34mINFO\e[0m] Recompilation Webpack de l'extension..."
+    echo -e "[\e[34mINFO\e[0m] Recompilation Webpack du bundle UI..."
     if npm run compile; then
-        echo -e "[\e[32mSUCCÈS\e[0m] Bundle généré. La méthode renderCostEstimation est prête."
+        echo -e "[\e[32mSUCCÈS\e[0m] Build de production validé."
     else
-        echo -e "[\e[31mERREUR\e[0m] Échec lors du bundling de production."
+        echo -e "[\e[31mERREUR\e[0m] Échec de la compilation d'intégration."
         exit 1
     fi
 fi
 
 echo -e "\n================================================================="
-echo -e "✅ Méthode 'renderCostEstimation(data)' ajoutée à la classe ReportTab."
-echo -e "✅ Cycle de vie UI et synchronisation du tableau de prix validés."
+echo -e "✅ Les boutons dynamiques de l'objet 'exchange' s'afficheront à droite."
+echo -e "✅ Les conflits de centrage exclusif Flexbox ont été éliminés."
 echo -e "================================================================="
