@@ -1,6 +1,6 @@
 export const BlockSummaryBuilder = {
     computeBlockSummary(blockId) {
-        const truncate = (str, len = 24) => {
+        const truncate = (str, len = 200) => {
             if (!str) return '';
             return str.length > len ? str.substring(0, len) + '...' : str;
         };
@@ -22,8 +22,19 @@ export const BlockSummaryBuilder = {
         switch (blockId) {
             case 'block-history': {
                 const combo = document.getElementById('historyCombo');
-                const activeProfile = combo ? combo.value : 'default';
-                return collectAndFormatValues({ Profile: activeProfile === 'default' ? 'Default Config' : activeProfile });
+                const activeId = combo ? combo.value : 'default';
+
+                let displayValue = 'Default Config';
+
+                // Recherche du nom d'affichage réel dans la liste du state
+                if (activeId !== 'default' && state.historyList) {
+                    const entry = state.historyList.find(h => h.id === activeId);
+                    if (entry && entry.display) {
+                        displayValue = entry.display;
+                    }
+                }
+
+                return collectAndFormatValues({ Profile: displayValue });
             }
             case 'block-sourcepaths': {
                 const paths = (document.getElementById('pathList')?.value || '').split('\n').map(p => p.trim()).filter(p => p);
@@ -37,13 +48,17 @@ export const BlockSummaryBuilder = {
                 return collectAndFormatValues({ [`Max ${maxF}KB`]: true, Inc: incP.split('\n')[0], Exc: excP.split('\n')[0] });
             }
             case 'block-destination': {
-                return collectAndFormatValues({ Target: document.getElementById('destDir')?.value || 'Not configured' });
+                return collectAndFormatValues({ Folder: document.getElementById('destDir')?.value || 'Not configured' });
             }
             case 'block-options': {
                 return collectAndFormatValues({
                     Format: (document.getElementById('format')?.value || 'yaml').toUpperCase(),
+                    Chunk: document.getElementById('maxChunk')?.value || 'Not configured',
                     Split: document.getElementById('splitChunkByFileExtension')?.checked,
-                    Tree: document.getElementById('generateTreeView')?.checked
+                    Copy2Clip: document.getElementById('copyGeneratedFilesToClipboard')?.checked,
+                    Tree: document.getElementById('generateTreeView')?.checked,
+                    Logs: document.getElementById('generateLogConsole')?.checked,
+                    LogsFile: document.getElementById('generateLogFile')?.checked,
                 });
             }
             case 'costEstimationSection': {
