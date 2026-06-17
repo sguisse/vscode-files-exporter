@@ -203,7 +203,7 @@ export class MessageRouter {
         const existingPaths: string[] = message.currentPaths || [];
         const wsPath = this.configService.getWorkspaceRootPath();
 
-        const result = await this.gitService.getModifiedFiles(wsPath);
+        const result = await this.gitService.getLocalModifiedFilesFromLastCommit(wsPath);
 
         if (!result.success) {
             this.panel.webview.postMessage({ command: 'terminalLog', text: `\x1b[93m${result.message}\x1b[0m\n` });
