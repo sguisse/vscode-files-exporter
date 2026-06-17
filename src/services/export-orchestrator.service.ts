@@ -38,6 +38,24 @@ export class ExportOrchestratorService {
         return clean;
     }
 
+    private async verifyFilesReady(filePaths: string[], retries = 5, delay = 500): Promise<boolean> {
+    for (const path of filePaths) {
+        for (let i = 0; i < retries; i++) {
+            try {
+                // Verify existence and basic accessibility
+                await fs.promises.access(path, fs.constants.R_OK);
+                // Optional: Check if content is actually written (stat.size > 0)
+                const stats = await fs.promises.stat(path);
+                if (stats.size > 0) break;
+            } catch (err) {
+                if (i === retries - 1) return false;
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
+    return true;
+}
+
     public async run(formData: any): Promise<void> {
         const script = this.configService.getPythonScriptPath(this.context.extensionPath);
         const workspaceRoot = this.configService.getWorkspaceRootPath();
@@ -73,8 +91,12 @@ export class ExportOrchestratorService {
                 this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\n✅ Process exited safely.\n` });
                 vscode.window.showInformationMessage("Export Complete!");
                 const generatedFiles = this.parseAndSendReport(stdout, runtimeTransmittedData.destDir);
-                if (runtimeTransmittedData.copyGeneratedFilesToClipboard) {
+                // Use verified readiness before copying
+                const isReady = await this.verifyFilesReady(generatedFiles);
+                if (isReady && runtimeTransmittedData.copyGeneratedFilesToClipboard) {
                     await this.copyGeneratedFilesToClipboard(generatedFiles);
+                } else if (!isReady) {
+                    this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\n❌ Clipboard copy failed: Files not ready after generation.\n` });
                 }
             } else {
                 const lastErrorLine = stderr.trim().split(/\r?\n/).filter(Boolean).pop();
@@ -148,7 +170,7 @@ export class ExportOrchestratorService {
                     reportData.results.tree_manifest = JSON.parse(fs.readFileSync(treePath, 'utf8'));
                 }
 
-                // Calcul déterministe et précis du nombre de tokens (Blended Char/Word count) sur les fichiers exportés
+                // Deterministic and precise calculation of the number of tokens (Blended Char/Word count) on exported files
                     const exportedFilesList = (reportData.results.generated_files.exports || []).filter((filePath: string) => fs.existsSync(filePath));
                     let totalTokens = 0;
 
@@ -166,7 +188,7 @@ export class ExportOrchestratorService {
                             const blended = (charEstimate + wordEstimate) / 2;
                             totalTokens += Math.max(0, Math.round(blended));
                         } catch (err) {
-                            console.error('Erreur lors du calcul des tokens du fichier:', filePath, err);
+                            console.error('Error calculating file tokens:', filePath, err);
                         }
                     }
                     reportData.results.estimatedInputTokens = totalTokens;
@@ -186,7 +208,8 @@ export class ExportOrchestratorService {
 
         try {
             const timeoutMs = this.configService.getConfiguration().get<number>('copyFilesToClipboardTimeout') ?? 10000;
-            await this.processRunner.copyFilesToClipboard(filePaths, timeoutMs);
+            const pyOut = await this.processRunner.copyFilesToClipboard(filePaths, timeoutMs);
+            if (pyOut) this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\n🐍 [Python Clipboard]:\n${pyOut}\n` });
             this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\n📋 Auto-copied and verified ${filePaths.length} generated file(s) to OS clipboard.\n` });
             vscode.window.showInformationMessage(`Copied and verified ${filePaths.length} generated file(s) to clipboard.`);
         } catch (err: any) {

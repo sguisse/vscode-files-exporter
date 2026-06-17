@@ -1,60 +1,76 @@
 import { exec } from 'child_process';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 
 export class ClipboardService {
-    public copyFilesToClipboard(filePaths: string[], timeoutMs: number = 10000): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
-            setTimeout(() => {
-                const platform = process.platform;
-                let writePromise: Promise<void>;
+    public async copyFilesToClipboard(filePaths: string[], timeoutMs: number = 10000): Promise<string> {
+        await this.waitForFileSystemStabilization(filePaths);
 
-                if (platform === 'darwin') {
-                    writePromise = new Promise((res, rej) => {
-                        const jxaScript = `
-                            ObjC.import('AppKit');
-                            var pb = $.NSPasteboard.generalPasteboard;
-                            var changeCount = pb.clearContents;
-                            var paths = ${JSON.stringify(filePaths)};
-                            pb.setPropertyListForType(ObjC.wrap(paths), 'NSFilenamesPboardType');
-                        `.trim().replace(/'/g, "'\\''");
+        return new Promise<string>((resolve, reject) => {
+            const tmpFile = path.join(os.tmpdir(), `fe-paths-${Date.now()}.json`);
+            fs.writeFileSync(tmpFile, JSON.stringify(filePaths), 'utf8');
 
-                        exec(`osascript -l JavaScript -e '${jxaScript}'`, (err) => err ? rej(err) : res());
-                    });
-                } else if (platform === 'win32') {
-                    writePromise = new Promise((res, rej) => {
-                        const pathsStr = filePaths.map(p => `'${p.replace(/'/g, "''")}'`).join(',');
-                        exec(`powershell.exe -NoProfile -Command "Set-Clipboard -LiteralPath ${pathsStr}"`, (err) => err ? rej(err) : res());
-                    });
-                } else {
-                    writePromise = new Promise((res, rej) => {
-                        const uriList = filePaths.map(p => `file://${p}`).join('\n');
-                        const proc = exec(`xclip -selection clipboard -t text/uri-list -i`, (err) => err ? rej(err) : res());
-                        proc.stdin?.write(uriList);
-                        proc.stdin?.end();
-                    });
+            let currentDir = __dirname;
+            let scriptPath = '';
+            while (currentDir !== path.dirname(currentDir)) {
+                const testPath = path.join(currentDir, 'scripts', 'copy-files-to-clipboard.py');
+                if (fs.existsSync(testPath)) {
+                    scriptPath = testPath;
+                    break;
+                }
+                currentDir = path.dirname(currentDir);
+            }
+
+            if (!scriptPath) {
+                try { fs.unlinkSync(tmpFile); } catch (e) {}
+                return reject(new Error("Could not locate scripts/copy-files-to-clipboard.py"));
+            }
+
+            const command = process.platform === 'win32' ? 'python' : 'python3';
+            const fullCommand = `"${command}" "${scriptPath}" "${tmpFile}"`;
+
+            exec(fullCommand, (err, stdout, stderr) => {
+                try { fs.unlinkSync(tmpFile); } catch (e) {}
+
+                if (err) {
+                    return reject(new Error(`Python clipboard script failed: ${stderr || err.message}`));
                 }
 
-                writePromise.then(() => {
-                    const startTime = Date.now();
-                    const intervalTime = 250;
-                    let lastActualCount = 0;
+                const startTime = Date.now();
+                const intervalTime = 250;
+                let lastActualCount = 0;
 
-                    const poll = async () => {
-                        const { verified, actualCount } = await this.verifyClipboard(filePaths);
-                        lastActualCount = actualCount;
+                const poll = async () => {
+                    const { verified, actualCount } = await this.verifyClipboard(filePaths);
+                    lastActualCount = actualCount;
 
-                        if (verified) {
-                            resolve();
-                        } else if (Date.now() - startTime >= timeoutMs) {
-                            reject(new Error(`Clipboard verification timed out after ${timeoutMs}ms. Expected ${filePaths.length} files, but found ${lastActualCount} in the OS clipboard cache.`));
-                        } else {
-                            setTimeout(poll, intervalTime);
-                        }
-                    };
+                    if (verified) {
+                        resolve(stdout ? stdout.trim() : "");
+                    } else if (Date.now() - startTime >= timeoutMs) {
+                        reject(new Error(`Clipboard verification timed out. Expected ${filePaths.length} files, but found ${lastActualCount} in the OS clipboard cache.`));
+                    } else {
+                        setTimeout(poll, intervalTime);
+                    }
+                };
 
-                    setTimeout(poll, 150);
-                }).catch(reject);
-            }, 800);
+                setTimeout(poll, 150);
+            });
         });
+    }
+
+    private async waitForFileSystemStabilization(paths: string[]): Promise<void> {
+        for (const p of paths) {
+            for (let i = 0; i < 20; i++) {
+                try {
+                    const stat = await fs.promises.stat(p);
+                    if (stat.size >= 0) break;
+                } catch {
+                    // Ignore missing files until buffer clears
+                }
+                await new Promise(r => setTimeout(r, 100));
+            }
+        }
     }
 
     private verifyClipboard(expectedPaths: string[]): Promise<{ verified: boolean, actualCount: number }> {
@@ -68,14 +84,26 @@ export class ClipboardService {
             const expectedSet = new Set(expectedPaths.map(normalize));
 
             if (platform === 'darwin') {
+                const tmpFile = path.join(os.tmpdir(), `fe-verify-${Date.now()}.js`);
+                // Match the Python writing logic: Read NSURL classes accurately
                 const checkScript = `
                     ObjC.import('AppKit');
                     var pb = $.NSPasteboard.generalPasteboard;
-                    var pl = pb.propertyListForType('NSFilenamesPboardType');
-                    JSON.stringify(ObjC.deepUnwrap(pl) || []);
-                `.trim().replace(/'/g, "'\\''");
+                    var classes = $.NSArray.arrayWithObject($.NSURL.class);
+                    var urls = pb.readObjectsForClassesOptions(classes, $());
+                    var res = [];
+                    if (urls != undefined) {
+                        for (var i = 0; i < urls.count; i++) {
+                            var url = urls.objectAtIndex(i);
+                            if (url && url.path) res.push(url.path.js);
+                        }
+                    }
+                    JSON.stringify(res);
+                `;
+                fs.writeFileSync(tmpFile, checkScript, 'utf8');
 
-                exec(`osascript -l JavaScript -e '${checkScript}'`, (err, stdout) => {
+                exec(`osascript -l JavaScript "${tmpFile}"`, (err, stdout) => {
+                    try { fs.unlinkSync(tmpFile); } catch (e) {}
                     if (err || !stdout.trim()) return resolve({ verified: false, actualCount: 0 });
                     try {
                         const actualPaths = JSON.parse(stdout.trim()) as string[];

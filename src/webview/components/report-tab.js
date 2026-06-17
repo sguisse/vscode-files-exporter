@@ -18,7 +18,7 @@ export class ReportTab {
         try { this.renderTable(data); } catch(e) { console.error(e); }
         try { this.renderChart(data);
         this.renderCostEstimation(data); } catch(e) { console.error(e); }
-        try { this.renderPricing(data); } catch(e) { console.error(e); }
+        
         if (data.generated_files && typeof this.renderFiles === 'function') {
             this.renderFiles(data.generated_files, onFileClick);
         }

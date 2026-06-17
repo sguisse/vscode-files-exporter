@@ -62,7 +62,7 @@ export class ProcessRunnerService {
         return false;
     }
 
-    public copyFilesToClipboard(filePaths: string[], timeoutMs: number = 10000): Promise<void> {
+    public copyFilesToClipboard(filePaths: string[], timeoutMs: number = 10000): Promise<string> {
         return this.clipboardService.copyFilesToClipboard(filePaths, timeoutMs);
     }
 }

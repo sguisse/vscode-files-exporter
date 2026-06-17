@@ -1,9 +1,12 @@
 out
 dist
 node_modules
+.vscode/
+.idea/
 .vscode-test/
 *.vsix
 .history
 exported-files
 *.bak*
-graphify-out
+*.lock
+graphify-out/

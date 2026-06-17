@@ -260,7 +260,8 @@ export class MessageRouter {
 
             const timeoutMs = this.configService.getConfiguration().get<number>('copyFilesToClipboardTimeout') ?? 10000;
 
-            await this.processRunner.copyFilesToClipboard(latestFiles, timeoutMs);
+            const pyOut = await this.processRunner.copyFilesToClipboard(latestFiles, timeoutMs);
+            if (pyOut) this.panel.webview.postMessage({ command: 'terminalLog', text: `\n🐍 [Python Clipboard]:\n${pyOut}\n` });
             this.panel.webview.postMessage({ command: 'terminalLog', text: `\n📋 Copied and verified ${latestFiles.length} file(s) to OS clipboard.\n` });
             vscode.window.showInformationMessage(`Copied and verified ${latestFiles.length} file(s) to clipboard.`);
         } catch (err: any) {

@@ -13,6 +13,7 @@ export class TreeViewTab {
         this.onFileClick = null;
         this.onFinderClick = null;
         this.actionsBound = false;
+        this.excludeHandlerBound = false;
         this.treeManifest = null;
         this.viewMode = 'standard';
     }
@@ -33,6 +34,7 @@ export class TreeViewTab {
         const activeNode = this.viewMode === 'extension' ? this.buildExtensionTree(this.treeManifest) : this.treeManifest;
         container.innerHTML = this.renderTreeHTML(activeNode, true);
         this.attachEvents();
+        this.bindExcludeHandlers();
 
         const searchInput = document.getElementById(this.searchId);
         if (searchInput && searchInput.value.trim() !== '') {
@@ -157,7 +159,17 @@ export class TreeViewTab {
                     const escapedPath = relativePath.replace(/[-\^$*+?.()|[\]{}]/g, '\\$&');
 
                     const isFolder = btn.getAttribute('data-tooltip')?.toLowerCase().includes('folder');
-                    const regexEntry = isFolder ? `.*/${escapedPath}/.*` : `.*/${escapedPath}$`;
+                    let regexEntry = isFolder ? `.*/${escapedPath}/.*` : `.*/${escapedPath}$`;
+                    if (isFolder && (!escapedPath || relativePath === '')) {
+                        const folderHeader = btn.closest('.tree-folder-header');
+                        const folderNameEl = folderHeader ? folderHeader.querySelector('.folder-name') : null;
+                        const folderName = folderNameEl ? folderNameEl.innerText.trim() : '';
+                        if (this.viewMode === 'extension') {
+                            regexEntry = `.*\\.${folderName}$`;
+                        } else {
+                            regexEntry = `.*/${folderName}/.*`;
+                        }
+                    }
 
                     if (currentVal === '') {
                         excPathsEl.value = regexEntry;
@@ -392,5 +404,62 @@ export class TreeViewTab {
         if (container) container.innerHTML = '';
         const searchInput = document.getElementById(this.searchId);
         if (searchInput) searchInput.value = '';
+    }
+
+    bindExcludeHandlers() {
+        const excExtsEl = document.getElementById('excExts');
+        const incExtsEl = document.getElementById('incExts');
+        const toggleMode = document.getElementById('btnTreeToggleMode');
+        const isExtensionMode = toggleMode && toggleMode.getAttribute('data-view-mode') === 'extension';
+
+        document.querySelectorAll('.btn-tree-exclude').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const path = btn.getAttribute('data-path');
+                const node = btn.closest('.tree-node, .tree-folder, .tree-item');
+                let exts = [];
+
+                if (isExtensionMode) {
+                    // Extract from current node or recursive children if folder
+                    const collectExts = (el) => {
+                        const fileCb = el.querySelector('.file-cb');
+                        if (fileCb) {
+                            const p = fileCb.getAttribute('data-path');
+                            const match = p.match(/\\.([^\\./]+)$/);
+                            if (match) exts.push(match[1]);
+                        }
+                        el.querySelectorAll('.file-item').forEach(f => {
+                             const p = f.querySelector('.file-cb')?.getAttribute('data-path');
+                             const match = p?.match(/\\.([^\\./]+)$/);
+                             if (match) exts.push(match[1]);
+                        });
+                    };
+                    collectExts(node);
+                } else {
+                    const match = path.match(/\\.([^\\./]+)$/);
+                    if (match) exts.push(match[1]);
+                }
+
+                exts = [...new Set(exts)];
+                let currentExc = excExtsEl.value;
+                let currentInc = incExtsEl.value;
+
+                exts.forEach(ext => {
+                    const pattern = '\\.' + ext + '$';
+                    if (!currentExc.includes(pattern)) {
+                        currentExc += (currentExc ? '\n' : '') + pattern;
+                    }
+                    if (currentInc.includes(ext)) {
+                        // Reuse Modal logic (assuming ModalComponent is globally available)
+                        if (window.ModalComponent) {
+                            window.ModalComponent.triggerValidationErrorModal('Extension .' + ext + ' is currently included in "Include Extensions". Remove it first.');
+                        }
+                    }
+                });
+
+                excExtsEl.value = currentExc;
+                excExtsEl.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+        });
+
     }
 }
