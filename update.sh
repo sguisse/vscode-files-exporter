@@ -1,210 +1,73 @@
 #!/bin/bash
 
-# 1. Écriture du script Python (JXA via stdin : Contourne les limites de taille et évite les doublons)
-cat << 'EOF' > scripts/copy-files-to-clipboard.py
-#!/usr/bin/env python3
-import sys
-import os
-import json
-import subprocess
+# Modify ui.controller.js to enforce the locked icon, tooltip, and cursor state for the default configuration
+node << 'EOF'
+const fs = require('fs');
+const path = 'src/webview/js/core/ui.controller.js';
 
-def copyFilesToClipboard(filePaths):
-    if not filePaths:
-        return
+if (!fs.existsSync(path)) {
+    console.error(`❌ Error: ${path} not found.`);
+    process.exit(1);
+}
 
-    platform = sys.platform
-    if platform == 'darwin':
-        # JXA pur via stdin : Évite les doublons (1 seul writeObjects) et contourne les limites de taille shell
-        jxa_script = f"""
-        ObjC.import('AppKit');
-        var pb = $.NSPasteboard.generalPasteboard;
-        pb.clearContents;
+let content = fs.readFileSync(path, 'utf8');
 
-        var paths = {json.dumps(filePaths)};
-        var urls = $.NSMutableArray.alloc.init;
-        for (var i = 0; i < paths.length; i++) {{
-            urls.addObject($.NSURL.fileURLWithPath(paths[i]));
-        }}
+const regex = /syncButtonsState\s*\(\s*val\s*\)\s*\{[\s\S]*?if\s*\(\s*!val\s*\|\|\s*val\s*===\s*'default'\s*\)\s*\{[\s\S]*?\}\s*\},/;
 
-        // Use strictly NSURL objects to prevent Finder duplications
-        pb.writeObjects(urls);
+const replacement = `syncButtonsState(val) {
+        const btnFreeze = document.getElementById('btn-freeze-history');
+        const btnEdit = document.getElementById('btn-edit-history');
+        const btnDup = document.getElementById('btn-duplicate-history');
 
-        // Keep process alive momentarily to let the OS Pasteboard server absorb the data
-        $.NSThread.sleepForTimeInterval(0.5);
-        """
+        if (btnDup) btnDup.disabled = false;
 
-        subprocess.run(['osascript', '-l', 'JavaScript', '-'], input=jxa_script.encode('utf-8'), check=True)
-
-    elif platform == 'win32':
-        paths_str = ",".join([f"'{p.replace(chr(39), chr(39)+chr(39))}'" for p in filePaths])
-        cmd = f"Set-Clipboard -LiteralPath {paths_str}"
-        subprocess.run(["powershell.exe", "-NoProfile", "-Command", cmd], check=True)
-
-    else:
-        uris = "\n".join([f"file://{p}" for p in filePaths])
-        subprocess.run(["xclip", "-selection", "clipboard", "-t", "text/uri-list", "-i"], input=uris.encode('utf-8'), check=True)
-
-def main():
-    if len(sys.argv) < 2:
-        sys.exit(1)
-
-    input_file = sys.argv[1]
-    if not os.path.exists(input_file):
-        sys.exit(1)
-
-    try:
-        with open(input_file, 'r', encoding='utf-8') as f:
-            file_paths = json.load(f)
-
-        copyFilesToClipboard(file_paths)
-        print(f"✅ Successfully copied {len(file_paths)} file(s) to the OS clipboard.")
-    except Exception as e:
-        print(f"Error copying to clipboard: {e}", file=sys.stderr)
-        sys.exit(1)
-
-if __name__ == "__main__":
-    main()
-EOF
-
-# 2. Remplacement du ClipboardService TS (Vérification propre, non-bloquante via fichier temp)
-cat << 'EOF' > src/services/clipboard.service.ts
-import { exec } from 'child_process';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
-
-export class ClipboardService {
-    public async copyFilesToClipboard(filePaths: string[], timeoutMs: number = 10000): Promise<string> {
-        await this.waitForFileSystemStabilization(filePaths);
-
-        return new Promise<string>((resolve, reject) => {
-            const tmpFile = path.join(os.tmpdir(), `fe-paths-${Date.now()}.json`);
-            fs.writeFileSync(tmpFile, JSON.stringify(filePaths), 'utf8');
-
-            let currentDir = __dirname;
-            let scriptPath = '';
-            while (currentDir !== path.dirname(currentDir)) {
-                const testPath = path.join(currentDir, 'scripts', 'copy-files-to-clipboard.py');
-                if (fs.existsSync(testPath)) {
-                    scriptPath = testPath;
-                    break;
-                }
-                currentDir = path.dirname(currentDir);
+        if (!val || val === 'default') {
+            if(btnFreeze) {
+                btnFreeze.disabled = true;
+                btnFreeze.innerHTML = '<span class="codicon codicon-lock" style="cursor: not-allowed;"></span>';
+                btnFreeze.setAttribute('data-tooltip', 'Default config can only be modified from settings! You can add default seetings config with "+" or you can adapt the default config and duplicate the modified config with AdHoc icon');
+                btnFreeze.style.cursor = 'not-allowed';
             }
-
-            if (!scriptPath) {
-                try { fs.unlinkSync(tmpFile); } catch (e) {}
-                return reject(new Error("Could not locate scripts/copy-files-to-clipboard.py"));
+            if(btnEdit) btnEdit.disabled = true;
+        } else {
+            if(btnFreeze) {
+                btnFreeze.disabled = false;
+                btnFreeze.setAttribute('data-tooltip', 'Freeze or unfreeze profile. Unfreezing allows overwriting and re-naming configurations');
+                btnFreeze.style.cursor = '';
             }
-
-            const command = process.platform === 'win32' ? 'python' : 'python3';
-            const fullCommand = `"${command}" "${scriptPath}" "${tmpFile}"`;
-
-            exec(fullCommand, (err, stdout, stderr) => {
-                try { fs.unlinkSync(tmpFile); } catch (e) {}
-
-                if (err) {
-                    return reject(new Error(`Python clipboard script failed: ${stderr || err.message}`));
-                }
-
-                const startTime = Date.now();
-                const intervalTime = 250;
-                let lastActualCount = 0;
-
-                const poll = async () => {
-                    const { verified, actualCount } = await this.verifyClipboard(filePaths);
-                    lastActualCount = actualCount;
-
-                    if (verified) {
-                        resolve(stdout ? stdout.trim() : "");
-                    } else if (Date.now() - startTime >= timeoutMs) {
-                        reject(new Error(`Clipboard verification timed out. Expected ${filePaths.length} files, but found ${lastActualCount} in the OS clipboard cache.`));
-                    } else {
-                        setTimeout(poll, intervalTime);
-                    }
-                };
-
-                setTimeout(poll, 150);
-            });
-        });
-    }
-
-    private async waitForFileSystemStabilization(paths: string[]): Promise<void> {
-        for (const p of paths) {
-            for (let i = 0; i < 20; i++) {
-                try {
-                    const stat = await fs.promises.stat(p);
-                    if (stat.size >= 0) break;
-                } catch {
-                    // Ignore missing files until buffer clears
-                }
-                await new Promise(r => setTimeout(r, 100));
+            const entry = state.historyList.find(h => h.id === val);
+            if (entry) {
+                if(btnFreeze) btnFreeze.innerHTML = entry.frozen ? '<span class="codicon codicon-lock"></span>' : '<span class="codicon codicon-unlock"></span>';
+                if(btnEdit) btnEdit.disabled = entry.frozen;
             }
         }
-    }
+    },`;
 
-    private verifyClipboard(expectedPaths: string[]): Promise<{ verified: boolean, actualCount: number }> {
-        return new Promise((resolve) => {
-            const platform = process.platform;
-            const normalize = (p: string) => {
-                let clean = p.toLowerCase().replace(/^file:\/\//, '');
-                try { clean = decodeURIComponent(clean); } catch {}
-                return clean.replace(/\\/g, '/').replace(/\/+$/, '');
-            };
-            const expectedSet = new Set(expectedPaths.map(normalize));
-
-            if (platform === 'darwin') {
-                const tmpFile = path.join(os.tmpdir(), `fe-verify-${Date.now()}.js`);
-                // Match the Python writing logic: Read NSURL classes accurately
-                const checkScript = `
-                    ObjC.import('AppKit');
-                    var pb = $.NSPasteboard.generalPasteboard;
-                    var classes = $.NSArray.arrayWithObject($.NSURL.class);
-                    var urls = pb.readObjectsForClassesOptions(classes, $());
-                    var res = [];
-                    if (urls != undefined) {
-                        for (var i = 0; i < urls.count; i++) {
-                            var url = urls.objectAtIndex(i);
-                            if (url && url.path) res.push(url.path.js);
-                        }
-                    }
-                    JSON.stringify(res);
-                `;
-                fs.writeFileSync(tmpFile, checkScript, 'utf8');
-
-                exec(`osascript -l JavaScript "${tmpFile}"`, (err, stdout) => {
-                    try { fs.unlinkSync(tmpFile); } catch (e) {}
-                    if (err || !stdout.trim()) return resolve({ verified: false, actualCount: 0 });
-                    try {
-                        const actualPaths = JSON.parse(stdout.trim()) as string[];
-                        const actualSet = new Set(actualPaths.map(normalize));
-                        const verified = Array.from(expectedSet).every(p => actualSet.has(p));
-                        resolve({ verified, actualCount: actualSet.size });
-                    } catch { resolve({ verified: false, actualCount: 0 }); }
-                });
-            } else if (platform === 'win32') {
-                exec(`powershell.exe -NoProfile -Command "(Get-Clipboard -Format FileDropList).Path | ConvertTo-Json -Compress"`, (err, stdout) => {
-                    if (err || !stdout.trim()) return resolve({ verified: false, actualCount: 0 });
-                    try {
-                        let actualPaths = JSON.parse(stdout.trim());
-                        if (!Array.isArray(actualPaths)) actualPaths = [actualPaths];
-                        const actualSet = new Set(actualPaths.map(normalize));
-                        const verified = Array.from(expectedSet).every(p => actualSet.has(p));
-                        resolve({ verified, actualCount: actualSet.size });
-                    } catch { resolve({ verified: false, actualCount: 0 }); }
-                });
-            } else {
-                exec(`xclip -selection clipboard -o -t text/uri-list`, (err, stdout) => {
-                    if (err || !stdout.trim()) return resolve({ verified: false, actualCount: 0 });
-                    const actualPaths = stdout.split('\n').filter(Boolean);
-                    const actualSet = new Set(actualPaths.map(normalize));
-                    const verified = Array.from(expectedSet).every(p => actualSet.has(p));
-                    resolve({ verified, actualCount: actualSet.size });
-                });
-            }
-        });
-    }
+if (regex.test(content)) {
+    content = content.replace(regex, replacement);
+    fs.writeFileSync(path, content, 'utf8');
+} else {
+    console.error('❌ Error: Could not locate syncButtonsState function in ui.controller.js.');
+    process.exit(1);
 }
 EOF
 
-echo "✅ Fichiers mis à jour : Les doublons sont éliminés, la vérification est corrigée, et la surcharge de console (Extension Host crash) a été nettoyée !"
+# Update the initial HTML state in webview.html to prevent any visual icon flash on load
+node << 'EOF'
+const fs = require('fs');
+const path = 'src/webview/webview.html';
+
+if (!fs.existsSync(path)) process.exit(0);
+
+let content = fs.readFileSync(path, 'utf8');
+
+const searchHtml = `<vscode-button id="btn-freeze-history" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Freeze or unfreeze profile. Unfreezing allows overwriting and re-naming configurations" disabled><span class="codicon codicon-unlock"></span></vscode-button>`;
+const replaceHtml = `<vscode-button id="btn-freeze-history" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Default config can only be modified from settings! You can add default seetings config with &quot;+&quot; or you can adapt the default config and duplicate the modified config with AdHoc icon" style="cursor: not-allowed;" disabled><span class="codicon codicon-lock" style="cursor: not-allowed;"></span></vscode-button>`;
+
+if (content.includes(searchHtml)) {
+    content = content.replace(searchHtml, replaceHtml);
+    fs.writeFileSync(path, content, 'utf8');
+}
+EOF
+
+echo "✅ Script modified. The freeze icon now natively locks, disables, and correctly warns the user via an explicit tooltip when selecting the default configuration!"

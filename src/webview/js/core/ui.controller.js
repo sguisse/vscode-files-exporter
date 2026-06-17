@@ -130,10 +130,18 @@ export const UIController = {
         if (btnDup) btnDup.disabled = false;
 
         if (!val || val === 'default') {
-            if(btnFreeze) { btnFreeze.disabled = true; btnFreeze.innerHTML = '<span class="codicon codicon-unlock"></span>'; }
-            if(btnEdit) btnEdit.disabled = true;
+                btnFreeze.disabled = true;
+                btnFreeze.innerHTML = '<span class="codicon codicon-lock" style="cursor: not-allowed;"></span>';
+                btnFreeze.setAttribute('data-tooltip', 'Default config can only be modified from settings!<br/>You can create a new configuration:<br/> - From settings with <span class="codicon codicon-add"></span><br/> - Adapt any config and duplicate it with <span class="codicon codicon-files"></span>');
+                btnFreeze.style.cursor = 'not-allowed';
+
+                if(btnEdit) btnEdit.disabled = true;
         } else {
-            if(btnFreeze) btnFreeze.disabled = false;
+            if(btnFreeze) {
+                btnFreeze.disabled = false;
+                btnFreeze.setAttribute('data-tooltip', 'Freeze or unfreeze profile. Unfreezing allows overwriting and re-naming configurations');
+                btnFreeze.style.cursor = '';
+            }
             const entry = state.historyList.find(h => h.id === val);
             if (entry) {
                 if(btnFreeze) btnFreeze.innerHTML = entry.frozen ? '<span class="codicon codicon-lock"></span>' : '<span class="codicon codicon-unlock"></span>';
