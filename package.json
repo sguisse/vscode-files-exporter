@@ -248,6 +248,13 @@
                     },
                     "default": [
                         {
+                            "label": "No Extension",
+                            "excludeExtsMenuEnabled": true,
+                            "extensions": [
+                                "^[^.]+$|.*\\."
+                            ]
+                        },
+                        {
                             "label": "CONFIG -  YAML",
                             "includeExtsMenuEnabled": true,
                             "extensions": [
@@ -550,6 +557,81 @@
                                 ".*\\.info$",
                                 ".*\\.warn$",
                                 ".*\\.error$"
+                            ]
+                        },
+                        {
+                            "label": "TMP - Standard",
+                            "excludeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.tmp$",
+                                ".*\\.temp$"
+                            ]
+                        },
+                        {
+                            "label": "TMP - Backup & Cache",
+                            "excludeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.bak$",
+                                ".*\\.old$",
+                                ".*\\.cache$",
+                                ".*\\.swp$",
+                                ".*\\.~$"
+                            ]
+                        },
+                        {
+                            "label": "TMP - Lock & Process",
+                            "excludeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.lock$",
+                                ".*\\.pid$"
+                            ]
+                        },
+                        {
+                            "label": "TMP - Placeholder & Keep",
+                            "excludeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.keep$",
+                                ".*\\.gitkeep$"
+                            ]
+                        },
+                        {
+                            "label": "TEMPLATE - Logicless & Handlebars",
+                            "includeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.mustache$",
+                                ".*\\.hbs$",
+                                ".*\\.handlebars$"
+                            ]
+                        },
+                        {
+                            "label": "TEMPLATE - Generic Engine",
+                            "includeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.template$",
+                                ".*\\.tpl$",
+                                ".*\\.tmpl$"
+                            ]
+                        },
+                        {
+                            "label": "TEMPLATE - JavaScript & Web",
+                            "includeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.ejs$",
+                                ".*\\.pug$",
+                                ".*\\.jade$",
+                                ".*\\.twig$",
+                                ".*\\.liquid$"
+                            ]
+                        },
+                        {
+                            "label": "TEMPLATE - Python & Polyglot ",
+                            "includeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.jinja$",
+                                ".*\\.jinja2$",
+                                ".*\\.j2$",
+                                ".*\\.ftl$",
+                                ".*\\.erb$"
                             ]
                         }
                     ]

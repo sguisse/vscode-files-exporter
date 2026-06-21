@@ -516,7 +516,7 @@ export class TreeViewTab {
 
         console.info(`[TreeExclude][ExtensionMode] Applying filters to extension batch...`);
         extsToExclude.forEach(ext => {
-            const pattern = '\\.' + ext + '$';
+            const pattern = '.*\\.' + ext + '$';
             const isIncluded = incExtsEl.value.split('\n').includes(ext);
 
             if (isIncluded) {
