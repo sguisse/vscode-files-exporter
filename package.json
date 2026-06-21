@@ -248,51 +248,308 @@
                     },
                     "default": [
                         {
-                            "label": "Configurations",
+                            "label": "CONFIG -  YAML",
                             "includeExtsMenuEnabled": true,
-                            "excludeExtsMenuEnabled": false,
+                            "extensions": [
+                                ".*\\.yaml$",
+                                ".*\\.yml$"
+                            ]
+                        },
+                        {
+                            "label": "CONFIG -  XML",
+                            "includeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.xml$",
+                                ".*\\.xsd$"
+                            ]
+                        },
+                        {
+                            "label": "CONFIG -  JSON",
+                            "includeExtsMenuEnabled": true,
                             "extensions": [
                                 ".*\\.json$",
-                                ".*\\.yaml$",
-                                ".*\\.yml$",
-                                ".*\\.xml$",
+                                ".*\\.jsonc$",
+                                ".*\\.json5$"
+                            ]
+                        },
+                        {
+                            "label": "CONFIG -  TOML",
+                            "includeExtsMenuEnabled": true,
+                            "extensions": [
                                 ".*\\.toml$"
                             ]
                         },
                         {
-                            "label": "Documentation",
+                            "label": "CONFIG -  Props & Env",
+                            "includeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.properties$",
+                                ".*\\.prop$",
+                                ".*\\.env$"
+                            ]
+                        },
+                        {
+                            "label": "CONFIG -  Generic & INI",
+                            "includeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.conf$",
+                                ".*\\.cfg$",
+                                ".*\\.config$",
+                                ".*\\.ini$",
+                                ".*\\.prefs$"
+                            ]
+                        },
+                        {
+                            "label": "DOC -    Markdown & Tech",
                             "includeExtsMenuEnabled": true,
                             "extensions": [
                                 ".*\\.md$",
-                                ".*\\.txt$"
+                                ".*\\.txt$",
+                                ".*\\.rst$",
+                                ".*\\.adoc$"
                             ]
                         },
                         {
-                            "label": "Front-end Sources",
+                            "label": "DOC -    Office & PDF",
+                            "excludeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.pdf$",
+                                ".*\\.docx$",
+                                ".*\\.doc$",
+                                ".*\\.odt$"
+                            ]
+                        },
+                        {
+                            "label": "DOC -    Spreadsheets & Data Sheets",
+                            "excludeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.xlsx$",
+                                ".*\\.xls$",
+                                ".*\\.csv$"
+                            ]
+                        },
+                        {
+                            "label": "FE - Web Markup",
+                            "includeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.html$",
+                                ".*\\.htm$"
+                            ]
+                        },
+                        {
+                            "label": "FE - CSS & Preprocessors",
+                            "includeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.css$",
+                                ".*\\.scss$",
+                                ".*\\.sass$",
+                                ".*\\.less$"
+                            ]
+                        },
+                        {
+                            "label": "FE - JavaScript & TypeScript",
                             "includeExtsMenuEnabled": true,
                             "extensions": [
                                 ".*\\.js$",
-                                ".*\\.ts$",
-                                ".*\\.tsx$",
-                                ".*\\.jsx$",
-                                ".*\\.css$",
-                                ".*\\.html$"
+                                ".*\\.ts$"
                             ]
                         },
                         {
-                            "label": "Back-end Sources",
+                            "label": "FE - React Components",
+                            "includeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.jsx$",
+                                ".*\\.tsx$"
+                            ]
+                        },
+                        {
+                            "label": "FE - Modern UI Fwks",
+                            "includeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.vue$",
+                                ".*\\.svelte$",
+                                ".*\\.astro$"
+                            ]
+                        },
+                        {
+                            "label": "BE - Python",
+                            "includeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.py$",
+                                ".*\\.pyw$",
+                                ".*\\.pyx$"
+                            ]
+                        },
+                        {
+                            "label": "BE - Java & JVM",
                             "includeExtsMenuEnabled": true,
                             "extensions": [
                                 ".*\\.java$",
-                                ".*\\.py$"
+                                ".*\\.kt$",
+                                ".*\\.kts$",
+                                ".*\\.scala$",
+                                ".*\\.groovy$"
                             ]
                         },
                         {
-                            "label": "Images",
+                            "label": "BE - Node.js (TS/JS)",
+                            "includeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.ts$",
+                                ".*\\.js$",
+                                ".*\\.mjs$",
+                                ".*\\.cjs$"
+                            ]
+                        },
+                        {
+                            "label": "BE - .NET (C# / F#)",
+                            "includeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.cs$",
+                                ".*\\.fs$"
+                            ]
+                        },
+                        {
+                            "label": "BE - Go & Rust",
+                            "includeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.go$",
+                                ".*\\.rs$"
+                            ]
+                        },
+                        {
+                            "label": "BE - C & C++",
+                            "includeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.c$",
+                                ".*\\.cpp$",
+                                ".*\\.h$",
+                                ".*\\.hpp$"
+                            ]
+                        },
+                        {
+                            "label": "BE - PHP & Ruby",
+                            "includeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.php$",
+                                ".*\\.rb$"
+                            ]
+                        },
+                        {
+                            "label": "ARCH -  Standard",
                             "excludeExtsMenuEnabled": true,
                             "extensions": [
+                                ".*\\.zip$",
+                                ".*\\.rar$",
+                                ".*\\.7z$",
+                                ".*\\.tar$",
+                                ".*\\.gz$",
+                                ".*\\.bz2$",
+                                ".*\\.xz$",
+                                ".*\\.tgz$",
+                                ".*\\.zipx$"
+                            ]
+                        },
+                        {
+                            "label": "ARCH -  Img & Virtual",
+                            "excludeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.iso$",
+                                ".*\\.dmg$",
+                                ".*\\.cab$",
+                                ".*\\.vhd$",
+                                ".*\\.vmdk$"
+                            ]
+                        },
+                        {
+                            "label": "ARCH -  Java & Deployment",
+                            "excludeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.jar$",
+                                ".*\\.war$",
+                                ".*\\.ear$"
+                            ]
+                        },
+                        {
+                            "label": "IMG -Web & Standard",
+                            "excludeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.jpg$",
+                                ".*\\.jpeg$",
                                 ".*\\.png$",
-                                ".*\\.gif$"
+                                ".*\\.webp$",
+                                ".*\\.gif$",
+                                ".*\\.bmp$"
+                            ]
+                        },
+                        {
+                            "label": "IMG -Vector Graphics",
+                            "excludeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.svg$",
+                                ".*\\.ai$",
+                                ".*\\.eps$"
+                            ]
+                        },
+                        {
+                            "label": "IMG -Design & Editing",
+                            "excludeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.psd$",
+                                ".*\\.xcf$",
+                                ".*\\.tiff$",
+                                ".*\\.tif$"
+                            ]
+                        },
+                        {
+                            "label": "IMG -Camera RAW & HE",
+                            "excludeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.heic$",
+                                ".*\\.heif$",
+                                ".*\\.raw$",
+                                ".*\\.cr2$",
+                                ".*\\.nef$",
+                                ".*\\.arw$"
+                            ]
+                        },
+                        {
+                            "label": "LOG -  Standard",
+                            "excludeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.log$",
+                                ".*\\.out$",
+                                ".*\\.err$",
+                                ".*\\.syslog$"
+                            ]
+                        },
+                        {
+                            "label": "LOG -  Structured & Event",
+                            "excludeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.jsonl$",
+                                ".*\\.ndjson$",
+                                ".*\\.event$",
+                                ".*\\.evtx$"
+                            ]
+                        },
+                        {
+                            "label": "LOG -  Diagnostic & Trace",
+                            "excludeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.trace$",
+                                ".*\\.audit$",
+                                ".*\\.dump$",
+                                ".*\\.crash$"
+                            ]
+                        },
+                        {
+                            "label": "LOG -  Level Specifics",
+                            "excludeExtsMenuEnabled": true,
+                            "extensions": [
+                                ".*\\.info$",
+                                ".*\\.warn$",
+                                ".*\\.error$"
                             ]
                         }
                     ]
