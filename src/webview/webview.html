@@ -249,7 +249,7 @@
                     <div class="filter-actions-header">
                         <span class="field-label" data-tooltip="Regex mapping specifying inside-folder structures to explicitly allow.">✅ Include Paths</span>
                         <div class="filter-btn-group">
-                            <vscode-button id="btn-sort-incPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically" data-dir="asc"><span class="codicon codicon-arrow-down"></span></vscode-button>
+                            <vscode-button id="btn-sort-incPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically" data-dir="asc"><span class="codicon codicon-triangle-down"></span></vscode-button>
                             <vscode-button id="btn-explode-incPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Explode unified expressions block layout to individual lines components"><span class="codicon codicon-unfold"></span></vscode-button>
                         </div>
                     </div>
@@ -259,7 +259,7 @@
                     <div class="filter-actions-header">
                         <span class="field-label" data-tooltip="Regex checklist specifying file extensions to let through during discovery.">🟢 Include exts</span>
                         <div class="filter-btn-group">
-                            <vscode-button id="btn-sort-incExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically" data-dir="asc"><span class="codicon codicon-arrow-down"></span></vscode-button>
+                            <vscode-button id="btn-sort-incExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically" data-dir="asc"><span class="codicon codicon-triangle-down"></span></vscode-button>
                             <vscode-button id="btn-group-incExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Group extensions by category categories structure"><span class="codicon codicon-library"></span></vscode-button>
                             <vscode-button id="btn-explode-incExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Explode unified expressions block layout to individual lines components"><span class="codicon codicon-unfold"></span></vscode-button>
                             <vscode-button id="btn-predefined-inclusions" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Predefined extension inclusions."><span class="codicon codicon-kebab-vertical"></span></vscode-button>
@@ -272,7 +272,7 @@
                     <div class="filter-actions-header">
                         <span class="field-label" data-tooltip="Regex blacklisting targeted folder structures (e.g. node_modules, .git) to skip.">🚫 Exclude Paths</span>
                         <div class="filter-btn-group">
-                            <vscode-button id="btn-sort-excPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically" data-dir="asc"><span class="codicon codicon-arrow-down"></span></vscode-button>
+                            <vscode-button id="btn-sort-excPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically" data-dir="asc"><span class="codicon codicon-triangle-down"></span></vscode-button>
                             <vscode-button id="btn-explode-excPaths" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Explode unified expressions block layout to individual lines components"><span class="codicon codicon-unfold"></span></vscode-button>
                         </div>
                     </div>
@@ -282,7 +282,7 @@
                     <div class="filter-actions-header">
                         <span class="field-label" data-tooltip="Regex mapping identifying forbidden raw formats (e.g. log, exe, png) to skip.">🔴 Exclude exts</span>
                         <div class="filter-btn-group">
-                            <vscode-button id="btn-sort-excExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically" data-dir="asc"><span class="codicon codicon-arrow-down"></span></vscode-button>
+                            <vscode-button id="btn-sort-excExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Sort contents alphabetically" data-dir="asc"><span class="codicon codicon-triangle-down"></span></vscode-button>
                             <vscode-button id="btn-group-excExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Group extensions by category categories structure"><span class="codicon codicon-library"></span></vscode-button>
                             <vscode-button id="btn-explode-excExts" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Explode unified expressions block layout to individual lines components"><span class="codicon codicon-unfold"></span></vscode-button>
                             <vscode-button id="btn-predefined-exclusions" appearance="icon" style="height: 18px; width: 18px;" data-tooltip="Predefined extension exclusions."><span class="codicon codicon-kebab-vertical"></span></vscode-button>
@@ -504,8 +504,13 @@
                             <vscode-text-field id="treeSearchInput" placeholder="Search files/extensions..." style="flex-grow: 1;"></vscode-text-field>
                             <vscode-checkbox id="cbTreeRegexp">.*</vscode-checkbox>
                             <vscode-button id="btnTreeClearSearch" appearance="icon" class="tooltip-bottom icon-btn"><span class="codicon-clear-all codicon"></span></vscode-button>
+
+                            <div class="vertical-divider"></div>
+
                             <vscode-button id="btnTreeExpandAll" appearance="icon" class="tooltip-bottom icon-btn"><span class="codicon codicon-expand-all"></span></vscode-button>
                             <vscode-button id="btnTreeCollapseAll" appearance="icon" class="tooltip-bottom icon-btn"><span class="codicon-collapse-all codicon"></span></vscode-button>
+
+                            <div class="vertical-divider"></div>
                             <vscode-button id="btnTreeExport" appearance="icon" class="tooltip-left icon-btn"><span class="codicon codicon-export"></span></vscode-button>
                         </div>
                         <div id="view-tree-content" style="overflow-y: auto; max-height: 400px; font-family: var(--vscode-editor-font-family); font-size: 13px;"></div>

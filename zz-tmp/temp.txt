@@ -1,65 +1,17 @@
-TODO : Proposer dans un menu déroulant des inclusions prédéfinies (ex : les fichiers de configuration, les fichiers de documentation, les sources Front-end, les sources Back-end)
-Les inclusions prédefinies sont configurables via les settings de l'extention dans la variable "inclusionsPredefinies" de type array (ex : "inclusionsPredefinies": {"config": ["*.json", "*.yaml"], "docs": ["*.md"], "frontend": ["*.js", "*.css"], "backend": ["*.java", "*.py"]})
-Ce menu déroulant est accessible via un bouton vscode "kebab-vertical" à côté du label d'inclusion aligné à droite du span content "🟢 Include exts"
-Dans la generation tous les fichiers produits sont exclusivement en Anglais !
-
-
-
-/**
- * Explodes a consolidated file filter regex into individual line-by-line regex strings.
- * @param {string} regexStr - The original regex string to explode.
- * @returns {string[]} An array of individual regex strings.
- */
-function explodeRegexFilter(regexStr) {
-    // 1. Separate the non-extension part from the extensions part
-    const [noExtensionPart, extensionsPart] = regexStr.split('|');
-
-    if (!extensionsPart) {
-        return [regexStr];
-    }
-
-    // 2. Extract the pipe-separated extensions from inside the group ( ?:ext1|ext2... )
-    const extensionsMatch = extensionsPart.match(/\((?:\?:)?([^)]+)\)/);
-
-    if (!extensionsMatch) {
-        return [regexStr];
-    }
-
-    // 3. Split the extensions and rebuild them individually
-    const extensions = extensionsMatch[1].split('|');
-    const individualExtensions = extensions.map(ext => `.*\\.${ext}$`);
-
-    // 4. Return the non-extension rule combined with the individual extension rules
-    return [noExtensionPart, ...individualExtensions];
-}
-
-// === Example Usage ===
-const inputRegex = "^[^.]+$|.*\\.(?:log|tmp|lock|zip|tar|png|jpg|gif|pyc|vsix)$";
-const result = explodeRegexFilter(inputRegex);
-
-console.log(result);
-/* Output:
-[
-  '^[^.]+$',
-  '.*\\.log$',
-  '.*\\.tmp$',
-  '.*\\.lock$',
-  '.*\\.zip$',
-  '.*\\.tar$',
-  '.*\\.png$',
-  '.*\\.jpg$',
-  '.*\\.gif$',
-  '.*\\.pyc$',
-  '.*\\.vsix$'
-]
-*/
-
-
-"llms": [
-    {
-        "label": "Gemini",
-        "model": "PRO 2.5",
-        "price": 12,
-
-    },
-    ...
+.*/node_modules/.*|.*/target/.*|.*/\.git/.*|.*/dist/.*|.*/.idea/.*|.*/.vscode/.*|.*/.history/.*|.*/exported-files/.*
+.*/scripts/tools/.*
+.*/interfaces/.*
+.*/commands/extension\-commands\.ts$
+.*/services/clipboard\.service\.ts$
+.*/services/export\-orchestrator\.service\.ts$
+.*/services/git\.service\.ts$
+.*/services/process\-runner\.service\.ts$
+.*/test/.*
+.*/webview/js/services/pricing\-service\.js$
+.*/webview/js/services/pricing\-gpt\-service\.js$
+.*/webview/js/services/pricing\-gemini\-service\.js$
+.*/webview/js/services/pricing\-claude\-service\.js$
+.*/webview/js/services/block\-summary\-builder\.js$
+.*/webview/js/services/destination\-manager\.js$
+.*/webview/js/core/vscode\.bridge\.js$
+.*/webview/js/components/modal\.component\.js$

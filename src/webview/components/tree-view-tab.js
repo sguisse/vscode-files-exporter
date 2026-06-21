@@ -67,7 +67,7 @@ export class TreeViewTab {
             return `<div class="tree-item file-item" data-name="${fullName.toLowerCase()}">
                         <input type="checkbox" class="tree-cb file-cb" data-path="${node.absolute_path.replace(/\\/g, '\\\\')}">
                         <span class="tree-icon">📄</span>
-                        <span class="tree-name file-name" style="color: var(--vscode-textLink-foreground); cursor: pointer; text-decoration: underline;" data-path="${node.absolute_path.replace(/\\/g, '\\\\')}"
+                        <span class="tree-name file-name" style="color: var(--vscode-textLink-foreground); cursor: pointer; text-decoration: underline;" data-path="${node.absolute_path.replace(/\\/g, '\\\\')} "
                             data-tooltip="Open file here, in VS Code">${fullName}</span>
                         <vscode-button appearance="icon" class="btn-tree-finder tooltip-right" data-tooltip="Reveal file in OS Explorer" data-path="${node.absolute_path.replace(/\\/g, '\\\\')}" style="height: 18px; width: 18px; margin-left: 10px;"><span class="codicon codicon-folder-opened"></span></vscode-button>
                         <vscode-button appearance="icon" class="btn-tree-exclude tooltip-right" data-tooltip="Exclude file path" data-path="${node.absolute_path.replace(/\\/g, '\\\\')}" style="height: 18px; width: 18px; margin-right: 5px;">🚫</vscode-button>
@@ -245,14 +245,28 @@ export class TreeViewTab {
                 document.getElementById(this.collapseId).addEventListener('click', () => this.setExpandAll(false));
             }
 
+            // Fixed Button Toggle Mode Setup
             const toggleBtn = document.getElementById(this.toggleId);
             if (toggleBtn) {
                 toggleBtn.replaceWith(toggleBtn.cloneNode(true));
-                document.getElementById(this.toggleId).addEventListener('click', () => {
+                const freshToggleBtn = document.getElementById(this.toggleId);
+
+                // Initialize the attribute configuration context layout matching state
+                freshToggleBtn.setAttribute('data-mode', this.viewMode);
+
+                freshToggleBtn.addEventListener('click', () => {
                     this.viewMode = this.viewMode === 'standard' ? 'extension' : 'standard';
-                    const icon = document.getElementById(this.toggleId);
-                    if (icon) icon.innerHTML = this.viewMode === 'standard' ? '<span class="codicon codicon-list-flat"></span>' : '<span class="codicon codicon-file"></span>';
-                    if (this.treeManifest) this.render({ tree_manifest: { root: this.treeManifest } }, this.onFileClick, this.onFinderClick);
+
+                    // Keep DOM synchronized so bindExcludeHandlers context read queries succeed
+                    freshToggleBtn.setAttribute('data-mode', this.viewMode);
+
+                    freshToggleBtn.innerHTML = this.viewMode === 'standard'
+                        ? '<span class="codicon codicon-list-flat"></span>'
+                        : '<span class="codicon codicon-file"></span>';
+
+                    if (this.treeManifest) {
+                        this.render({ tree_manifest: { root: this.treeManifest } }, this.onFileClick, this.onFinderClick);
+                    }
                 });
             }
 
@@ -266,16 +280,12 @@ export class TreeViewTab {
         }
     }
 
-    /**
-     * ✨ Flawless Tri-State Calculation Routine Layer: Evaluates states accurately by matching sub-checkbox arrays
-     */
     updateParentCheckboxes(childCb) {
         let parentFolder = childCb.closest('.tree-children')?.closest('.tree-folder');
         while (parentFolder) {
             const parentCb = parentFolder.querySelector(':scope > .tree-folder-header .tree-cb');
             if (!parentCb) break;
 
-            // Target immediate structural children arrays exclusively to avoid calculation pollution leaks
             const immediateChildrenCbs = Array.from(parentFolder.querySelectorAll(
                 ':scope > .tree-children > .tree-folder > .tree-folder-header .tree-cb, :scope > .tree-children > .tree-item .tree-cb'
             ));
@@ -296,7 +306,7 @@ export class TreeViewTab {
             } else {
                 parentCb.checked = false;
                 parentCb.indeterminate = true;
-                parentCb.classList.add('is-indeterminate'); // Inject styling token anchor string explicitly
+                parentCb.classList.add('is-indeterminate');
             }
 
             parentFolder = parentFolder.parentElement?.closest('.tree-folder');
@@ -407,59 +417,166 @@ export class TreeViewTab {
     }
 
     bindExcludeHandlers() {
-        const excExtsEl = document.getElementById('excExts');
-        const incExtsEl = document.getElementById('incExts');
-        const toggleMode = document.getElementById('btnTreeToggleMode');
-        const isExtensionMode = toggleMode && toggleMode.getAttribute('data-view-mode') === 'extension';
+        const toggleBtn = document.getElementById('btnTreeToggleMode');
 
+        const modeSource = toggleBtn ? 'Toggle button (UI)' : 'this.viewMode (Fallback)';
+        const isExtensionMode = toggleBtn
+            ? toggleBtn.getAttribute('data-mode') === 'extension'
+            : this.viewMode === 'extension';
+
+        console.info(`[TreeExclude] Handlers initialization. Mode source: ${modeSource}. Extension Mode active?`, isExtensionMode);
+
+        // Clean up old listeners (Safety cloning)
         document.querySelectorAll('.btn-tree-exclude').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const path = btn.getAttribute('data-path');
-                const node = btn.closest('.tree-node, .tree-folder, .tree-item');
-                let exts = [];
-
-                if (isExtensionMode) {
-                    // Extract from current node or recursive children if folder
-                    const collectExts = (el) => {
-                        const fileCb = el.querySelector('.file-cb');
-                        if (fileCb) {
-                            const p = fileCb.getAttribute('data-path');
-                            const match = p.match(/\\.([^\\./]+)$/);
-                            if (match) exts.push(match[1]);
-                        }
-                        el.querySelectorAll('.file-item').forEach(f => {
-                             const p = f.querySelector('.file-cb')?.getAttribute('data-path');
-                             const match = p?.match(/\\.([^\\./]+)$/);
-                             if (match) exts.push(match[1]);
-                        });
-                    };
-                    collectExts(node);
-                } else {
-                    const match = path.match(/\\.([^\\./]+)$/);
-                    if (match) exts.push(match[1]);
-                }
-
-                exts = [...new Set(exts)];
-                let currentExc = excExtsEl.value;
-                let currentInc = incExtsEl.value;
-
-                exts.forEach(ext => {
-                    const pattern = '\\.' + ext + '$';
-                    if (!currentExc.includes(pattern)) {
-                        currentExc += (currentExc ? '\n' : '') + pattern;
-                    }
-                    if (currentInc.includes(ext)) {
-                        // Reuse Modal logic (assuming ModalComponent is globally available)
-                        if (window.ModalComponent) {
-                            window.ModalComponent.triggerValidationErrorModal('Extension .' + ext + ' is currently included in "Include Extensions". Remove it first.');
-                        }
-                    }
-                });
-
-                excExtsEl.value = currentExc;
-                excExtsEl.dispatchEvent(new Event('input', { bubbles: true }));
-            });
+            btn.replaceWith(btn.cloneNode(true));
         });
 
+        // Bind new event listeners
+        document.querySelectorAll('.btn-tree-exclude').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+
+                const rawPath = btn.getAttribute('data-path');
+                const tooltip = btn.getAttribute('data-tooltip') || '';
+                const isFolder = tooltip.toLowerCase().includes('folder');
+
+                console.info(`[TreeExclude] Click detected on an exclude button. Raw data:`, { rawPath, isFolder, tooltip });
+
+                const currentModeIsExtension = toggleBtn ? toggleBtn.getAttribute('data-mode') === 'extension' : isExtensionMode;
+                console.info(`[TreeExclude] Routing action to mode: ${currentModeIsExtension ? 'EXTENSION' : 'STANDARD'}`);
+
+                if (currentModeIsExtension) {
+                    this._handleExtensionModeExclude(btn, rawPath, isFolder);
+                } else {
+                    this._handleStandardModeExclude(btn, rawPath, isFolder);
+                }
+            });
+        });
     }
+
+
+    /**
+     * Handles exclusions for "Extension" mode
+     * @private
+     */
+    _handleExtensionModeExclude(btn, rawPath, isFolder) {
+        console.info(`[TreeExclude][ExtensionMode] Processing started. Type: ${isFolder ? 'Folder' : 'File'}`);
+
+        // Live lazy DOM lookups
+        const excExtsEl = document.getElementById('excExts');
+        const incExtsEl = document.getElementById('incExts');
+
+        if (!excExtsEl || !incExtsEl) {
+            console.error(`[TreeExclude][ExtensionMode] Error: Core filter elements ('excExts' or 'incExts') are missing from DOM.`);
+            return;
+        }
+
+        const depth = 1;
+        let extsToExclude = new Set();
+
+        if (isFolder) {
+            const header = btn.closest('.tree-folder-header');
+            const folderName = header?.querySelector('.folder-name')?.innerText.trim();
+            console.info(`[TreeExclude][ExtensionMode] Analyzing folder: "${folderName}"`);
+
+            if (folderName) {
+                const cbElements = btn.closest('.tree-folder').querySelectorAll('.file-cb');
+                console.info(`[TreeExclude][ExtensionMode] Number of child files found under this node: ${cbElements.length}`);
+
+                cbElements.forEach(cb => {
+                    const cbPath = cb.getAttribute('data-path');
+                    const match = cbPath?.match(/\.([^./]+)$/);
+                    if (match) {
+                        extsToExclude.add(match[1]);
+                    }
+                });
+                console.info(`[TreeExclude][ExtensionMode] Collected extensions to exclude:`, Array.from(extsToExclude));
+            }
+        } else {
+            const match = rawPath.match(/\.([^./]+)$/);
+            const ext = match ? match[1] : '';
+            console.info(`[TreeExclude][ExtensionMode] Analyzing isolated file. Extracted extension: ".${ext}"`);
+
+            if (ext && ext !== 'no_ext') {
+                const pathParts = rawPath.split(/[\\/]/).filter(p => p.length > 0);
+                const fileIndex = pathParts.length - 1;
+                const subLevelFolder = pathParts.slice(Math.max(0, fileIndex - depth), fileIndex).join('/');
+                const pattern = `${subLevelFolder.replace(/[-\^$*+?.()|[\]{}]/g, '\\$&')}/.*\\.${ext}$`;
+
+                console.info(`[TreeExclude][ExtensionMode] Isolated file - Generated localized pattern: "${pattern}"`);
+
+                if (!excExtsEl.value.includes(pattern)) {
+                    excExtsEl.value = (excExtsEl.value ? excExtsEl.value + '\n' : '') + pattern;
+                    console.info(`[TreeExclude][ExtensionMode] Pattern added to excExts. New value:`, excExtsEl.value);
+                    excExtsEl.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                return;
+            }
+        }
+
+        console.info(`[TreeExclude][ExtensionMode] Applying filters to extension batch...`);
+        extsToExclude.forEach(ext => {
+            const pattern = '\\.' + ext + '$';
+            const isIncluded = incExtsEl.value.split('\n').includes(ext);
+
+            if (isIncluded) {
+                window.ModalComponent?.triggerValidationErrorModal(`Extension .${ext} is currently in "Include Extensions". Remove it first.`);
+            } else if (!excExtsEl.value.includes(pattern)) {
+                excExtsEl.value = (excExtsEl.value ? excExtsEl.value + '\n' : '') + pattern;
+            }
+        });
+
+        excExtsEl.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+
+
+   /**
+    * Handles exclusions for "Standard Path" mode
+    * @private
+    */
+    _handleStandardModeExclude(btn, rawPath, isFolder) {
+        console.info(`[TreeExclude][StandardMode] Standard path processing started.`);
+
+        // Live lazy DOM lookup
+        const excPathsEl = document.getElementById('excPaths');
+
+        if (!excPathsEl) {
+            console.error(`[TreeExclude][StandardMode] Error: HTML element 'excPaths' not found in DOM yet.`);
+            return;
+        }
+
+        const cleanPath = rawPath.replace(/\\/g, '/');
+        const root = this.treeManifest?.absolute_path?.replace(/\\/g, '/') || '';
+        const rel = cleanPath.startsWith(root) ? cleanPath.slice(root.length).replace(/^\/+/, '') : cleanPath;
+
+        console.info(`[TreeExclude][StandardMode] Path calculations:`, { cleanPath, rootPath: root, relativePath: rel });
+
+        let regex;
+
+        if (isFolder && (rel === '' || !rel)) {
+            const folderHeader = btn.closest('.tree-folder-header');
+            const folderNameEl = folderHeader ? folderHeader.querySelector('.folder-name') : null;
+            const folderName = folderNameEl ? folderNameEl.innerText.trim() : '';
+            const escapedFolderName = folderName.replace(/[-\^$*+?.()|[\]{}]/g, '\\$&');
+
+            regex = `.*/${escapedFolderName}/.*`;
+            console.info(`[TreeExclude][StandardMode] Empty relative path (Root Node). Fallback pattern: "${regex}"`);
+        } else {
+            const escapedRel = rel.replace(/[-\^$*+?.()|[\]{}]/g, '\\$&');
+            regex = isFolder ? `.*/${escapedRel}/.*` : `.*/${escapedRel}$`;
+        }
+
+        console.info(`[TreeExclude][StandardMode] Final calculated regular expression: "${regex}"`);
+
+        if (!excPathsEl.value.includes(regex)) {
+            excPathsEl.value = (excPathsEl.value ? excPathsEl.value + '\n' : '') + regex;
+            console.info(`[TreeExclude][StandardMode] Regex injected into excPaths. New value:`, excPathsEl.value);
+            excPathsEl.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+            console.info(`[TreeExclude][StandardMode] Regex already exists in excPaths textarea. Action ignored.`);
+        }
+    }
+
+
 }

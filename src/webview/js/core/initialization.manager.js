@@ -18,10 +18,10 @@ export const InitializationManager = {
         if (!summaryElement) return;
 
         if (isCollapsed) {
-            summaryElement.innerText = BlockSummaryBuilder.computeBlockSummary(blockId);
+            summaryElement.innerHTML = BlockSummaryBuilder.computeBlockSummary(blockId);
             summaryElement.style.display = 'inline-block';
         } else {
-            summaryElement.innerText = '';
+            summaryElement.innerHTML = '';
             summaryElement.style.display = 'none';
         }
     },

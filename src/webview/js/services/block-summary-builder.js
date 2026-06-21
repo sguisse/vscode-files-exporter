@@ -9,28 +9,55 @@ export const BlockSummaryBuilder = {
             const pieces = [];
             Object.keys(elementsMap).forEach(key => {
                 const rawVal = elementsMap[key];
-                if (rawVal !== undefined && rawVal !== null && rawVal !== '' && rawVal !== false) {
-                    let displayString = typeof rawVal === 'boolean' ? key : `${key}: ${truncate(String(rawVal))}`;
-                    pieces.push({ text: displayString, length: displayString.length });
+                let displayString = `${key}: ${truncate(String(rawVal))}`;
+                pieces.push({ text: displayString, length: displayString.length });
+            });
+            // Sort by increasing length (Shorter first)
+            pieces.sort((a, b) => a.length - b.length);
+
+            // Reorder to put elements in the exact order specified
+            const orderedKeys = ['Max', 'Inc', 'Exc', 'Format', 'Chunk', 'Split', 'Copy2Clip', 'Tree'];
+            const orderedPieces = [];
+            const remainingPieces = [];
+
+            pieces.forEach(piece => {
+                const splitPieceText = piece.text.split(':');
+                const key = splitPieceText[0].trim();
+                let value = '';
+                for (let i = 1; i < splitPieceText.length; i++) {
+                    value = value + ":" + splitPieceText[i];
+                }
+                piece.text = "<strong>" + key + ": </strong>" + value;
+
+                if (orderedKeys.includes(key)) {
+                    orderedPieces.push({ key, piece });
+                } else {
+                    remainingPieces.push(piece);
                 }
             });
-            // Tri par longueur croissante (Shorter first)
-            pieces.sort((a, b) => a.length - b.length);
-            return pieces.map(p => p.text).join(' | ');
+
+            // Sort ordered pieces by their position in the orderedKeys array
+            orderedPieces.sort((a, b) => orderedKeys.indexOf(a.key) - orderedKeys.indexOf(b.key));
+
+            // Combine ordered pieces with remaining pieces
+            const finalPieces = orderedPieces.map(item => item.piece).concat(remainingPieces);
+
+            return finalPieces.map(p => p.text).join('&nbsp;&nbsp;&nbsp;');
         };
 
         switch (blockId) {
             case 'block-history': {
-                const combo = document.getElementById('historyCombo');
-                const activeId = combo ? combo.value : 'default';
+                const historyCombo = document.getElementById('historyCombo');
 
-                let displayValue = 'Default Config';
+                if (!historyCombo) return;
 
-                // Recherche du nom d'affichage réel dans la liste du state
-                if (activeId !== 'default' && state.historyList) {
-                    const entry = state.historyList.find(h => h.id === activeId);
-                    if (entry && entry.display) {
-                        displayValue = entry.display;
+                // Retrieves the textual label of the selected <vscode-option> tag
+                let displayValue = '';
+                if (historyCombo.options && historyCombo.options.length > 0) {
+                    // Get the selected option directly
+                    const selectedOption = historyCombo.options[historyCombo.selectedIndex];
+                    if (selectedOption) {
+                        displayValue = selectedOption.textContent.trim();
                     }
                 }
 
@@ -39,21 +66,31 @@ export const BlockSummaryBuilder = {
             case 'block-sourcepaths': {
                 const paths = (document.getElementById('pathList')?.value || '').split('\n').map(p => p.trim()).filter(p => p);
                 if (paths.length === 0) return 'No paths defined';
-                return collectAndFormatValues({ Count: `${paths.length} target(s)`, First: paths[0].split('/').pop() || paths[0] });
+                const lastParts = paths.map(path => path.split('/').pop().split('\\').pop());
+                return collectAndFormatValues({
+                    Count: `${paths.length} target(s)`,
+                    Paths: lastParts.map(part => `/${part}`).join(', ')
+                });
             }
             case 'block-filters': {
                 const maxF = document.getElementById('maxFile')?.value || '';
                 const incP = document.getElementById('incPaths')?.value || '';
                 const excP = document.getElementById('excPaths')?.value || '';
-                return collectAndFormatValues({ [`Max ${maxF}KB`]: true, Inc: incP.split('\n')[0], Exc: excP.split('\n')[0] });
+                return collectAndFormatValues({
+                    Max: `${maxF}KB`,
+                    Inc: incP.split('\n').join(', '),
+                    Exc: excP.split('\n').join(', ')
+                });
             }
             case 'block-destination': {
                 return collectAndFormatValues({ Folder: document.getElementById('destDir')?.value || 'Not configured' });
             }
             case 'block-options': {
+                const chunk = document.getElementById('maxChunk')?.value || null;
+
                 return collectAndFormatValues({
                     Format: (document.getElementById('format')?.value || 'yaml').toUpperCase(),
-                    Chunk: document.getElementById('maxChunk')?.value || 'Not configured',
+                    Chunk: chunk ? `${chunk}KB` : 'Not configured',
                     Split: document.getElementById('splitChunkByFileExtension')?.checked,
                     Copy2Clip: document.getElementById('copyGeneratedFilesToClipboard')?.checked,
                     Tree: document.getElementById('generateTreeView')?.checked,

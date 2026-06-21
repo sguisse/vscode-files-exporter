@@ -174,15 +174,15 @@ export const FiltersManager = {
             lines.sort((a, b) => a.localeCompare(b));
             if (btn) btn.setAttribute("data-dir", "desc");
             if (icon) {
-                icon.classList.remove("codicon-arrow-down");
-                icon.classList.add("codicon-arrow-up");
+                icon.classList.remove("codicon-triangle-down");
+                icon.classList.add("codicon-triangle-up");
             }
         } else {
             lines.sort((a, b) => b.localeCompare(a));
             if (btn) btn.setAttribute("data-dir", "asc");
             if (icon) {
-                icon.classList.remove("codicon-arrow-up");
-                icon.classList.add("codicon-arrow-down");
+                icon.classList.remove("codicon-triangle-up");
+                icon.classList.add("codicon-triangle-down");
             }
         }
 

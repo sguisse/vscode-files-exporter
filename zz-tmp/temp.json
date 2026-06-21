@@ -1,0 +1,86 @@
+{
+    "files": [
+        {
+            "label": "Fichier (Générique)",
+            "extensions": [
+                "*"
+            ],
+            "color": {
+                "background": "#3b82f6",
+                "border": "#2563eb"
+            },
+            "shape": "hexagon",
+            "size": 20,
+            "icon": "📂"
+        },
+        {
+            "label": "Fichier TypeScript",
+            "extensions": [
+                ".ts",
+                ".tsx",
+                ".d.ts"
+            ],
+            "color": {
+                "background": "#3178c6",
+                "border": "#235a97"
+            },
+            "shape": "hexagon",
+            "size": 20,
+            "icon": "📘"
+        },
+        {
+            "label": "Fichier Markdown",
+            "extensions": [
+                ".md",
+                ".markdown"
+            ],
+            "color": {
+                "background": "#f97316",
+                "border": "#c2410c"
+            },
+            "shape": "hexagon",
+            "size": 20,
+            "icon": "📝"
+        }
+    ],
+    "class": {
+        "label": "Classe",
+        "color": {
+            "background": "#22c55e",
+            "border": "#16a34a"
+        },
+        "shape": "box",
+        "margin": 10,
+        "icon": "📦"
+    },
+    "method": {
+        "label": "Méthode",
+        "color": {
+            "background": "#a855f7",
+            "border": "#9333ea"
+        },
+        "shape": "dot",
+        "size": 16,
+        "icon": "⚡"
+    },
+    "attribute": {
+        "label": "Attribut",
+        "color": {
+            "background": "#ec4899",
+            "border": "#db2777"
+        },
+        "shape": "diamond",
+        "size": 14,
+        "icon": "🏷️"
+    },
+    "document": {
+        "label": "Document",
+        "color": {
+            "background": "#eab308",
+            "border": "#ca8a04"
+        },
+        "shape": "note",
+        "size": 16,
+        "icon": "📄"
+    }
+}

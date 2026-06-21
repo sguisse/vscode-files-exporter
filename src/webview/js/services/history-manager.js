@@ -36,6 +36,14 @@ export const HistoryManager = {
             }, 50);
         }
     },
+    getHistoryLabelById(id) {
+        if (id === 'default') {
+            return '< Default Configuration >';
+        }
+
+        const entry = state.historyList.find(h => h.id === id);
+        return entry ? entry.display : 'Unknown Profile';
+    },
     applyHistorySelection(val) {
         if (window.reportTab) window.reportTab.clear();
         if (window.filesTab) window.filesTab.clear();
