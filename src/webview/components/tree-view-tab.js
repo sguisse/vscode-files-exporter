@@ -517,9 +517,10 @@ export class TreeViewTab {
         console.info(`[TreeExclude][ExtensionMode] Applying filters to extension batch...`);
         extsToExclude.forEach(ext => {
             const pattern = '.*\\.' + ext + '$';
-            const isIncluded = incExtsEl.value.split('\n').includes(ext);
+            const isIncluded = incExtsEl.value.split('\n').includes(pattern);
 
             if (isIncluded) {
+                console.warn(`[TreeExclude][ExtensionMode] Extension .${ext} is currently in "Include Extensions". Remove it first.`);
                 window.ModalComponent?.triggerValidationErrorModal(`Extension .${ext} is currently in "Include Extensions". Remove it first.`);
             } else if (!excExtsEl.value.includes(pattern)) {
                 excExtsEl.value = (excExtsEl.value ? excExtsEl.value + '\n' : '') + pattern;
