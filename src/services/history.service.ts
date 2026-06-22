@@ -80,7 +80,8 @@ export class HistoryService {
             const existingIndex = wrapper.history.findIndex((h: any) => h.id === currentHistoryId);
             if (existingIndex !== -1 && !wrapper.history[existingIndex].frozen) {
                 wrapper.history[existingIndex].config = uiConfig;
-                wrapper.history[existingIndex].repo = repo;
+                // ✨ Fix: We DO NOT overwrite wrapper.history[existingIndex].repo here.
+                // It must retain its original creation scope.
 
                 const repoEntry = wrapper.config.repo.find((r: any) => r.repo === repo);
                 if (repoEntry) {
