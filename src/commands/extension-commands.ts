@@ -18,7 +18,7 @@ export function registerCommands(
     const addCmd = vscode.commands.registerCommand('files-exporter.addFromExplorer', (uri: vscode.Uri, selectedUris: vscode.Uri[]) => handleAddFromExplorer(uri, selectedUris, state, webviewPanelManager));
     const excludeCmd = vscode.commands.registerCommand('files-exporter.ExcludeFromExplorer', (uri: vscode.Uri, selectedUris: vscode.Uri[]) => handleExcludeFromExplorer(uri, selectedUris, webviewPanelManager));
 
-    // Add webviewPanelManager as the last argument
+    // Command attached to the Explorer Context menu for Headless Exports
     const exportPathsCmd = vscode.commands.registerCommand('files-exporter.exportSelectedPaths', (uri: vscode.Uri, selectedUris: vscode.Uri[]) =>
         handleHeadlessExportSelectedPaths(uri, selectedUris, context, configService, processRunner, webviewPanelManager)
     );
@@ -55,7 +55,7 @@ async function handleHeadlessExportSelectedPaths(
     context: vscode.ExtensionContext,
     configService: ConfigService,
     processRunner: ProcessRunnerService,
-    webviewPanelManager: ExporterWebviewPanel // ✨ Add this parameter
+    webviewPanelManager: ExporterWebviewPanel
 ) {
     const uris = selectedUris || (uri ? [uri] : []);
     const paths = uris.map(u => u.fsPath).filter(Boolean);
@@ -73,7 +73,7 @@ async function handleHeadlessExportSelectedPaths(
         const destDir = path.join(workspacePath, "exported-files");
         const format = extensionConfig.get<string>('defaultFormat') || 'yaml';
         const maxFile = extensionConfig.get<number>('maxFileSizeKb') ?? 50;
-        const maxChunk = extensionConfig.get<number>('maxChunkSizeKb') ?? 0;
+        const maxChunk = 0;
         const groupByExt = extensionConfig.get<boolean>('splitChunkByFileExtension') ?? false;
 
         const args: string[] = [
@@ -117,30 +117,36 @@ async function handleHeadlessExportSelectedPaths(
 
                         const exportedCount = reportData.results?.summary?.total_exported || 0;
                         const createdCount = reportData.results?.summary?.chunks_generated || 0;
+                        const generatedFiles: string[] = reportData.results?.generated_files?.exports || [];
 
-                        // ✅ COPY THE LIST OF SOURCE PATHS TO THE CLIPBOARD AS TEXT
-                        await vscode.env.clipboard.writeText(paths.join('\n'));
+                        // 1. Copy the generated files directly into the OS Clipboard
+                        if (generatedFiles.length > 0) {
+                            const timeoutMs = extensionConfig.get<number>('copyFilesToClipboardTimeout') ?? 10000;
+                            await processRunner.copyFilesToClipboard(generatedFiles, timeoutMs).catch(err => {
+                                vscode.window.showErrorMessage(`Failed to copy generated files to clipboard: ${err.message}`);
+                            });
+                        }
 
-                        // Display the rich HTML success notification
-                        // 1. Create a detailed plain-text fallback string
-                        const fallbackMessage = `✅ Export Pipeline Completed: Aggregated ${exportedCount} source file(s) into ${createdCount} output chunk(s). Source paths copied to clipboard!`;
+                        // 2. Create a detailed plain-text fallback string
+                        const fallbackMessage = `✅ Export Pipeline Completed: Aggregated ${exportedCount} source file(s) into ${createdCount} output chunk(s). Generated files copied to clipboard!`;
 
+                        // 3. Display the rich HTML success notification
                         const notificationService = new RichNotificationService(webviewPanelManager.panel);
-
                         notificationService.show(
-                            fallbackMessage, // ✨ PASS THE DETAILED TEXT HERE (Used when Webview is closed)
+                            fallbackMessage, // Used when Webview is closed
                             {
                                 type: "success",
                                 position: "bottom-right",
                                 header: "Export Pipeline Completed",
-                                // This rich HTML is used ONLY when the Webview is actively open
+                                // Used ONLY when Webview is actively open
                                 message: `
                                     Successfully aggregated <b>${exportedCount}</b> source file(s) into <b>${createdCount}</b> output chunk(s).<br/><br/>
-                                    📋 <b>Source paths</b> have been successfully copied to your OS clipboard.<br/><br/>
+                                    📋 <b>Generated files</b> have been successfully copied to your OS clipboard.<br/><br/>
                                     📄 <b>Exported report file saved at:</b><br/>
                                     <code>${reportPath}</code>
                                 `,
                                 actions: [
+                                    { label: "📋 Copy Source Paths", command: "copy_source_paths", data: { pathsToCopy: paths } },
                                     { label: "📁 Open Report File", command: "open_report_file", data: { path: reportPath } },
                                     { label: "Dismiss", command: "close_notification" }
                                 ]
@@ -152,17 +158,25 @@ async function handleHeadlessExportSelectedPaths(
                                         doc => vscode.window.showTextDocument(doc, vscode.ViewColumn.Active),
                                         err => vscode.window.showErrorMessage(`Failed to open report file: ${err.message}`)
                                     );
+                                } else if (command === "copy_source_paths" && payload?.pathsToCopy) {
+                                    // Copy the source paths to the clipboard when the user clicks the button
+                                    vscode.env.clipboard.writeText(payload.pathsToCopy.join('\n')).then(() => {
+                                        vscode.window.showInformationMessage("Source paths successfully copied to clipboard!");
+                                    });
                                 }
                             }
                         );
                     }
                 } else {
+                    // Catch missing timestamp
                     vscode.window.showErrorMessage(`Files Exporter: Could not extract completion timestamp.`);
                 }
             } else {
+                // Catch Python non-zero exit codes
                 vscode.window.showErrorMessage(`Files Exporter failed with code ${code}: ${stderr.trim()}`);
             }
         } catch (err: any) {
+            // Catch spawn/process execution errors
             vscode.window.showErrorMessage(`Files Exporter Error: ${err.message}`);
         }
     });

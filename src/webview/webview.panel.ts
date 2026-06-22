@@ -46,11 +46,18 @@ public show(launchType: 'open' | 'add') {
             }
         );
 
+        // ✨ Set custom context to TRUE when the panel is created
+        vscode.commands.executeCommand('setContext', 'filesExporter.isToolOpened', true);
+
         this._panel.iconPath = vscode.Uri.joinPath(this.context.extensionUri, 'assets', 'icon.png');
         this._panel.webview.html = this.getHtmlContent();
 
         this._panel.onDidDispose(() => {
             this._panel = undefined;
+
+            // ✨ Set custom context to FALSE when the panel is closed
+            vscode.commands.executeCommand('setContext', 'filesExporter.isToolOpened', false);
+
             if (this._configListener) {
                 this._configListener.dispose();
                 this._configListener = undefined;
@@ -168,8 +175,6 @@ public show(launchType: 'open' | 'add') {
         const baseUri = this._panel!.webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'src', 'webview'));
         return html.replace('<head>', `<head>\n        <base href="${baseUri}/">`);
     }
-
-    // Inside ExporterWebviewPanel class, add the following method:
 
     public async exportSelectedPaths(paths: string[]) {
         this.show('open'); // Ensure the Webview panel is active to receive process logs

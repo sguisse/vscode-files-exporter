@@ -64,3 +64,20 @@ Maintaining clean data synchronization between the visual iFrame window and the 
 2. The UI pushes a `syncPaths` packet across the Inter-Process Communication (IPC) bridge.
 3. The TypeScript backend catches this packet and immediately updates its internal workspace tracking state (`ExtensionState`).
 4. If a separate backend routine updates the paths list (such as scanning modified Git files via `addGitDiffFiles`), the backend modifies the memory array securely and then pushes an `updatePaths` package back across the bridge to natively re-render the UI text fields.
+
+### 🖥️ Frontend (Webview Components)
+The UI adheres strictly to SOLID principles, isolating logic into dedicated modular components:
+* `report-tab.js`: Manages the statistical export table (with multi-column sorting) and the cost estimation charts. It acts as the primary host for the Split-Pane layout.
+* `tree-view-tab.js`: Renders the interactive file explorer. Features dynamic click routing (VS Code Explorer reveal vs. OS Finder reveal) and deep regex exclusion pattern generation based on active view modes.
+* `split-pane.js`: A lightweight, standalone utility managing the horizontal resize logic between the Report Table and the Tree View.
+* `popup-extension-conflict.js`: An externalized modal component specifically handling the "Move vs Add" conflict resolution when users contradict inclusion/exclusion extension lists.
+* `filters-simulator.js`: Manages user input debouncing and delegates Regex evaluation via the VS Code bridge to the actual Python engine.
+
+### ⚙️ Backend (Extension Host Services)
+* **`ExportOrchestratorService`:** The core commander. It builds the arguments, manages the `python3` process spawning for both real exports AND the `simulateFilters` dry-run, and parses the physical file outputs to calculate tokens.
+* **`RichNotificationService`:** Manages user feedback. It intelligently routes notifications: if the Webview is open, it renders beautiful HTML toasts with interactive buttons. If the Webview is closed (e.g., during headless exports), it safely falls back to native VS Code plain-text popups.
+
+### 🔄 Context Keys & Lifecycle Management
+To ensure the extension integrates seamlessly without bloating the user's IDE, we utilize custom VS Code context keys:
+* `filesExporter.isToolOpened`: Managed by the `ExporterWebviewPanel` class. It toggles to `true` when the UI initializes and `false` upon disposal. This key is bound in `package.json` to dynamically show/hide the "Exclude paths" command in the Explorer context menu.
+

@@ -26,3 +26,15 @@ Open your editor settings (`settings.json`) and search for `filesExporter` to cu
 
 ## 📜 License
 This extension is distributed under the open-source MIT License.
+
+## ✨ Key Features
+* **Unified Split-Pane Analysis:** The Export Report and Source Tree Explorer are seamlessly integrated into a single, horizontally resizable view, allowing you to analyze statistical outputs alongside the physical file structure.
+* **Smart Filter Simulator:** Test your RegEx rules in real-time. The simulator bypasses basic JavaScript evaluation and directly queries the background Python engine to guarantee 100% execution accuracy before you run an export.
+* **Intelligent Conflict Resolution:** Accidental contradictions (e.g., adding an extension to both `Include` and `Exclude` lists) trigger a smart modal allowing you to safely "Move" or resolve the conflict without breaking your configuration.
+* **Headless Background Exporting:** Trigger exports directly from the VS Code Explorer context menu without opening the UI. The engine runs silently in the background and automatically caches the *generated output files* straight into your OS clipboard for instant LLM pasting.
+
+### 🖱️ Quick Actions (Context Menu)
+Right-click any folder or file in the VS Code Explorer to access quick tools:
+* **🎛️ Open UI / Add from Explorer:** Launch the tool or append paths to your active selection.
+* **🚫 Exclude paths:** Automatically generate and inject regex exclusions. *(Note: To keep your IDE clean, this menu item dynamically hides itself when the Files Exporter UI is closed).*
+* **📤 Export selected paths:** Runs a silent headless export. A rich notification will pop up upon completion, and the generated files are instantly copied to your clipboard.

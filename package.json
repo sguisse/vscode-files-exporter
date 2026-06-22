@@ -28,20 +28,20 @@
         "commands": [
             {
                 "command": "files-exporter.openTool",
-                "title": "Files Exporter --> Open UI",
+                "title": "Files Exporter - 01 --> 🎛️ Open UI",
                 "icon": "$(export)"
             },
             {
                 "command": "files-exporter.addFromExplorer",
-                "title": "Files Exporter --> Add from Explorer"
+                "title": "Files Exporter - 02 --> ➕ Sources Paths"
             },
             {
                 "command": "files-exporter.ExcludeFromExplorer",
-                "title": "Files Exporter --> 🚫 Exclude paths"
+                "title": "Files Exporter - 03 --> 🚫 Exclude paths"
             },
             {
                 "command": "files-exporter.exportSelectedPaths",
-                "title": "Files Exporter --> Export selected paths",
+                "title": "Files Exporter - 04 --> 📥 Export selected paths",
                 "icon": "$(export)"
             }
         ],
@@ -63,7 +63,8 @@
                 },
                 {
                     "command": "files-exporter.ExcludeFromExplorer",
-                    "group": "navigation@0"
+                    "group": "navigation@0",
+                    "when": "filesExporter.isToolOpened"
                 },
                 {
                     "command": "files-exporter.exportSelectedPaths",
@@ -123,7 +124,7 @@
                 },
                 "filesExporter.maxChunkSizeKb": {
                     "type": "number",
-                    "default": 50,
+                    "default": 500,
                     "description": "Split output files into individual chunks <= than this (in KB)."
                 },
                 "filesExporter.splitChunkByFileExtension": {

@@ -145,3 +145,11 @@ If the tab is created but the layout alignment, text fields, or boxes look broke
 2. Ensure you did not modify or delete any pre-existing CSS classes or toolkit definitions.
 3. Regenerate the full, corrected Bash script (`patch.sh`) containing the complete files with fixed CSS alignments. Do not provide partial code snippets.
 ```
+
+### Step 3: Tuning Extensions and Resolving Conflicts
+While reviewing the Tree View, you might notice auto-generated `*.log` or `*.tmp` files creeping into your export context.
+1. Switch the Tree View to **Extension Mode** using the <span class="codicon codicon-file"></span> toggle.
+2. Locate the unwanted extension group (e.g., `log`) and click the 🚫 icon.
+3. If that extension was accidentally hardcoded into your `Include Exts` list, the extension will instantly detect the contradiction and prompt you with a **Conflict Warning**.
+4. Click **Move** to safely strip it from the inclusion list and enforce the exclusion, keeping your configuration perfectly valid.
+

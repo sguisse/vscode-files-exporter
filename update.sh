@@ -1,199 +1,124 @@
 #!/bin/bash
 
-# Ensure components directory exists
-mkdir -p src/webview/js/components
+echo "🚀 Starting documentation update pipeline..."
 
-# 1. Create the SplitPane component to handle horizontal resizing
-cat << 'EOF' > src/webview/js/components/split-pane.js
-export const SplitPane = {
-    init(resizerId, leftId, rightId) {
-        const resizer = document.getElementById(resizerId);
-        const left = document.getElementById(leftId);
-        const right = document.getElementById(rightId);
+# Ensure we are in the workspace root by checking for package.json
+if [ ! -f "package.json" ]; then
+    echo "⚠️ Warning: package.json not found. Please run this script from the workspace root."
+    exit 1
+fi
 
-        if (!resizer || !left || !right) return;
-
-        let isResizing = false;
-        let startX, startWidth;
-
-        resizer.addEventListener('mousedown', (e) => {
-            isResizing = true;
-            startX = e.clientX;
-            startWidth = left.getBoundingClientRect().width;
-            document.body.style.cursor = 'col-resize';
-            document.body.style.userSelect = 'none';
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isResizing) return;
-            const containerWidth = left.parentElement.getBoundingClientRect().width;
-            const newWidth = startWidth + (e.clientX - startX);
-            const percentage = (newWidth / containerWidth) * 100;
-
-            if (percentage > 10 && percentage < 90) {
-                left.style.flex = `0 0 ${percentage}%`;
-                right.style.flex = '1';
-            }
-        });
-
-        document.addEventListener('mouseup', () => {
-            if (isResizing) {
-                isResizing = false;
-                document.body.style.cursor = 'default';
-                document.body.style.userSelect = '';
-            }
-        });
-    }
-};
-EOF
-
-# 2. Use a robust Python script to precisely manipulate HTML & JS files
-cat << 'EOF' > patch.py
+# We use 'EOF' in single quotes so Bash ignores all backticks and $ symbols inside!
+cat << 'EOF' > patch_docs.py
+import os
 import re
 
-# ---- 1. UPDATE WEBVIEW.HTML ----
-with open('src/webview/webview.html', 'r') as f:
-    html = f.read()
+def update_section(filepath, header, new_content):
+    if not os.path.exists(filepath):
+        print(f"  [Create] {filepath} did not exist. Creating it.")
+        content = ""
+    else:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            content = f.read()
 
-# Remove TREE VIEW tab header
-html = re.sub(r'<vscode-panel-tab id="tab-tree">TREE VIEW</vscode-panel-tab>\s*', '', html)
+    # Regex to find the header and everything under it until the next header of any level (^#) or End of File (\Z)
+    pattern = r'(?m)^' + re.escape(header) + r'\b.*?(?=(?:^#|\Z))'
 
-# Remove old view-tree panel completely
-html = re.sub(r'<vscode-panel-view id="view-tree">.*?</vscode-panel-view>\s*', '', html, flags=re.DOTALL)
+    # If header exists, replace the block. Otherwise, append to the end.
+    if re.search(pattern, content, flags=re.DOTALL):
+        updated_content = re.sub(pattern, new_content + '\n\n', content, flags=re.DOTALL)
+        print(f"  [Update] Replaced existing section '{header}' in {filepath}")
+    else:
+        updated_content = content.strip() + '\n\n' + new_content + '\n\n'
+        print(f"  [Append] Added new section '{header}' to {filepath}")
 
-# Inject the new split-pane format inside the Report Table Section
-# NOTE: flex-wrap: wrap is added to the toolbar to prevent overflow on extreme resize
-report_block = r'''<div class="collapsible-block" id="reportTableSection" style="display: none; margin-bottom: 15px; width: 100%;">
-                    <div class="collapsible-block-header">
-                        <div class="collapsible-title-group">
-                            <span class="codicon codicon-chevron-down" id="icon-reportTableSection"></span>
-                            <span>📊 Export Report &amp; Tree View</span>
-                        </div>
-                        <span class="collapsible-summary-text" id="summary-reportTableSection"></span>
-                    </div>
-                    <div class="collapsible-block-content" id="content-reportTableSection" style="padding-top: 10px;">
-                        <div style="display: flex; width: 100%; border: 1px solid var(--vscode-panel-border); min-height: 400px; max-height: 600px; overflow: hidden; background: var(--vscode-editor-background);">
-                            <div id="split-left-table" style="flex: 1; overflow: auto; min-width: 150px; padding: 5px;">
-                                <table id="reportTable" style="width: 100%; border-collapse: collapse; font-family: var(--vscode-editor-font-family); font-size: 12px;">
-                                    <thead>
-                                        <tr style="background: var(--vscode-sideBar-background); color: #00bcd4; text-align: left;">
-                                            <th id="th-ext" style="padding: 8px; border-bottom: 1px solid var(--vscode-panel-border);">Extension ↕</th>
-                                            <th id="th-exported" style="padding: 8px; border-bottom: 1px solid var(--vscode-panel-border);">Exported ↕</th>
-                                            <th id="th-rejected" style="padding: 8px; border-bottom: 1px solid var(--vscode-panel-border);">Size Rejected ↕</th>
-                                            <th id="th-excluded" style="padding: 8px; border-bottom: 1px solid var(--vscode-panel-border);">Excluded ↕</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="reportTableBody"></tbody>
-                                    <tfoot id="reportTableFooter"></tfoot>
-                                </table>
-                            </div>
-                            <div id="split-resizer" style="width: 5px; cursor: col-resize; background: var(--vscode-panel-border); flex-shrink: 0; transition: background 0.2s;" onmouseover="this.style.background='var(--vscode-focusBorder)'" onmouseout="this.style.background='var(--vscode-panel-border)'"></div>
-                            <div id="split-right-tree" style="flex: 1; overflow: auto; min-width: 150px; padding: 5px; border-left: 1px solid var(--vscode-panel-border);">
-                                <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap;">
-                                    <vscode-button id="btnTreeToggleMode" appearance="icon" class="tooltip-bottom icon-btn" data-tooltip="Toggle structure mapping mode"><span class="codicon-list-flat codicon"></span></vscode-button>
-                                    <vscode-text-field id="treeSearchInput" placeholder="Search files/extensions..." style="flex-grow: 1;"></vscode-text-field>
-                                    <vscode-checkbox id="cbTreeRegexp">.*</vscode-checkbox>
-                                    <vscode-button id="btnTreeClearSearch" appearance="icon" class="tooltip-bottom icon-btn"><span class="codicon-clear-all codicon"></span></vscode-button>
-                                    <div class="vertical-divider"></div>
-                                    <vscode-button id="btnTreeExpandAll" appearance="icon" class="tooltip-bottom icon-btn"><span class="codicon codicon-expand-all"></span></vscode-button>
-                                    <vscode-button id="btnTreeCollapseAll" appearance="icon" class="tooltip-bottom icon-btn"><span class="codicon-collapse-all codicon"></span></vscode-button>
-                                    <div class="vertical-divider"></div>
-                                    <vscode-button id="btnTreeExport" appearance="icon" class="tooltip-left icon-btn"><span class="codicon codicon-export"></span></vscode-button>
-                                </div>
-                                <div id="view-tree-content" style="overflow-y: auto; max-height: 500px; font-family: var(--vscode-editor-font-family); font-size: 13px;"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>'''
-
-# Execute HTML Replacement
-html = re.sub(r'<div class="collapsible-block" id="reportTableSection".*?<tfoot id="reportTableFooter"></tfoot>\s*</table>\s*</div>\s*</div>', report_block, html, flags=re.DOTALL)
-
-with open('src/webview/webview.html', 'w') as f:
-    f.write(html)
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write(updated_content)
 
 
-# ---- 2. UPDATE INITIALIZATION.MANAGER.JS ----
-with open('src/webview/js/core/initialization.manager.js', 'r') as f:
-    init_js = f.read()
+print("📄 Updating user-guide.md...")
+update_section('user-guide.md', '### 📊 The Report & Tree View Split-Pane', r"""### 📊 The Report & Tree View Split-Pane
+To maximize screen real estate and adhere to SOLID UX principles, the **Export Report** and the **Tree View** are unified within the `REPORT` tab.
+* **Interactive Split-Pane:** You can horizontally resize the boundary between the statistical table and the file tree to fit your reading preferences.
+* **Multi-Sort Table:** Shift-click the table headers (Extension, Exported, Size Rejected, Excluded) to perform multi-column sorting.""")
 
-# Remove the standalone tree-explorer id from global checks, as it's now wrapped within Report section
-init_js = init_js.replace("'section-tree-explorer', ", "")
+update_section('user-guide.md', '### 🪾 Tree View Explorer Interactions', r"""### 🪾 Tree View Explorer Interactions
+The Tree View provides powerful shortcuts to manipulate your source files directly from the extension:
+* **Folder Name Click:** Expands the folder and simultaneously selects/reveals it natively inside your VS Code Explorer sidebar.
+* **📂 Folder Icon:** Opens your operating system's native file explorer (Finder/Windows Explorer) directly at that folder's location.
+* **🚫 Exclude Icon (Standard Mode):** Injects a relative path regex into the `Exclude Paths` filter.
+* **🚫 Exclude Icon (Extension Mode):**
+  * **Root Node Click:** Automatically excludes *all* sub-extensions currently present in the tree.
+  * **Subfolder Click:** Excludes that specific extension group.
+  * **Leaf (File) Click:** Excludes only that specific file path.
+* **Collapse All:** Cleans up the view but intelligently keeps the Root Node expanded so you never lose your entry point.""")
 
-with open('src/webview/js/core/initialization.manager.js', 'w') as f:
-    f.write(init_js)
+update_section('user-guide.md', '### 🖱️ Explorer Context Menu', r"""### 🖱️ Explorer Context Menu
+Right-clicking files/folders in the VS Code Explorer provides quick access to the tool:
+* **Files Exporter --> Open UI:** Launches the interface.
+* **Files Exporter --> Add from Explorer:** Appends selected files to the Source Paths list.
+* **Files Exporter --> 🚫 Exclude paths:** Automatically generates and adds exclusion regex patterns for the selected items. *(Note: To keep your context menu clean, this option is only visible when the Files Exporter UI tab is actively open).*
+* **Files Exporter --> 📤 Export selected paths:** Triggers a "Headless" background export.
+  * **Clipboard Behavior:** Upon success, the actual *generated output files* (chunks) are copied directly to your OS clipboard, ready to be pasted into your LLM.
+  * **Notifications:** You will receive a rich notification with the export metrics and a button to quickly copy the source paths if needed.""")
 
-
-# ---- 3. UPDATE BLOCK-SUMMARY-BUILDER.JS ----
-with open('src/webview/js/services/block-summary-builder.js', 'r') as f:
-    summary_js = f.read()
-
-# Merge Tree Elements summary into ReportTableSection summary
-new_summary = r'''            case 'reportTableSection': {
-                const rows = Array.from(document.querySelectorAll('#reportTableBody tr'));
-                let treeStr = '';
-                const nodes = Array.from(document.querySelectorAll('#view-tree-content .tree-item, #view-tree-content .tree-folder')).length;
-                if (nodes > 0) treeStr = ` | Tree: ${nodes} elements`;
-                if (rows.length === 0) return 'Empty Report' + treeStr;
-                const summaryExts = {};
-                rows.slice(0, 3).forEach(r => {
-                    const cells = r.querySelectorAll('td');
-                    if (cells.length >= 2) summaryExts[cells[0].innerText] = cells[1].innerText;
-                });
-                return collectAndFormatValues(summaryExts) + treeStr;
-            }'''
-
-summary_js = re.sub(r'case \'reportTableSection\': \{.*?return collectAndFormatValues\(summaryExts\);\s*\}', new_summary, summary_js, flags=re.DOTALL)
-summary_js = re.sub(r'case \'section-tree-explorer\': \{.*?\s*return collectAndFormatValues\(\{ TreeElements: `\$\{nodes\} elements` \}\);\s*\}', '', summary_js, flags=re.DOTALL)
-
-with open('src/webview/js/services/block-summary-builder.js', 'w') as f:
-    f.write(summary_js)
+update_section('user-guide.md', '### 🧪 Filter Simulator & Conflict Management', r"""### 🧪 Filter Simulator & Conflict Management
+* **Python Engine Simulator:** The `Filters Simulator` input field tests your text directly against the underlying Python backend engine to guarantee 1:1 parity with the actual export execution. (A ⏳ emoji indicates the backend is processing the evaluation).
+* **Extension Conflict Management:** If you attempt to add an extension to `Exclude Exts` that already exists in `Include Exts` (or vice-versa), a conflict resolution modal will appear. You can choose to **Move** the extension (automatically removing it from the opposing list) or **Add Anyway**.""")
 
 
-# ---- 4. UPDATE MAIN.JS (BUGFIXED FOR SYNTAX SAFETY) ----
-with open('src/webview/main.js', 'r') as f:
-    main_js = f.read()
+print("📄 Updating faq.md...")
+update_section('faq.md', '### ❓ Why is the "Exclude paths" option missing from my right-click menu?', r"""### ❓ Why is the "Exclude paths" option missing from my right-click menu?
+To prevent cluttering your native VS Code Explorer context menu, the `Files Exporter --> 🚫 Exclude paths` command is dynamically hidden when the extension's UI is closed. Simply open the tool, and the menu item will reappear.""")
 
-if "SplitPane" not in main_js:
-    main_js = main_js.replace("import { HelpTab } from './components/help-tab.js';", "import { HelpTab } from './components/help-tab.js';\nimport { SplitPane } from './js/components/split-pane.js';")
+update_section('faq.md', '### ❓ What happens to my clipboard when I click "Export selected paths" from the Explorer?', r"""### ❓ What happens to my clipboard when I click "Export selected paths" from the Explorer?
+During a headless background export, the extension automatically copies the **generated output files** (the text chunks intended for your LLM) directly to your operating system's clipboard. The notification popup that appears upon completion also provides a fallback button to copy the original *source paths* if you need them.""")
 
-    # Safely replace the initialization block to avoid arrow-function syntax errors
-    init_pattern = r"if \(document\.readyState === 'loading'\) \{\s*document\.addEventListener\('DOMContentLoaded', \(\) => InitializationManager\.init\(tabs\)\);\s*\} else \{\s*InitializationManager\.init\(tabs\);\s*\}"
-
-    init_replacement = """const initApp = () => {
-    InitializationManager.init(tabs);
-    SplitPane.init('split-resizer', 'split-left-table', 'split-right-tree');
-};
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initApp);
-} else {
-    initApp();
-}"""
-
-    main_js = re.sub(init_pattern, init_replacement, main_js)
-
-with open('src/webview/main.js', 'w') as f:
-    f.write(main_js)
+update_section('faq.md', '### ❓ Why does the Filter Simulator show a ⏳ loading hourglass?', r"""### ❓ Why does the Filter Simulator show a ⏳ loading hourglass?
+The simulator doesn't rely on simple Javascript regex. It pauses briefly while you type (debouncing) and sends your input to the actual Python engine in the background. This guarantees that the ✅ or ❌ you see in the UI exactly matches what the export engine will do during a real run.""")
 
 
-# ---- 5. UPDATE REPORT-TAB.JS (Fix Sort Issue) ----
-with open('src/webview/components/report-tab.js', 'r') as f:
-    report_js = f.read()
+print("📄 Updating scenario.md...")
+update_section('scenario.md', '### Step 3: Tuning Extensions and Resolving Conflicts', r"""### Step 3: Tuning Extensions and Resolving Conflicts
+While reviewing the Tree View, you might notice auto-generated `*.log` or `*.tmp` files creeping into your export context.
+1. Switch the Tree View to **Extension Mode** using the <span class="codicon codicon-file"></span> toggle.
+2. Locate the unwanted extension group (e.g., `log`) and click the 🚫 icon.
+3. If that extension was accidentally hardcoded into your `Include Exts` list, the extension will instantly detect the contradiction and prompt you with a **Conflict Warning**.
+4. Click **Move** to safely strip it from the inclusion list and enforce the exclusion, keeping your configuration perfectly valid.""")
 
-# Fix the missing header onclick binding that broke Multi-Sort functionality
-sort_fix = r'''th.innerHTML = `<div style="display: flex; justify-content: space-between; align-items: center; width: 100%; cursor: pointer;">
-                                <span>${headers[col]}</span>
-                                <span>${indicator}</span>
-                            </div>`;
-            th.onclick = (e) => this.sort(e, col);'''
 
-report_js = re.sub(r'th\.innerHTML = `<div style="display: flex.*?</div>`;', sort_fix, report_js, flags=re.DOTALL)
+print("📄 Updating readme.md...")
+update_section('readme.md', '## ✨ Key Features', r"""## ✨ Key Features
+* **Unified Split-Pane Analysis:** The Export Report and Source Tree Explorer are seamlessly integrated into a single, horizontally resizable view, allowing you to analyze statistical outputs alongside the physical file structure.
+* **Smart Filter Simulator:** Test your RegEx rules in real-time. The simulator bypasses basic JavaScript evaluation and directly queries the background Python engine to guarantee 100% execution accuracy before you run an export.
+* **Intelligent Conflict Resolution:** Accidental contradictions (e.g., adding an extension to both `Include` and `Exclude` lists) trigger a smart modal allowing you to safely "Move" or resolve the conflict without breaking your configuration.
+* **Headless Background Exporting:** Trigger exports directly from the VS Code Explorer context menu without opening the UI. The engine runs silently in the background and automatically caches the *generated output files* straight into your OS clipboard for instant LLM pasting.""")
 
-with open('src/webview/components/report-tab.js', 'w') as f:
-    f.write(report_js)
+update_section('readme.md', '### 🖱️ Quick Actions (Context Menu)', r"""### 🖱️ Quick Actions (Context Menu)
+Right-click any folder or file in the VS Code Explorer to access quick tools:
+* **Open UI / Add from Explorer:** Launch the tool or append paths to your active selection.
+* **🚫 Exclude paths:** Automatically generate and inject regex exclusions. *(Note: To keep your IDE clean, this menu item dynamically hides itself when the Files Exporter UI is closed).*
+* **📤 Export selected paths:** Runs a silent headless export. A rich notification will pop up upon completion, and the generated files are instantly copied to your clipboard.""")
 
+
+print("📄 Updating architecture.md...")
+update_section('architecture.md', '### 🖥️ Frontend (Webview Components)', r"""### 🖥️ Frontend (Webview Components)
+The UI adheres strictly to SOLID principles, isolating logic into dedicated modular components:
+* `report-tab.js`: Manages the statistical export table (with multi-column sorting) and the cost estimation charts. It acts as the primary host for the Split-Pane layout.
+* `tree-view-tab.js`: Renders the interactive file explorer. Features dynamic click routing (VS Code Explorer reveal vs. OS Finder reveal) and deep regex exclusion pattern generation based on active view modes.
+* `split-pane.js`: A lightweight, standalone utility managing the horizontal resize logic between the Report Table and the Tree View.
+* `popup-extension-conflict.js`: An externalized modal component specifically handling the "Move vs Add" conflict resolution when users contradict inclusion/exclusion extension lists.
+* `filters-simulator.js`: Manages user input debouncing and delegates Regex evaluation via the VS Code bridge to the actual Python engine.""")
+
+update_section('architecture.md', '### ⚙️ Backend (Extension Host Services)', r"""### ⚙️ Backend (Extension Host Services)
+* **`ExportOrchestratorService`:** The core commander. It builds the arguments, manages the `python3` process spawning for both real exports AND the `simulateFilters` dry-run, and parses the physical file outputs to calculate tokens.
+* **`RichNotificationService`:** Manages user feedback. It intelligently routes notifications: if the Webview is open, it renders beautiful HTML toasts with interactive buttons. If the Webview is closed (e.g., during headless exports), it safely falls back to native VS Code plain-text popups.""")
+
+update_section('architecture.md', '### 🔄 Context Keys & Lifecycle Management', r"""### 🔄 Context Keys & Lifecycle Management
+To ensure the extension integrates seamlessly without bloating the user's IDE, we utilize custom VS Code context keys:
+* `filesExporter.isToolOpened`: Managed by the `ExporterWebviewPanel` class. It toggles to `true` when the UI initializes and `false` upon disposal. This key is bound in `package.json` to dynamically show/hide the "Exclude paths" command in the Explorer context menu.""")
+
+print("✅ Documentation patching complete!")
 EOF
 
-python3 patch.py
-rm patch.py
+# Execute the python patcher script

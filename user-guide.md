@@ -49,18 +49,38 @@ Displays metrics for every file extension discovered. It shows exactly how many 
 
 Lists the exact files generated on your computer. You can click any file line item to open it in your VS Code editor, or click the folder icon (📂) to reveal it directly in Windows Explorer or macOS Finder.
 
-### 3. TREE VIEW Tab
-
-This is a visual file explorer of your export manifest. It maps your files using a hierarchical tree.
-
-* **2 visualisation modes**: Switch between a folder hierarchy view or a file extensions view.
-* **Search Bar**: Type any word to quickly filter your files or extension groups.
-* **3-State Checkboxes**: Selecting a folder checks all its underlying subfiles. If you only select *some* files inside a folder, the folder checkbox automatically displays a minus dash (`-`) to represent an accurate indeterminate state.
-* **Export Button (`codicon-export`)**: Captures the absolute paths of all currently checked files. ⚠️ Do nothing for the moment, just displays a modal dialog and capture button selection to display a notification. Still search for the best way to handle this ...
-
-### 4. TERMINAL Tab
+### 3. TERMINAL Tab
 
 Shows the raw background process logs.
 
 * **Command Bar**: Automatically prints the exact shell terminal command built from your visual settings. Click the copy button (`codicon-copy`) to run this headless command in an external shell pipeline or server.
 * **Shell Console**: Emulates a real IDE terminal window, displaying timestamps, process metrics tables, system diagnostics, and background tracing details.
+
+### 📊 The Report & Tree View Split-Pane
+To maximize screen real estate and adhere to SOLID UX principles, the **Export Report** and the **Tree View** are unified within the `REPORT` tab.
+* **Interactive Split-Pane:** You can horizontally resize the boundary between the statistical table and the file tree to fit your reading preferences.
+* **Multi-Sort Table:** Shift-click the table headers (Extension, Exported, Size Rejected, Excluded) to perform multi-column sorting.
+
+### 🪾 Tree View Explorer Interactions
+The Tree View provides powerful shortcuts to manipulate your source files directly from the extension:
+* **Folder Name Click:** Expands the folder and simultaneously selects/reveals it natively inside your VS Code Explorer sidebar.
+* **📂 Folder Icon:** Opens your operating system's native file explorer (Finder/Windows Explorer) directly at that folder's location.
+* **🚫 Exclude Icon (Standard Mode):** Injects a relative path regex into the `Exclude Paths` filter.
+* **🚫 Exclude Icon (Extension Mode):**
+  * **Root Node Click:** Automatically excludes *all* sub-extensions currently present in the tree.
+  * **Subfolder Click:** Excludes that specific extension group.
+  * **Leaf (File) Click:** Excludes only that specific file path.
+* **Collapse All:** Cleans up the view but intelligently keeps the Root Node expanded so you never lose your entry point.
+
+### 🖱️ Explorer Context Menu
+Right-clicking files/folders in the VS Code Explorer provides quick access to the tool:
+* **Files Exporter --> Open UI:** Launches the interface.
+* **Files Exporter --> Add from Explorer:** Appends selected files to the Source Paths list.
+* **Files Exporter --> 🚫 Exclude paths:** Automatically generates and adds exclusion regex patterns for the selected items. *(Note: To keep your context menu clean, this option is only visible when the Files Exporter UI tab is actively open).*
+* **Files Exporter --> 📤 Export selected paths:** Triggers a "Headless" background export.
+  * **Clipboard Behavior:** Upon success, the actual *generated output files* (chunks) are copied directly to your OS clipboard, ready to be pasted into your LLM.
+  * **Notifications:** You will receive a rich notification with the export metrics and a button to quickly copy the source paths if needed.
+
+### 🧪 Filter Simulator & Conflict Management
+* **Python Engine Simulator:** The `Filters Simulator` input field tests your text directly against the underlying Python backend engine to guarantee 1:1 parity with the actual export execution. (A ⏳ emoji indicates the backend is processing the evaluation).
+* **Extension Conflict Management:** If you attempt to add an extension to `Exclude Exts` that already exists in `Include Exts` (or vice-versa), a conflict resolution modal will appear. You can choose to **Move** the extension (automatically removing it from the opposing list) or **Add Anyway**.

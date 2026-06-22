@@ -36,3 +36,13 @@ To prevent your important setups from being overwritten by mistake, each saved c
 
 * This acts as a locking feature (or "flag de verrouillage")
 * When a configuration is marked as locked, it is permanently protected. In practice, this means if you load a locked configuration, tweak a few settings, and launch the tool, your original protected save will never be overwritten, and the extension will treat your changes as a brand-new task.
+
+### ❓ Why is the "Exclude paths" option missing from my right-click menu?
+To prevent cluttering your native VS Code Explorer context menu, the `Files Exporter --> 🚫 Exclude paths` command is dynamically hidden when the extension's UI is closed. Simply open the tool, and the menu item will reappear.
+
+### ❓ What happens to my clipboard when I click "Export selected paths" from the Explorer?
+During a headless background export, the extension automatically copies the **generated output files** (the text chunks intended for your LLM) directly to your operating system's clipboard. The notification popup that appears upon completion also provides a fallback button to copy the original *source paths* if you need them.
+
+### ❓ Why does the Filter Simulator show a ⏳ loading hourglass?
+The simulator doesn't rely on simple Javascript regex. It pauses briefly while you type (debouncing) and sends your input to the actual Python engine in the background. This guarantees that the ✅ or ❌ you see in the UI exactly matches what the export engine will do during a real run.
+
