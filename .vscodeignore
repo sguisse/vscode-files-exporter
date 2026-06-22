@@ -23,4 +23,6 @@ out
 exported-files
 *.bak*
 graphify-out
-zz*
+zz-tmp
+.continue
+.cache
