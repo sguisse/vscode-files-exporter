@@ -1,0 +1,76 @@
+# This is an example configuration file
+# To learn more, see the full config.yaml reference: https://docs.continue.dev/reference
+
+name: "Config to use for Mac M3 max with 32 GO RAM - Optimized to develop VS Code Exension"
+version: 1.0.0
+schema: v1
+
+# Define which models can be used
+# https://docs.continue.dev/customization/models
+models:
+  - name: "Qwen 3 Coder (30B) - Architect"
+    provider: "ollama"
+    model: "qwen3-coder:30b"
+    systemMessage: "Expert VS Code TypeScript. Ne génère que le code strictement nécessaire."
+    roles:
+      - chat
+      - edit
+    capabilities:
+      - tool_use
+    contextLength: 12288
+    requestOptions:
+      keepAlive: -1
+    options:
+      num_thread: 12
+
+  - name: "Qwen 2.5 Coder (3B) - FastApply"
+    provider: "ollama"
+    model: "qwen2.5-coder:3b"
+    roles:
+      - apply
+    contextLength: 8192
+    requestOptions:
+      keepAlive: -1
+
+  - name: "Qwen 2.5 Coder (1.5B Base) - FIM"
+    provider: "ollama"
+    model: "qwen2.5-coder:1.5b-base"
+    roles:
+      - autocomplete
+    requestOptions:
+      keepAlive: -1
+    autocompleteOptions:
+      useCopyBuffer: true
+      multilineCompletions: true
+      maxPromptTokens: 1024
+      debounceDelay: 150
+
+  - name: "Nomic Embed Text"
+    provider: "ollama"
+    model: "nomic-embed-text"
+    roles:
+      - embed
+
+# mcpServers:
+#  - name: "context7"
+#    command: "npx"
+#    args: ["-y", "@upstash/context7-mcp@latest"]
+#    env:
+#      CONTEXT7_API_KEY: "" # Optionnel : Ajoutez votre clé API ici
+
+rules:
+  - name: "VS Code Extension CI/CD Workflow"
+    content: |
+      Tu es en 'Mode Agent' sur un projet d'extension VS Code. Tu as l'autorisation stricte d'utiliser le terminal de manière autonome.
+
+      1. ÉCRITURE : Modifie le code source via tes outils d'édition.
+      2. COMPILATION : Ouvre immédiatement un terminal et exécute `npm run compile`.
+      3. AUTO-CORRECTION : Si la compilation échoue (erreurs TS, ESLint), lis la sortie d'erreur, analyse le problème, corrige le code et relance la compilation silencieusement.
+      4. TESTS UNITAIRES : Une fois la compilation réussie, lance `npm run test` via le terminal.
+      5. RAPPORT : Seulement quand tout passe au vert, réponds-moi pour m'annoncer que la fonctionnalité est prête.
+
+      Règle absolue : Ne me demande jamais la permission pour lancer 'npm run compile' ou 'npm run test'. Fais-le ! Utilise ton outil Context7 pour vérifier la documentation des API si besoin.
+
+  - name: "Gestion du Watcher"
+    content: |
+      Si je te demande de lancer l'environnement de dev, exécute la commande `npm run watch` dans un terminal en arrière-plan et laisse-le tourner. N'essaie pas d'attendre la fin de l'exécution de ce processus.

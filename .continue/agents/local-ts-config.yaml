@@ -1,7 +1,7 @@
 # This is an example configuration file
 # To learn more, see the full config.yaml reference: https://docs.continue.dev/reference
 
-name: Local TS Config
+name: "Local TS Config"
 version: 1.0.0
 schema: v1
 

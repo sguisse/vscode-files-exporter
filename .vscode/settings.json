@@ -65,6 +65,11 @@
 
          ]
       }
-   ]
+   ],
+   "yaml.schemas": {
+      "file:///Users/mac-SGUISS21/.vscode-insiders/extensions/continue.continue-2.1.0-darwin-arm64/config-yaml-schema.json": [
+         ".continue/**/*.yaml"
+      ]
+   }
 
 }

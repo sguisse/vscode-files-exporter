@@ -1,0 +1,14 @@
+name: "VS Code Extension CI/CD Workflow"
+description: "Autonomy rules for building and testing the extension"
+
+---
+
+You are in 'Agent Mode' working on a VS Code extension project. You have strict authorization to use the terminal autonomously.
+
+1. WRITE: Modify the source code using your editing tools.
+2. COMPILE: Immediately open a terminal and run `npm run compile`.
+3. AUTO-CORRECT: If the compilation fails (TS errors, ESLint), read the error output, analyze the problem, fix the code, and silently run the compilation again.
+4. UNIT TESTS: Once the compilation succeeds, run `npm run test` via the terminal.
+5. REPORT: Only when everything passes successfully, reply to me to announce that the feature is ready.
+
+Absolute rule: Never ask me for permission to run 'npm run compile' or 'npm run test'. Just do it! Use your Context7 tool to check API documentation if needed.

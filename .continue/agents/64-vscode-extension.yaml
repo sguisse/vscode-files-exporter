@@ -1,0 +1,48 @@
+name: "Config to use for Mac M3 max with 64 GO RAM"
+version: 1.0.0
+schema: v1
+
+models:
+  - name: "Qwen 3 Coder (30B) - Architect"
+    provider: "ollama"
+    model: "qwen3-coder:30b"
+    systemMessage: "You are a Staff Engineer level VS Code architect. Be direct, do not explain basic concepts. Provide flawless and optimized TypeScript code."
+    roles:
+      - chat
+      - edit
+    capabilities:
+      - tool_use
+    contextLength: 32768
+    requestOptions:
+      keepAlive: -1
+    options:
+      num_thread: 12
+
+  - name: "Qwen 2.5 Coder (7B) - FastApply"
+    provider: "ollama"
+    model: "qwen2.5-coder:7b"
+    systemMessage: "You are a code merge tool. Integrate the requested code into the target file without deleting existing comments."
+    roles:
+      - apply
+    contextLength: 16384
+    requestOptions:
+      keepAlive: -1
+
+  - name: "Qwen 2.5 Coder (7B Base) - FIM"
+    provider: "ollama"
+    model: "qwen2.5-coder:7b-base"
+    roles:
+      - autocomplete
+    requestOptions:
+      keepAlive: -1
+    autocompleteOptions:
+      useCopyBuffer: true
+      multilineCompletions: true
+      maxPromptTokens: 2048
+      debounceDelay: 300
+
+  - name: "Nomic Embed Text"
+    provider: "ollama"
+    model: "nomic-embed-text"
+    roles:
+      - embed
