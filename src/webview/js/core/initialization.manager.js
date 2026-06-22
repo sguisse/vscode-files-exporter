@@ -13,6 +13,7 @@ import { BlockSummaryBuilder } from '../services/block-summary-builder.js';
 let isModifierPressed = false;
 
 export const InitializationManager = {
+    // Computes and toggles headers summary metadata metrics
     refreshBlockSummaryUI(blockId, isCollapsed) {
         const summaryElement = document.getElementById(`summary-${blockId}`);
         if (!summaryElement) return;
@@ -24,6 +25,85 @@ export const InitializationManager = {
             summaryElement.innerHTML = '';
             summaryElement.style.display = 'none';
         }
+    },
+
+    // Dedicated method to handle Shadow DOM textareas structural height synchronization
+    setupTextAreaSync() {
+        const textAreas = [
+            document.getElementById('incPaths'),
+            document.getElementById('incExts'),
+            document.getElementById('excPaths'),
+            document.getElementById('excExts')
+        ].filter(Boolean);
+
+        let isSynchronizing = false;
+
+        const synchronizeHeights = (targetHeight) => {
+            if (isSynchronizing) return;
+            isSynchronizing = true;
+
+            let maxHeight = targetHeight;
+
+            // If no target height is provided, calculate the maximum current height across blocks
+            if (!maxHeight) {
+                const heights = textAreas.map(ta => {
+                    const inner = ta.shadowRoot?.querySelector('textarea');
+                    return inner ? inner.offsetHeight : ta.offsetHeight;
+                });
+                maxHeight = Math.max(...heights);
+            }
+
+            // Apply identical height boundaries to all parent host and inner native elements
+            textAreas.forEach(ta => {
+                ta.style.height = `${maxHeight}px`;
+
+                const inner = ta.shadowRoot?.querySelector('textarea');
+                if (inner) {
+                    // Force the inner native textarea layout to track 100% of the container component
+                    inner.style.height = '100%';
+                }
+            });
+
+            isSynchronizing = false;
+        };
+
+        // Use ResizeObserver to intercept manual UI cursor drag adjustments instantly
+        if (typeof ResizeObserver !== 'undefined' && textAreas.length > 0) {
+            const observer = new ResizeObserver((entries) => {
+                if (isSynchronizing) return;
+
+                let highest = 0;
+                for (const entry of entries) {
+                    const height = entry.borderBoxSize?.[0]?.blockSize || entry.target.offsetHeight;
+                    if (height > highest) {
+                        highest = height;
+                    }
+                }
+
+                if (highest > 0) {
+                    synchronizeHeights(highest);
+                }
+            });
+
+            // Observe both the component host and its underlying native node
+            textAreas.forEach(ta => {
+                observer.observe(ta);
+
+                const inner = ta.shadowRoot?.querySelector('textarea');
+                if (inner) {
+                    observer.observe(inner);
+                } else {
+                    // Fallback polling macro-task execution queue if hydration is delayed
+                    setTimeout(() => {
+                        const dynamicInner = ta.shadowRoot?.querySelector('textarea');
+                        if (dynamicInner) observer.observe(dynamicInner);
+                    }, 100);
+                }
+            });
+        }
+
+        // Initial setup execution timeout buffer allowing VS Code styles injection
+        setTimeout(() => synchronizeHeights(), 100);
     },
 
     init(tabs) {
@@ -277,7 +357,7 @@ export const InitializationManager = {
             }
         });
 
-        // Trigger de validation rattaché directement à l'élément hôte du WebComponent
+        // Add validation triggers to web components inputs elements
         const observedFields = ['pathList', 'destDir', 'maxFile', 'maxChunk', 'incPaths', 'excPaths', 'incExts', 'excExts', 'format', 'splitChunkByFileExtension', 'copyGeneratedFilesToClipboard', 'generateTreeView', 'generateLogConsole', 'generateLogFile'];
         observedFields.forEach(id => {
             const el = document.getElementById(id);
@@ -297,6 +377,9 @@ export const InitializationManager = {
                 });
             }
         });
+
+        // Initialize synchronized textareas dimensional heights
+        this.setupTextAreaSync();
 
         bridge.postMessage('webviewReady');
     },
