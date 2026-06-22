@@ -92,10 +92,11 @@ export class ReportTab {
                 const dir = this.sortConfig[idx].direction === 'desc' ? '▼' : '▲';
                 indicator = `${dir}${this.sortConfig.length > 1 ? (idx + 1) : ''}`;
             }
-            th.innerHTML = `<div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            th.innerHTML = `<div style="display: flex; justify-content: space-between; align-items: center; width: 100%; cursor: pointer;">
                                 <span>${headers[col]}</span>
                                 <span>${indicator}</span>
                             </div>`;
+            th.onclick = (e) => this.sort(e, col);
         }
 
         const metrics = data.metrics_per_extension;

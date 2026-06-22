@@ -139,7 +139,7 @@ export const InitializationManager = {
             'block-history', 'block-sourcepaths', 'block-filters', 'block-destination', 'block-options',
             'costEstimationSection', 'reportTableSection', 'reportGraphSection',
             'section-exported-files', 'section-logs-block', 'section-reports-block',
-            'section-tree-explorer', 'section-terminal-cmd', 'section-terminal-logs'
+            'section-terminal-cmd', 'section-terminal-logs'
         ];
 
         const collapsedByDefault = ['costEstimationSection'];

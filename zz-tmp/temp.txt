@@ -27,3 +27,8 @@ exported-files/export-2026-06-22_17-39-45_01.yaml
 /Users/mac-SGUISS21/90-temp/rental-book-shop/target/jqassistant
 /Users/mac-SGUISS21/90-temp/rental-book-shop/target/jqassistant
 /Users/mac-SGUISS21/90-temp/rental-book-shop/exported-files
+
+
+/Users/mac-SGUISS21/90-temp/rental-book-shop/deprecated
+/Users/mac-SGUISS21/90-temp/rental-book-shop/documentation
+/Users/mac-SGUISS21/90-temp/rental-book-shop/.vscode

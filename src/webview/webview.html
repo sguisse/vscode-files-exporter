@@ -383,7 +383,6 @@
     <vscode-panels>
         <vscode-panel-tab id="tab-report">REPORT</vscode-panel-tab>
         <vscode-panel-tab id="tab-files">FILES</vscode-panel-tab>
-        <vscode-panel-tab id="tab-tree">TREE VIEW</vscode-panel-tab>
         <vscode-panel-tab id="tab-terminal">TERMINAL</vscode-panel-tab>
         <vscode-panel-tab id="tab-help">HELP</vscode-panel-tab>
 
@@ -415,23 +414,42 @@
                     <div class="collapsible-block-header">
                         <div class="collapsible-title-group">
                             <span class="codicon codicon-chevron-down" id="icon-reportTableSection"></span>
-                            <span>📊 Export Report (by Extension)</span>
+                            <span>📊 Export Report &amp; Tree View</span>
                         </div>
                         <span class="collapsible-summary-text" id="summary-reportTableSection"></span>
                     </div>
                     <div class="collapsible-block-content" id="content-reportTableSection" style="padding-top: 10px;">
-                        <table id="reportTable" style="width: 100%; border-collapse: collapse; font-family: var(--vscode-editor-font-family); font-size: 12px; border: 1px solid var(--vscode-panel-border);">
-                            <thead>
-                                <tr style="background: var(--vscode-sideBar-background); color: #00bcd4; text-align: left;">
-                                    <th id="th-ext" style="padding: 8px; border: 1px solid var(--vscode-panel-border);">Extension ↕</th>
-                                    <th id="th-exported" style="padding: 8px; border: 1px solid var(--vscode-panel-border);">Exported ↕</th>
-                                    <th id="th-rejected" style="padding: 8px; border: 1px solid var(--vscode-panel-border);">Size Rejected ↕</th>
-                                    <th id="th-excluded" style="padding: 8px; border: 1px solid var(--vscode-panel-border);">Excluded ↕</th>
-                                </tr>
-                            </thead>
-                            <tbody id="reportTableBody"></tbody>
-                            <tfoot id="reportTableFooter"></tfoot>
-                        </table>
+                        <div style="display: flex; width: 100%; border: 1px solid var(--vscode-panel-border); min-height: 400px; max-height: 600px; overflow: hidden; background: var(--vscode-editor-background);">
+                            <div id="split-left-table" style="flex: 1; overflow: auto; min-width: 150px; padding: 5px;">
+                                <table id="reportTable" style="width: 100%; border-collapse: collapse; font-family: var(--vscode-editor-font-family); font-size: 12px;">
+                                    <thead>
+                                        <tr style="background: var(--vscode-sideBar-background); color: #00bcd4; text-align: left;">
+                                            <th id="th-ext" style="padding: 8px; border-bottom: 1px solid var(--vscode-panel-border);">Extension ↕</th>
+                                            <th id="th-exported" style="padding: 8px; border-bottom: 1px solid var(--vscode-panel-border);">Exported ↕</th>
+                                            <th id="th-rejected" style="padding: 8px; border-bottom: 1px solid var(--vscode-panel-border);">Size Rejected ↕</th>
+                                            <th id="th-excluded" style="padding: 8px; border-bottom: 1px solid var(--vscode-panel-border);">Excluded ↕</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="reportTableBody"></tbody>
+                                    <tfoot id="reportTableFooter"></tfoot>
+                                </table>
+                            </div>
+                            <div id="split-resizer" style="width: 2px; cursor: col-resize; background: var(--vscode-panel-border); flex-shrink: 0; transition: background 0.2s;" onmouseover="this.style.background='var(--vscode-focusBorder)'" onmouseout="this.style.background='var(--vscode-panel-border)'"></div>
+                            <div id="split-right-tree" style="flex: 1; overflow: auto; min-width: 150px; padding: 5px; border-left: 1px solid var(--vscode-panel-border);">
+                                <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap;">
+                                    <vscode-button id="btnTreeToggleMode" appearance="icon" class="tooltip-bottom icon-btn" data-tooltip="Toggle structure mapping mode"><span class="codicon-list-flat codicon"></span></vscode-button>
+                                    <vscode-text-field id="treeSearchInput" placeholder="Search files/extensions..." style="flex-grow: 1;"></vscode-text-field>
+                                    <vscode-checkbox id="cbTreeRegexp">.*</vscode-checkbox>
+                                    <vscode-button id="btnTreeClearSearch" appearance="icon" class="tooltip-bottom icon-btn"><span class="codicon-clear-all codicon"></span></vscode-button>
+                                    <div class="vertical-divider"></div>
+                                    <vscode-button id="btnTreeExpandAll" appearance="icon" class="tooltip-bottom icon-btn"><span class="codicon codicon-expand-all"></span></vscode-button>
+                                    <vscode-button id="btnTreeCollapseAll" appearance="icon" class="tooltip-bottom icon-btn"><span class="codicon-collapse-all codicon"></span></vscode-button>
+                                    <div class="vertical-divider"></div>
+                                    <vscode-button id="btnTreeExport" appearance="icon" class="tooltip-left icon-btn"><span class="codicon codicon-export"></span></vscode-button>
+                                </div>
+                                <div id="view-tree-content" style="overflow-y: auto; max-height: 500px; font-family: var(--vscode-editor-font-family); font-size: 13px;"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -500,37 +518,6 @@
                     </div>
                     <div class="collapsible-block-content" id="content-section-reports-block">
                         <div id="reportsList" class="paths-list" style="max-height: 100px;"></div>
-                    </div>
-                </div>
-            </div>
-        </vscode-panel-view>
-
-        <vscode-panel-view id="view-tree">
-            <div style="width: 100%; display: flex; flex-direction: column; gap: 0px;">
-                <div class="collapsible-block" id="section-tree-explorer" style="width: 100%;">
-                    <div class="collapsible-block-header">
-                        <div class="collapsible-title-group">
-                            <span class="codicon codicon-chevron-down" id="icon-section-tree-explorer"></span>
-                            <span>🪾 Exported Source Files Explorer</span>
-                        </div>
-                        <span class="collapsible-summary-text" id="summary-section-tree-explorer"></span>
-                    </div>
-                    <div class="collapsible-block-content" id="content-section-tree-explorer" style="padding-top: 5px;">
-                        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;">
-                            <vscode-button id="btnTreeToggleMode" appearance="icon" class="tooltip-bottom icon-btn" data-tooltip="Toggle structure mapping mode"><span class="codicon-list-flat codicon"></span></vscode-button>
-                            <vscode-text-field id="treeSearchInput" placeholder="Search files/extensions..." style="flex-grow: 1;"></vscode-text-field>
-                            <vscode-checkbox id="cbTreeRegexp">.*</vscode-checkbox>
-                            <vscode-button id="btnTreeClearSearch" appearance="icon" class="tooltip-bottom icon-btn"><span class="codicon-clear-all codicon"></span></vscode-button>
-
-                            <div class="vertical-divider"></div>
-
-                            <vscode-button id="btnTreeExpandAll" appearance="icon" class="tooltip-bottom icon-btn"><span class="codicon codicon-expand-all"></span></vscode-button>
-                            <vscode-button id="btnTreeCollapseAll" appearance="icon" class="tooltip-bottom icon-btn"><span class="codicon-collapse-all codicon"></span></vscode-button>
-
-                            <div class="vertical-divider"></div>
-                            <vscode-button id="btnTreeExport" appearance="icon" class="tooltip-left icon-btn"><span class="codicon codicon-export"></span></vscode-button>
-                        </div>
-                        <div id="view-tree-content" style="overflow-y: auto; max-height: 400px; font-family: var(--vscode-editor-font-family); font-size: 13px;"></div>
                     </div>
                 </div>
             </div>

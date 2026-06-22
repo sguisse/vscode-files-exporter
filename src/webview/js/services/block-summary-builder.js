@@ -110,15 +110,18 @@ export const BlockSummaryBuilder = {
                 });
                 return collectAndFormatValues(metrics);
             }
-            case 'reportTableSection': {
+                        case 'reportTableSection': {
                 const rows = Array.from(document.querySelectorAll('#reportTableBody tr'));
-                if (rows.length === 0) return 'Empty Report';
+                let treeStr = '';
+                const nodes = Array.from(document.querySelectorAll('#view-tree-content .tree-item, #view-tree-content .tree-folder')).length;
+                if (nodes > 0) treeStr = ` | Tree: ${nodes} elements`;
+                if (rows.length === 0) return 'Empty Report' + treeStr;
                 const summaryExts = {};
                 rows.slice(0, 3).forEach(r => {
                     const cells = r.querySelectorAll('td');
                     if (cells.length >= 2) summaryExts[cells[0].innerText] = cells[1].innerText;
                 });
-                return collectAndFormatValues(summaryExts);
+                return collectAndFormatValues(summaryExts) + treeStr;
             }
             case 'reportGraphSection':
                 return 'Pie-chart active';
@@ -134,10 +137,7 @@ export const BlockSummaryBuilder = {
                 const rCount = Array.from(document.querySelectorAll('#reportsList div')).length;
                 return collectAndFormatValues({ Reports: `${rCount} items` });
             }
-            case 'section-tree-explorer': {
-                const nodes = Array.from(document.querySelectorAll('#view-tree-content div')).length;
-                return collectAndFormatValues({ TreeElements: `${nodes} elements` });
-            }
+            
             case 'section-terminal-cmd': {
                 const len = (document.getElementById('terminal-cmd')?.value || '').length;
                 return collectAndFormatValues({ CmdSize: `${len} chars` });
