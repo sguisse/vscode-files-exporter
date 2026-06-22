@@ -19,8 +19,8 @@ tsconfig.json
 *.vsix
 
 out
-dist
 .history
 exported-files
 *.bak*
 graphify-out
+zz*
