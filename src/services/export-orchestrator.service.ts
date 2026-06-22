@@ -112,6 +112,7 @@ export class ExportOrchestratorService {
 
     private buildArgs(formData: any, sources: string): string[] {
         const args: string[] = ['--src', sources, '--dest', formData.destDir, '--format', formData.format];
+        if (formData.mode) args.push('--mode', formData.mode); // Inject Mode
         if (formData.maxFile) args.push('--max-file', formData.maxFile.toString());
         if (formData.maxChunk) args.push('--max-chunk', formData.maxChunk.toString());
         if (formData.groupByExt) args.push('--group-ext');
@@ -129,6 +130,7 @@ export class ExportOrchestratorService {
 
     private buildDisplayArgs(formData: any, sources: string): string[] {
         const args: string[] = ['--src', `'${sources}'`, '--dest', `'${formData.destDir}'`, '--format', `'${formData.format}'`];
+        if (formData.mode) args.push('--mode', `'${formData.mode}'`); // Inject Mode
         if (formData.maxFile) args.push('--max-file', `'${formData.maxFile}'`);
         if (formData.maxChunk) args.push('--max-chunk', `'${formData.maxChunk}'`);
         if (formData.groupByExt) args.push('--group-ext');
@@ -215,6 +217,40 @@ export class ExportOrchestratorService {
         } catch (err: any) {
             this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\n❌ Clipboard auto-copy failed: ${err.message}\n` });
             vscode.window.showErrorMessage(`Clipboard verification failed: ${err.message}`);
+        }
+    }
+
+    public async simulateFilters(payload: any): Promise<void> {
+        const script = this.configService.getPythonScriptPath(this.context.extensionPath);
+
+        const args: string[] = [
+            '--mode', 'filter-check',
+            '--paths-to-check', payload.input
+        ];
+
+        const cleanFilters = (val: string) => val.split(/[\n,]/).map(s => s.trim()).filter(s => s).join(',');
+
+        if (payload.incPaths) args.push('--inc-paths', cleanFilters(payload.incPaths));
+        if (payload.excPaths) args.push('--exc-paths', cleanFilters(payload.excPaths));
+        if (payload.incExts) args.push('--inc-ext', cleanFilters(payload.incExts));
+        if (payload.excExts) args.push('--exc-ext', cleanFilters(payload.excExts));
+
+        console.info('\n[Orchestrator Backend] 🔄 Preparing to spawn Python Simulator...');
+        console.info(`[Orchestrator Backend] 📜 Script Path: ${script}`);
+        console.info(`[Orchestrator Backend] ⚙️ Arguments:`, args);
+
+        try {
+            // Execute silently but capture stdout and stderr for our console.info trace
+            const { code, stdout, stderr } = await this.processRunner.executePython(script, args, () => {}, () => {});
+
+            console.info(`[Orchestrator Backend] ✅ Python process finished with Exit Code: ${code}`);
+            if (stdout) console.info(`[Orchestrator Backend] 💬 stdout: \n${stdout.trim()}`);
+            if (stderr) console.info(`[Orchestrator Backend] 🚨 stderr: \n${stderr.trim()}`);
+
+            this.webviewPanel.webview.postMessage({ command: 'simulateFiltersResult', code });
+        } catch (err: any) {
+            console.error(`[Orchestrator Backend] 💥 Python process CRASHED:`, err);
+            this.webviewPanel.webview.postMessage({ command: 'simulateFiltersResult', code: 2 });
         }
     }
 }

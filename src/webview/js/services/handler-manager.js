@@ -210,5 +210,70 @@ export const HandlerManager = {
             }
         } catch (e) {}
         if (typeof window.forceGlobalSummariesUpdate === 'function') window.forceGlobalSummariesUpdate();
+    },
+
+    handleShowRichNotification(message) {
+        const { text, type, position, durationMs, header, actions } = message.payload;
+
+        const toast = document.createElement('div');
+        toast.className = `rich-toast toast-${type} toast-${position}`;
+
+        let icon = 'ℹ️';
+        if (type === 'success') icon = '✅';
+        if (type === 'warn') icon = '⚠️';
+        if (type === 'error') icon = '❌';
+
+        let html = '';
+        if (header) {
+            html += `<div class="toast-header"><span>${icon}</span> <span>${header}</span></div>`;
+        }
+        html += `<div class="toast-body">${text}</div>`;
+
+        // Render Action Buttons
+        if (actions && actions.length > 0) {
+            html += `<div class="toast-actions">`;
+            actions.forEach((act, idx) => {
+                const appearance = act.label === 'Dismiss' ? 'secondary' : 'primary';
+                html += `<vscode-button appearance="${appearance}" data-cmd="${act.command}" data-idx="${idx}">${act.label}</vscode-button>`;
+            });
+            html += `</div>`;
+        }
+
+        toast.innerHTML = html;
+        document.body.appendChild(toast);
+
+        // Bind Button Click Events
+        if (actions && actions.length > 0) {
+            toast.querySelectorAll('vscode-button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const cmd = btn.getAttribute('data-cmd');
+                    const idx = btn.getAttribute('data-idx');
+
+                    if (cmd !== 'close_notification') {
+                        const act = actions[idx];
+                        // Dispatch back to the extension router
+                        bridge.postMessage('richNotificationCallback', { actionCommand: cmd, data: act.data });
+                    }
+
+                    // Dismiss the toast
+                    toast.style.opacity = '0';
+                    setTimeout(() => toast.remove(), 300);
+                });
+            });
+        }
+
+        // Animate In
+        void toast.offsetWidth;
+        toast.style.opacity = '1';
+
+        // Auto-dismiss ONLY if there are no buttons. If there are buttons, wait for the user to click.
+        if (!actions || actions.length === 0) {
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.style.opacity = '0';
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, durationMs || 4000);
+        }
     }
 };

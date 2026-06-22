@@ -15,3 +15,15 @@
 .*/webview/js/services/destination\-manager\.js$
 .*/webview/js/core/vscode\.bridge\.js$
 .*/webview/js/components/modal\.component\.js$
+
+
+/Users/mac-SGUISS21/90-temp/rental-book-shop/exported-files/export-2026-06-22_16-29-07_01.yaml
+
+
+
+
+/Users/mac-SGUISS21/90-temp/rental-book-shop/documentation
+exported-files/export-2026-06-22_17-39-45_01.yaml
+/Users/mac-SGUISS21/90-temp/rental-book-shop/target/jqassistant
+/Users/mac-SGUISS21/90-temp/rental-book-shop/target/jqassistant
+/Users/mac-SGUISS21/90-temp/rental-book-shop/exported-files

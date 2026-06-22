@@ -564,7 +564,24 @@ def main():
         show_help()
         return
 
-    # ─── Process Core Variables ───
+    # 1. ─── Compile Filters Early ───
+    filters = {
+        'inc_paths': compile_regexes("INCLUDE_PATHS", args.inc_paths),
+        'exc_paths': compile_regexes("EXCLUDE_PATHS", args.exc_paths),
+        'inc_ext': compile_regexes("INCLUDE_FILE_EXTENSIONS", args.inc_ext),
+        'exc_ext': compile_regexes("EXCLUDE_FILE_EXTENSIONS", args.exc_ext),
+    }
+
+    # 2. ─── Intercept Filter Check Mode Immediately ───
+    if args.mode == "filter-check":
+        try:
+            execute_filter_check(args.paths_to_check, filters)
+        except Exception as e:
+            print(f"Treatment error during filter check: {e}", file=sys.stderr)
+            sys.exit(2)
+        return # Exit immediately! No folders are created.
+
+    # 3. ─── Process Core Variables (Only for Real Exports) ───
     split_srcs = []
     for src_item in args.src:
         if src_item:
@@ -575,6 +592,8 @@ def main():
 
     DIRS_TO_PARSE = [os.path.abspath(os.path.expanduser(d)) for d in split_srcs if d]
     DEST_DIR = os.path.abspath(os.path.expanduser(args.dest))
+
+    # Safe to create directories now
     os.makedirs(DEST_DIR, exist_ok=True)
 
     OUTPUT_FORMAT = args.format.lower()
@@ -589,23 +608,8 @@ def main():
     LOG_FILE_PATH = os.path.join(DEST_DIR, f"export-{TIMESTAMP}.log")
     LOG_FILE_HANDLE = open(LOG_FILE_PATH, 'w', encoding='utf-8') if GENERATE_LOG_FILE else None
 
-    # ─── Compile Filters ───
-    filters = {
-        'inc_paths': compile_regexes("INCLUDE_PATHS", args.inc_paths),
-        'exc_paths': compile_regexes("EXCLUDE_PATHS", args.exc_paths),
-        'inc_ext': compile_regexes("INCLUDE_FILE_EXTENSIONS", args.inc_ext),
-        'exc_ext': compile_regexes("EXCLUDE_FILE_EXTENSIONS", args.exc_ext),
-    }
-
-    # ─── Dispatch Mode ───
-    if args.mode == "filter-check":
-        try:
-            execute_filter_check(args.paths_to_check, filters)
-        except Exception as e:
-            print(f"Treatment error during filter check: {e}", file=sys.stderr)
-            sys.exit(2)
-
-    elif args.mode == "paths-export":
+    # 4. ─── Dispatch Standard Export Modes ───
+    if args.mode == "paths-export":
         print_configuration(args.inc_paths, args.exc_paths, args.inc_ext, args.exc_ext, mode=args.mode)
 
         # Inject empty filters to bypass all regex logic while preserving size limits

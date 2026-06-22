@@ -83,6 +83,17 @@ export class MessageRouter {
                 else if (message.type === 'error') vscode.window.showErrorMessage(message.text);
                 else if (message.type === 'warn') vscode.window.showWarningMessage(message.text);
                 break;
+            case 'richNotificationCallback':
+                if (message.actionCommand === 'open_report_file' && message.data?.path) {
+                    vscode.workspace.openTextDocument(message.data.path).then(
+                        doc => vscode.window.showTextDocument(doc, vscode.ViewColumn.Active),
+                        err => vscode.window.showErrorMessage(`Failed to open report file: ${err.message}`)
+                    );
+                }
+                break;
+            case 'simulateFilters':
+                await this.orchestrator.simulateFilters(message);
+                break;
         }
     }
 

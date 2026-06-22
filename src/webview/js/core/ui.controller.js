@@ -159,6 +159,28 @@ export const UIController = {
             .field-invalid::part(control), .field-invalid::part(root) { background-color: #ffcdd2 !important; color: #1e1e1e !important; }
             .combo-warning { border: 2px solid #fbc02d !important; --dropdown-background: #fff9c4 !important; --background-color: #fff9c4 !important; }
             .combo-warning::part(control), .combo-warning::part(indicator) { background-color: #fff9c4 !important; color: #1e1e1e !important; }
+
+            /* Rich Notification Toast Styles */
+            .rich-toast { position: fixed; z-index: 9999999; padding: 14px 18px; border-radius: 5px; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.3s ease; display: flex; flex-direction: column; gap: 8px; background: var(--vscode-editorWidget-background, #252526); border: 1px solid var(--vscode-widget-border, #454545); min-width: 320px; max-width: 450px; pointer-events: auto; }
+            .toast-info { border-left: 4px solid var(--vscode-notificationsInfoIcon-foreground, #3794ff); }
+            .toast-success { border-left: 4px solid #28a745; }
+            .toast-warn { border-left: 4px solid var(--vscode-notificationsWarningIcon-foreground, #cca700); }
+            .toast-error { border-left: 4px solid var(--vscode-notificationsErrorIcon-foreground, #f14c4c); }
+
+            .toast-header { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; color: var(--vscode-editorWidget-foreground); }
+            .toast-body { font-size: 12px; line-height: 1.5; color: var(--vscode-descriptionForeground, #cccccc); }
+            .toast-body b { color: var(--vscode-foreground); }
+            .toast-body code { background: var(--vscode-textCodeBlock-background, rgba(0,0,0,0.4)); padding: 2px 5px; border-radius: 3px; font-family: var(--vscode-editor-font-family); word-break: break-all; border: 1px solid var(--vscode-panel-border); }
+            .toast-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+
+            /* Positions */
+            .toast-top-left { top: 20px; left: 20px; }
+            .toast-top-center { top: 20px; left: 50%; transform: translateX(-50%); }
+            .toast-top-right { top: 20px; right: 20px; }
+            .toast-center { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+            .toast-bottom-left { bottom: 20px; left: 20px; }
+            .toast-bottom-center { bottom: 20px; left: 50%; transform: translateX(-50%); }
+            .toast-bottom-right { bottom: 20px; right: 20px; }
         `;
         document.body.appendChild(style);
     }

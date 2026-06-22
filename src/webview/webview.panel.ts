@@ -21,7 +21,7 @@ export class ExporterWebviewPanel {
         private readonly state: ExtensionState
     ) {}
 
-    
+
     public excludePathFromExplorer(fsPath: string) {
         this._panel?.webview.postMessage({ command: 'excludeExplorerPathSelection', path: fsPath });
     }
@@ -167,5 +167,42 @@ public show(launchType: 'open' | 'add') {
         let html = fs.readFileSync(htmlPath.fsPath, 'utf8');
         const baseUri = this._panel!.webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'src', 'webview'));
         return html.replace('<head>', `<head>\n        <base href="${baseUri}/">`);
+    }
+
+    // Inside ExporterWebviewPanel class, add the following method:
+
+    public async exportSelectedPaths(paths: string[]) {
+        this.show('open'); // Ensure the Webview panel is active to receive process logs
+
+        const workspacePath = this.configService.getWorkspaceRootPath();
+        const extensionConfig = this.configService.getConfiguration();
+
+        // Assemble payload with default options while applying mode 'paths-export'
+        const formData = {
+            paths: paths,
+            destDir: path.join(workspacePath, "exported-files"),
+            format: extensionConfig.get<string>('defaultFormat') || 'yaml',
+            maxFile: extensionConfig.get<number>('maxFileSizeKb') ?? 50,
+            maxChunk: extensionConfig.get<number>('maxChunkSizeKb') ?? 0,
+            groupByExt: extensionConfig.get<boolean>('splitChunkByFileExtension') ?? false,
+            copyGeneratedFilesToClipboard: extensionConfig.get<boolean>('copyGeneratedFilesToClipboard') ?? true,
+            generateTreeView: extensionConfig.get<boolean>('generateTreeView') ?? true,
+            logConsole: extensionConfig.get<boolean>('generateLogConsole') ?? true,
+            logFile: extensionConfig.get<boolean>('generateLogFile') ?? false,
+            incPaths: '',
+            excPaths: '',
+            incExts: '',
+            excExts: '',
+            mode: 'paths-export' // Explicitly triggers regex bypass in python script
+        };
+
+        if (this._panel) {
+            const orchestrator = new ExportOrchestratorService(this.context, this.configService, this.processRunner, this._panel);
+            await orchestrator.run(formData);
+        }
+    }
+
+    public get panel(): vscode.WebviewPanel | undefined {
+        return this._panel;
     }
 }

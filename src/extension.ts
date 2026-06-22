@@ -21,6 +21,7 @@ export function activate(context: vscode.ExtensionContext) {
         state
     );
 
-    registerCommands(context, webviewPanelManager, state);
+    // Pass configService and processRunner to the commands
+    registerCommands(context, webviewPanelManager, state, configService, processRunner);
 }
 export function deactivate() {}

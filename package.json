@@ -38,6 +38,11 @@
             {
                 "command": "files-exporter.ExcludeFromExplorer",
                 "title": "Files Exporter --> 🚫 Exclude paths"
+            },
+            {
+                "command": "files-exporter.exportSelectedPaths",
+                "title": "Files Exporter --> Export selected paths",
+                "icon": "$(export)"
             }
         ],
         "menus": {
@@ -58,6 +63,10 @@
                 },
                 {
                     "command": "files-exporter.ExcludeFromExplorer",
+                    "group": "navigation@0"
+                },
+                {
+                    "command": "files-exporter.exportSelectedPaths",
                     "group": "navigation@0"
                 }
             ]

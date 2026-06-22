@@ -269,5 +269,14 @@ export const FiltersManager = {
         el.dispatchEvent(new Event("input", { bubbles: true }));
         el.dispatchEvent(new Event("change", { bubbles: true }));
         UIController.checkSyncStatus();
+    },
+
+    clearTextArea(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.value = '';
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+        UIController.checkSyncStatus();
     }
 };

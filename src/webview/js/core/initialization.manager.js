@@ -206,6 +206,11 @@ export const InitializationManager = {
         document.getElementById('btn-explode-excPaths')?.addEventListener('click', () => FiltersManager.explodeTextAreaRegex('excPaths'));
         document.getElementById('btn-explode-excExts')?.addEventListener('click', () => FiltersManager.explodeTextAreaRegex('excExts'));
 
+        document.getElementById('btn-clear-incPaths')?.addEventListener('click', () => FiltersManager.clearTextArea('incPaths'));
+        document.getElementById('btn-clear-excPaths')?.addEventListener('click', () => FiltersManager.clearTextArea('excPaths'));
+        document.getElementById('btn-clear-incExts')?.addEventListener('click', () => FiltersManager.clearTextArea('incExts'));
+        document.getElementById('btn-clear-excExts')?.addEventListener('click', () => FiltersManager.clearTextArea('excExts'));
+
         document.getElementById('btn-group-incExts')?.addEventListener('click', () => FiltersManager.groupTextAreaExtensions('incExts'));
         document.getElementById('btn-group-excExts')?.addEventListener('click', () => FiltersManager.groupTextAreaExtensions('excExts'));
 
@@ -419,6 +424,12 @@ export const InitializationManager = {
             case 'updateCommand': HandlerManager.handleUpdateCommand(message, tabs); break;
             case 'updateExportReport': HandlerManager.handleUpdateExportReport(message, tabs); break;
             case 'filteredFilesResult': HandlerManager.handleFilteredFilesResult(message, tabs); break;
+            case 'showRichNotification': HandlerManager.handleShowRichNotification(message); break;
+            case 'simulateFiltersResult':
+                import('../services/filters-simulator.js').then(module => {
+                    module.FiltersSimulator.updateEmojiResult(message.code);
+                });
+                break;
         }
     }
 };
