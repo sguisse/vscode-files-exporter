@@ -94,6 +94,11 @@ export class MessageRouter {
             case 'simulateFilters':
                 await this.orchestrator.simulateFilters(message);
                 break;
+            case 'revealInExplorer':
+                if (message.path) {
+                    await vscode.commands.executeCommand('revealInExplorer', vscode.Uri.file(message.path));
+                }
+                break;
         }
     }
 

@@ -1,4 +1,5 @@
 import { bridge } from '../js/core/vscode.bridge.js';
+import { PopupExtensionConflict } from '../js/components/popup-extension-conflict.js'; // ✨ Add this import
 
 export class TreeViewTab {
     constructor() {
@@ -64,13 +65,19 @@ export class TreeViewTab {
     renderTreeHTML(node, isRoot = false) {
         if (node.type === 'file') {
             const fullName = node.extension && node.extension !== 'no_ext' ? `${node.name}.${node.extension}` : node.name;
+
+            // ✨ Dynamic tooltip for files
+            const excludeFileTooltip = this.viewMode === 'extension'
+                ? `Exclude this file : ${fullName}`
+                : `Exclude file path`;
+
             return `<div class="tree-item file-item" data-name="${fullName.toLowerCase()}">
                         <input type="checkbox" class="tree-cb file-cb" data-path="${node.absolute_path.replace(/\\/g, '\\\\')}">
                         <span class="tree-icon">📄</span>
-                        <span class="tree-name file-name" style="color: var(--vscode-textLink-foreground); cursor: pointer; text-decoration: underline;" data-path="${node.absolute_path.replace(/\\/g, '\\\\')} "
+                        <span class="tree-name file-name" style="color: var(--vscode-textLink-foreground); cursor: pointer; text-decoration: underline;" data-path="${node.absolute_path.replace(/\\/g, '\\\\')}"
                             data-tooltip="Open file here, in VS Code">${fullName}</span>
                         <vscode-button appearance="icon" class="btn-tree-finder tooltip-right" data-tooltip="Reveal file in OS Explorer" data-path="${node.absolute_path.replace(/\\/g, '\\\\')}" style="height: 18px; width: 18px; margin-left: 10px;"><span class="codicon codicon-folder-opened"></span></vscode-button>
-                        <vscode-button appearance="icon" class="btn-tree-exclude tooltip-right" data-tooltip="Exclude file path" data-path="${node.absolute_path.replace(/\\/g, '\\\\')}" style="height: 18px; width: 18px; margin-right: 5px;">🚫</vscode-button>
+                        <vscode-button appearance="icon" class="btn-tree-exclude tooltip-right" data-tooltip="${excludeFileTooltip}" data-path="${node.absolute_path.replace(/\\/g, '\\\\')}" style="height: 18px; width: 18px; margin-right: 5px;">🚫</vscode-button>
                     </div>`;
         }
 
@@ -89,14 +96,33 @@ export class TreeViewTab {
         }
 
         const expandedClass = isRoot ? 'expanded' : '';
+        const isExtensionModeFolder = this.viewMode === 'extension';
+
+        const finderBtnHTML = isExtensionModeFolder
+            ? ''
+            : `<vscode-button appearance="icon" class="btn-tree-finder tooltip-right" data-tooltip="Reveal folder in OS Explorer" data-path="${(node.absolute_path || '').replace(/\\/g, '\\\\')}" style="height: 18px; width: 18px; margin-left: 10px;"><span class="codicon codicon-folder-opened"></span></vscode-button>`;
+
+        const excludeBtnMargin = isExtensionModeFolder ? '10px' : '5px';
+
+        // ✨ Dynamic tooltip for folders/extensions
+        let excludeFolderTooltip = 'Exclude folder path';
+        if (isExtensionModeFolder) {
+            if (isRoot) {
+                excludeFolderTooltip = 'Exclude All sub extensions';
+            } else {
+                excludeFolderTooltip = `Exclude this extension : ${node.name}`;
+            }
+        }
+
         return `
             <div class="tree-folder ${expandedClass}" data-name="${node.name.toLowerCase()}">
                 <div class="tree-folder-header">
                     <span class="tree-toggle">▶</span>
                     <input type="checkbox" class="tree-cb folder-cb">
                     <span class="tree-icon">📁</span>
-                    <span class="tree-name folder-name" data-path="${(node.absolute_path || '').replace(/\\/g, '\\\\')}">${node.name}</span>
-                    <vscode-button appearance="icon" class="btn-tree-exclude tooltip-right" data-tooltip="Exclude folder path" data-path="${(node.absolute_path || '').replace(/\\/g, '\\\\')}" style="height: 18px; width: 18px; margin-left: 10px;">🚫</vscode-button>
+                    <span class="tree-name folder-name" data-path="${(node.absolute_path || '').replace(/\\/g, '\\\\')}" style="cursor: pointer;" data-tooltip="Reveal folder in VS Code Explorer">${node.name}</span>
+                    ${finderBtnHTML}
+                    <vscode-button appearance="icon" class="btn-tree-exclude tooltip-right" data-tooltip="${excludeFolderTooltip}" data-path="${(node.absolute_path || '').replace(/\\/g, '\\\\')}" style="height: 18px; width: 18px; margin-left: ${excludeBtnMargin};">🚫</vscode-button>
                 </div>
                 <div class="tree-children">
                     ${childrenHTML}
@@ -110,12 +136,12 @@ export class TreeViewTab {
         if (!container) return;
 
         container.querySelectorAll('.tree-toggle, .folder-name').forEach(el => {
-            el.addEventListener('click', () => {
+            el.addEventListener('click', (e) => {
                 const folder = el.closest('.tree-folder');
                 folder.classList.toggle('expanded');
-                if (el.classList.contains('folder-name') && this.onFinderClick) {
+                if (el.classList.contains('folder-name')) {
                     const fp = el.getAttribute('data-path');
-                    if (fp) this.onFinderClick(fp);
+                    if (fp) bridge.postMessage('revealInExplorer', { path: fp });
                 }
             });
         });
@@ -403,10 +429,22 @@ export class TreeViewTab {
     setExpandAll(expand) {
         const container = document.getElementById(this.containerId);
         if (!container) return;
+
         container.querySelectorAll('.tree-folder').forEach(folder => {
-            if (expand) folder.classList.add('expanded');
-            else folder.classList.remove('expanded');
+            if (expand) {
+                folder.classList.add('expanded');
+            } else {
+                folder.classList.remove('expanded');
+            }
         });
+
+        // ✨ If we collapse everything, we force the first node (the root) to remain deployed
+        if (!expand) {
+            const rootFolder = container.querySelector('.tree-folder');
+            if (rootFolder) {
+                rootFolder.classList.add('expanded');
+            }
+        }
     }
 
     clear() {
@@ -437,8 +475,10 @@ export class TreeViewTab {
                 e.stopPropagation();
 
                 const rawPath = btn.getAttribute('data-path');
+
+                // ✨ FIX: Check DOM structure instead of relying on tooltip text
+                const isFolder = btn.closest('.tree-folder-header') !== null;
                 const tooltip = btn.getAttribute('data-tooltip') || '';
-                const isFolder = tooltip.toLowerCase().includes('folder');
 
                 console.info(`[TreeExclude] Click detected on an exclude button. Raw data:`, { rawPath, isFolder, tooltip });
 
@@ -462,72 +502,99 @@ export class TreeViewTab {
     _handleExtensionModeExclude(btn, rawPath, isFolder) {
         console.info(`[TreeExclude][ExtensionMode] Processing started. Type: ${isFolder ? 'Folder' : 'File'}`);
 
-        // Live lazy DOM lookups
+        if (!isFolder) {
+            console.info(`[TreeExclude][ExtensionMode] Leaf element clicked. Routing to standard mode path exclusion.`);
+            this._handleStandardModeExclude(btn, rawPath, false);
+            return;
+        }
+
         const excExtsEl = document.getElementById('excExts');
         const incExtsEl = document.getElementById('incExts');
 
         if (!excExtsEl || !incExtsEl) {
-            console.error(`[TreeExclude][ExtensionMode] Error: Core filter elements ('excExts' or 'incExts') are missing from DOM.`);
+            console.error(`[TreeExclude][ExtensionMode] Error: Core filter elements missing from DOM.`);
             return;
         }
 
-        const depth = 1;
         let extsToExclude = new Set();
+        const header = btn.closest('.tree-folder-header');
+        const folderName = header?.querySelector('.folder-name')?.innerText.trim();
 
-        if (isFolder) {
-            const header = btn.closest('.tree-folder-header');
-            const folderName = header?.querySelector('.folder-name')?.innerText.trim();
-            console.info(`[TreeExclude][ExtensionMode] Analyzing folder: "${folderName}"`);
-
-            if (folderName) {
-                const cbElements = btn.closest('.tree-folder').querySelectorAll('.file-cb');
-                console.info(`[TreeExclude][ExtensionMode] Number of child files found under this node: ${cbElements.length}`);
-
-                cbElements.forEach(cb => {
-                    const cbPath = cb.getAttribute('data-path');
-                    const match = cbPath?.match(/\.([^./]+)$/);
-                    if (match) {
-                        extsToExclude.add(match[1]);
-                    }
-                });
-                console.info(`[TreeExclude][ExtensionMode] Collected extensions to exclude:`, Array.from(extsToExclude));
-            }
-        } else {
-            const match = rawPath.match(/\.([^./]+)$/);
-            const ext = match ? match[1] : '';
-            console.info(`[TreeExclude][ExtensionMode] Analyzing isolated file. Extracted extension: ".${ext}"`);
-
-            if (ext && ext !== 'no_ext') {
-                const pathParts = rawPath.split(/[\\/]/).filter(p => p.length > 0);
-                const fileIndex = pathParts.length - 1;
-                const subLevelFolder = pathParts.slice(Math.max(0, fileIndex - depth), fileIndex).join('/');
-                const pattern = `${subLevelFolder.replace(/[-\^$*+?.()|[\]{}]/g, '\\$&')}/.*\\.${ext}$`;
-
-                console.info(`[TreeExclude][ExtensionMode] Isolated file - Generated localized pattern: "${pattern}"`);
-
-                if (!excExtsEl.value.includes(pattern)) {
-                    excExtsEl.value = (excExtsEl.value ? excExtsEl.value + '\n' : '') + pattern;
-                    console.info(`[TreeExclude][ExtensionMode] Pattern added to excExts. New value:`, excExtsEl.value);
-                    excExtsEl.dispatchEvent(new Event('input', { bubbles: true }));
-                }
-                return;
-            }
+        if (folderName === 'Workspace grouped by Extension') {
+            const extFolders = btn.closest('.tree-folder').querySelectorAll(':scope > .tree-children > .tree-folder > .tree-folder-header .folder-name');
+            extFolders.forEach(el => {
+                const ext = el.innerText.trim();
+                if (ext) extsToExclude.add(ext);
+            });
+        }
+        else if (folderName) {
+            extsToExclude.add(folderName);
         }
 
-        console.info(`[TreeExclude][ExtensionMode] Applying filters to extension batch...`);
+        const conflicts = [];
+        const conflictPatterns = [];
+        const readyPatterns = [];
+
+        // Sort extensions into conflicting and ready buckets
         extsToExclude.forEach(ext => {
-            const pattern = '.*\\.' + ext + '$';
+            const pattern = ext === 'no_ext' ? '^[^.]+$' : '.*\\.' + ext + '$';
             const isIncluded = incExtsEl.value.split('\n').includes(pattern);
 
             if (isIncluded) {
-                console.warn(`[TreeExclude][ExtensionMode] Extension .${ext} is currently in "Include Extensions". Remove it first.`);
-                window.ModalComponent?.triggerValidationErrorModal(`Extension .${ext} is currently in "Include Extensions". Remove it first.`);
+                conflicts.push(ext);
+                conflictPatterns.push(pattern);
             } else if (!excExtsEl.value.includes(pattern)) {
-                excExtsEl.value = (excExtsEl.value ? excExtsEl.value + '\n' : '') + pattern;
+                readyPatterns.push(pattern);
             }
         });
 
-        excExtsEl.dispatchEvent(new Event('input', { bubbles: true }));
+        const executeAdd = (patterns) => {
+            let addedCount = 0;
+            patterns.forEach(p => {
+                if (!excExtsEl.value.includes(p)) {
+                    excExtsEl.value = (excExtsEl.value ? excExtsEl.value + '\n' : '') + p;
+                    addedCount++;
+                }
+            });
+            if (addedCount > 0) {
+                excExtsEl.dispatchEvent(new Event('input', { bubbles: true }));
+                excExtsEl.dispatchEvent(new Event('change', { bubbles: true }));
+                bridge.postMessage('showNotification', { type: 'info', text: `Added ${addedCount} extension pattern(s) to Exclude Exts.` });
+            }
+        };
+
+        const executeRemove = (element, patterns) => {
+            const currentVal = element.value;
+            const lines = currentVal.split('\n').map(l => l.trim()).filter(l => !patterns.includes(l));
+            element.value = lines.join('\n');
+            element.dispatchEvent(new Event('input', { bubbles: true }));
+            element.dispatchEvent(new Event('change', { bubbles: true }));
+        };
+
+        // Trigger Conflict Modal if necessary
+        if (conflicts.length > 0) {
+            PopupExtensionConflict.show(
+                conflicts,
+                'Include Exts',
+                'Exclude Exts',
+                () => {
+                    // On Move
+                    executeRemove(incExtsEl, conflictPatterns);
+                    executeAdd([...conflictPatterns, ...readyPatterns]);
+                },
+                () => {
+                    // On Add Anyway
+                    executeAdd([...conflictPatterns, ...readyPatterns]);
+                },
+                () => {
+                    // On Cancel (Only add non-conflicting ones)
+                    if (readyPatterns.length > 0) executeAdd(readyPatterns);
+                }
+            );
+        } else {
+            // No conflicts, just process immediately
+            executeAdd(readyPatterns);
+        }
     }
 
 
@@ -574,8 +641,18 @@ export class TreeViewTab {
             excPathsEl.value = (excPathsEl.value ? excPathsEl.value + '\n' : '') + regex;
             console.info(`[TreeExclude][StandardMode] Regex injected into excPaths. New value:`, excPathsEl.value);
             excPathsEl.dispatchEvent(new Event('input', { bubbles: true }));
+
+            // ✨ Notify the user that it was successfully added
+            bridge.postMessage('showNotification', {
+                type: 'info',
+                text: `Added relative pattern "${regex}" to Exclude Paths.`
+            });
         } else {
-            console.info(`[TreeExclude][StandardMode] Regex already exists in excPaths textarea. Action ignored.`);
+            // ✨ Replace the console log with a visible UI info notification
+            bridge.postMessage('showNotification', {
+                type: 'info',
+                text: `Regex "${regex}" already exists in Exclude Paths. Action ignored.`
+            });
         }
     }
 

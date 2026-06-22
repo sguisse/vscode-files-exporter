@@ -1,5 +1,6 @@
 import { PricingService } from '../js/services/pricing-service.js';
 import { bridge } from '../js/core/vscode.bridge.js';
+import { PopupExtensionConflict } from '../js/components/popup-extension-conflict.js'; // ✨ Add this import
 
 export class ReportTab {
     constructor() {
@@ -18,7 +19,7 @@ export class ReportTab {
         try { this.renderTable(data); } catch(e) { console.error(e); }
         try { this.renderChart(data);
         this.renderCostEstimation(data); } catch(e) { console.error(e); }
-        
+
         if (data.generated_files && typeof this.renderFiles === 'function') {
             this.renderFiles(data.generated_files, onFileClick);
         }
@@ -206,34 +207,36 @@ export class ReportTab {
 
         if (existsInInc || existsInExc) {
             const conflictSource = existsInInc ? 'Include Exts' : 'Exclude Exts';
-            const backdrop = document.createElement('div');
-            backdrop.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.45); z-index: 21000; display: flex; align-items: center; justify-content: center;';
+            const conflictElement = existsInInc ? incElement : excElement;
 
-            const warningModal = document.createElement('div');
-            warningModal.style.cssText = 'background: var(--vscode-editor-background, #1e1e1e); color: var(--vscode-foreground, #cccccc); padding: 16px; border-radius: 4px; border: 1px solid var(--vscode-panel-border); min-width: 340px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); font-family: var(--vscode-font-family, sans-serif);';
-
-            warningModal.innerHTML = `
-                <div style="font-weight: 600; margin-bottom: 8px; font-size: 13px; color: #ffc107;">⚠️ Duplicate Label Warning</div>
-                <div style="font-size: 12px; margin-bottom: 16px; line-height: 1.4;">Hey the extension already exists in "<strong>${conflictSource}</strong>" confirm the adding to "<strong>${targetFieldName}</strong>"</div>
-                <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                    <vscode-button id="btn-warn-add" appearance="primary">Add</vscode-button>
-                    <vscode-button id="btn-warn-cancel" appearance="secondary">Cancel</vscode-button>
-                </div>
-            `;
-
-            backdrop.appendChild(warningModal);
-            document.body.appendChild(backdrop);
-
-            const closeWarning = () => document.body.removeChild(backdrop);
-
-            document.getElementById('btn-warn-cancel')?.addEventListener('click', closeWarning);
-            document.getElementById('btn-warn-add')?.addEventListener('click', () => {
-                closeWarning();
-                this.executeAppend(targetElement, generatedPattern);
-            });
+            // ✨ Use the externalized component
+            PopupExtensionConflict.show(
+                [label],
+                conflictSource,
+                targetFieldName,
+                () => {
+                    // On Move: Remove from the old list, add to the new list
+                    this.executeRemove(conflictElement, generatedPattern);
+                    this.executeAppend(targetElement, generatedPattern);
+                },
+                () => {
+                    // On Add Anyway
+                    this.executeAppend(targetElement, generatedPattern);
+                }
+            );
         } else {
             this.executeAppend(targetElement, generatedPattern);
         }
+    }
+
+    // ✨ Add this helper to remove a pattern when "Move" is clicked
+    executeRemove(element, pattern) {
+        if (!element) return;
+        const currentVal = element.value;
+        const lines = currentVal.split('\n').map(l => l.trim()).filter(l => l !== pattern);
+        element.value = lines.join('\n');
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+        element.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
     executeAppend(element, pattern) {
