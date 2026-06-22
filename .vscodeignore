@@ -17,3 +17,10 @@ webpack.config.js
 tsconfig.json
 **/*.map
 *.vsix
+
+out
+dist
+.history
+exported-files
+*.bak*
+graphify-out
