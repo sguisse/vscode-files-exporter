@@ -9,6 +9,7 @@ import { DestinationManager } from '../services/destination-manager.js';
 import { ExportManager } from '../services/export-manager.js';
 import { HandlerManager } from '../services/handler-manager.js';
 import { BlockSummaryBuilder } from '../services/block-summary-builder.js';
+import { FiltersSimulator } from '../services/filters-simulator.js';
 
 let isModifierPressed = false;
 
@@ -25,6 +26,23 @@ export const InitializationManager = {
             summaryElement.innerHTML = '';
             summaryElement.style.display = 'none';
         }
+    },
+
+    /**
+     * Initialize the filter simulator functionality
+     */
+    setupFilterSimulator() {
+        const filterSimulatorInput = document.getElementById('filters-simulator-input');
+
+        // Add event listener to update emoji on input
+        filterSimulatorInput.addEventListener('input', (e) => {
+            FiltersSimulator.updateEmoji(e.target.value);
+        });
+
+        // Add event listener to clear emoji when focus is lost
+        filterSimulatorInput.addEventListener('blur', (e) => {
+            FiltersSimulator.updateEmoji(e.target.value);
+        });
     },
 
     // Dedicated method to handle Shadow DOM textareas structural height synchronization
@@ -380,6 +398,8 @@ export const InitializationManager = {
 
         // Initialize synchronized textareas dimensional heights
         this.setupTextAreaSync();
+
+        this.setupFilterSimulator();
 
         bridge.postMessage('webviewReady');
     },

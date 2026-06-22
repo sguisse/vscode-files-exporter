@@ -12,7 +12,7 @@ models:
       - edit
     capabilities:
       - tool_use
-    contextLength: 32768
+    contextLength: 51200
     requestOptions:
       keepAlive: -1
     options:
