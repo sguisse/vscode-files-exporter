@@ -23,5 +23,12 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Pass configService and processRunner to the commands
     registerCommands(context, webviewPanelManager, state, configService, processRunner);
+
+    // ✨ Return public Extension Export API for cross-extension interoperability
+    return {
+        appendExternalPaths(paths: string[]): void {
+            webviewPanelManager.addExternalPaths(paths);
+        }
+    };
 }
 export function deactivate() {}

@@ -116,14 +116,6 @@
             transform: translateY(1px);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
-        .btn-run-custom.loading {
-            background: var(--vscode-button-secondaryBackground);
-            color: var(--vscode-button-secondaryForeground);
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-            border: 1px solid var(--vscode-panel-border);
-        }
 
         @keyframes spin { 100% { transform: rotate(360deg); } }
         .spin-anim { animation: spin 1s linear infinite; display: inline-block; }
@@ -374,8 +366,8 @@
     </div>
 
     <div style="display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; margin: 10px 0;">
-        <button id="btn-run" class="btn-run-custom" style="width: 150px; flex-shrink: 0;">
-            <span class="codicon codicon-play"></span> RUN<br/> EXPORT
+        <button id="btn-run" class="btn-run-custom" style="width: 200px; flex-shrink: 0;">
+            <span class="codicon codicon-play"></span> RUN <br/> EXPORT
         </button>
         <div id="exchange-buttons-container" style="display: flex; gap: 6px; align-items: center; flex-shrink: 0;"></div>
     </div>
@@ -385,6 +377,7 @@
         <vscode-panel-tab id="tab-files">FILES</vscode-panel-tab>
         <vscode-panel-tab id="tab-terminal">TERMINAL</vscode-panel-tab>
         <vscode-panel-tab id="tab-help">HELP</vscode-panel-tab>
+            <vscode-panel-tab id=\"tab-simu\">SIMULATION B</vscode-panel-tab>
 
         <vscode-panel-view id="view-report">
             <div style="width: 100%; display: flex; flex-direction: column; gap: 0px;">
@@ -573,6 +566,19 @@
               </vscode-panel-view>
 
         <vscode-panel-view id="view-help"></vscode-panel-view>
+
+            <vscode-panel-view id="view-simu">
+                <div style="width: 100%; padding: 15px; display: flex; flex-direction: column; gap: 12px; font-family: var(--vscode-font-family);">
+                    <h3 style="color: #00bcd4; margin: 0;">🧪 Simulateur Inter-Extensions (Extension B)</h3>
+                    <p style="font-size: 12px; color: var(--vscode-descriptionForeground);">
+                        Saisissez des chemins fictifs ci-dessous pour simuler une extension tierce qui injecte des données dans votre API transverse partagée.
+                    </p>
+                    <vscode-text-area id="simuPaths" rows="4" placeholder="/Fake/Path/From/ExtensionB/main.py&#10;/Fake/Path/From/ExtensionB/utils.py" style="width: 100%;"></vscode-text-area>
+                    <button id="btn-simu-push" class="btn-run-custom" style="width: max-content; padding: 8px 16px;">
+                        <span class="codicon codicon-rocket"></span> PUSH DANS L'ESPACE PARTAGÉ
+                    </button>
+                </div>
+            </vscode-panel-view>
     </vscode-panels>
 
     <div id="global-cursor-tooltip"></div>

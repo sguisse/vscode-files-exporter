@@ -116,7 +116,7 @@ export const UIController = {
                     iconHtml = '<span class="codicon codicon-beaker" data-tooltip="Profile is locked. Modifications will not be saved (Test/Tuning mode)." style="margin-right: 6px; cursor: help;"></span>' + iconHtml;
                 }
             }
-            runBtn.innerHTML = iconHtml + ' RUN EXPORT';
+            runBtn.innerHTML = iconHtml + '<div style="display: flex; flex-direction: column; align-items: center; gap: 2px;"><span>RUN</span><span>EXPORT</span></div>';
         }
 
         return isSync;

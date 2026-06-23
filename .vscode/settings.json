@@ -50,7 +50,17 @@
         "height": "45px",
         "width": "45px",
         "openInVSCode": false
+      },
+      {
+        "icon": "https://companieslogo.com/img/orig/NVDA-220e1e03.png?t=1722952498",
+        "url": "https://build.nvidia.com/settings/api-keys",
+        "tooltip": "Open NVIDIA Key Management",
+        "height": "45px",
+        "width": "55px",
+        "openInVSCode": false
       }
+
+
    ],
 
 }

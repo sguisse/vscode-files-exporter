@@ -1,70 +1,462 @@
-#!/usr/bin/env bash
+#!/bin/bash
+set -e
 
-# Perform a clean and reliable restructuring of the view-terminal layout section to fix the tag nesting regression
-python3 << 'EOF'
-import os
-import re
+# Ensure target directories exist
+mkdir -p src/webview/js/core
 
-filepath = 'src/webview/webview.html'
-if os.path.exists(filepath):
-    with open(filepath, 'r', encoding='utf-8') as f:
-        text = f.read()
+# Fully rewrite src/webview/js/core/initialization.manager.js to eliminate regular expression literal toolchain syntax bugs
+cat << 'EOF' > src/webview/js/core/initialization.manager.js
+import { ErrorFilesModalComponent } from '../components/error-files-modal.component.js';
+import { bridge } from './vscode.bridge.js';
+import { state } from './state.manager.js';
+import { ValidatorService } from '../services/validator.service.js';
+import { UIController } from './ui.controller.js';
+import { HistoryManager } from '../services/history-manager.js';
+import { SourcePathsManager } from '../services/source-paths-manager.js';
+import { FiltersManager } from '../services/filters-manager.js';
+import { DestinationManager } from '../services/destination-manager.js';
+import { ExportManager } from '../services/export-manager.js';
+import { HandlerManager } from '../services/handler-manager.js';
+import { BlockSummaryBuilder } from '../services/block-summary-builder.js';
+import { FiltersSimulator } from '../services/filters-simulator.js';
 
-    # Target the entire view-terminal block space to clear the overlapping closing tags and restore hierarchy parity
-    pattern = r'(<vscode-panel-view id="view-terminal">[\s\S]*?</vscode-panel-view>)'
+let isModifierPressed = false;
 
-    reconstructed_view_terminal = """<vscode-panel-view id="view-terminal">
-                  <div class="terminal-container" style="width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 0px;">
+export const InitializationManager = {
+    refreshBlockSummaryUI(blockId, isCollapsed) {
+        const summaryElement = document.getElementById(`summary-${blockId}`);
+        if (!summaryElement) return;
 
-                      <div class="collapsible-block" id="section-terminal-cmd" style="width: 100%;">
-                          <div class="collapsible-block-header">
-                              <div class="collapsible-title-group">
-                                  <span class="codicon codicon-chevron-down" id="icon-section-terminal-cmd"></span>
-                                  <span>⚙️ Bash command run by the tool</span>
-                              </div>
-                              <span class="collapsible-summary-text" id="summary-section-terminal-cmd"></span>
-                          </div>
-                          <div class="collapsible-block-content" id="content-section-terminal-cmd" style="padding-top: 5px;">
-                              <div style="display: flex; flex-direction: row; align-items: flex-start; gap: 8px; width: 100%; box-sizing: border-box;">
-                                  <div class="terminal" id="terminal-cmd" style="flex: 1; min-width: 0; box-sizing: border-box; background: #1e1e1e; color: #d4d4d4; border-radius: 4px; border: 1px solid var(--vscode-panel-border); padding: 12px; min-height: 150px; height: 240px; resize: vertical; overflow: auto; font-family: var(--vscode-editor-font-family, 'Menlo', monospace); font-size: 12px; margin: 0;"></div>
-                                  <div style="flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 2px;">
-                                      <vscode-button id="btn-copy-cmd" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Copy terminal cmd to clipboard">
-                                          <span class="codicon codicon-copy"></span>
-                                      </vscode-button>
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
+        if (isCollapsed) {
+            summaryElement.innerHTML = BlockSummaryBuilder.computeBlockSummary(blockId);
+            summaryElement.style.display = 'inline-block';
+        } else {
+            summaryElement.innerHTML = '';
+            summaryElement.style.display = 'none';
+        }
+    },
 
-                      <div class="collapsible-block" id="section-terminal-logs" style="width: 100%;">
-                          <div class="collapsible-block-header">
-                              <div class="collapsible-title-group">
-                                  <span class="codicon codicon-chevron-down" id="icon-section-terminal-logs"></span>
-                                  <span>🐍 Python script Logs</span>
-                              </div>
-                              <span class="collapsible-summary-text" id="summary-section-terminal-logs"></span>
-                          </div>
-                          <div class="collapsible-block-content" id="content-section-terminal-logs" style="padding-top: 5px;">
-                              <div style="display: flex; flex-direction: row; align-items: flex-start; gap: 8px; width: 100%; box-sizing: border-box;">
-                                  <div class="terminal" id="terminal" style="flex: 1; min-width: 0; box-sizing: border-box; background: #1e1e1e; color: #d4d4d4; border-radius: 4px; border: 1px solid var(--vscode-panel-border); padding: 12px; min-height: 150px; height: 240px; resize: vertical; overflow: auto; font-family: var(--vscode-editor-font-family, 'Menlo', monospace); font-size: 12px; margin: 0;"></div>
-                                  <div style="flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 2px;">
-                                      <vscode-button id="btn-copy-terminal-logs" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Copy terminal logs to clipboard">
-                                          <span class="codicon codicon-copy"></span>
-                                      </vscode-button>
-                                      <vscode-button id="btn-clear-terminal-logs" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Clear terminal logs">
-                                          <span class="codicon codicon-trash"></span>
-                                      </vscode-button>
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
+    setupFilterSimulator() {
+        const filterSimulatorInput = document.getElementById('filters-simulator-input');
+        filterSimulatorInput.addEventListener('input', (e) => {
+            FiltersSimulator.updateEmoji(e.target.value);
+        });
+        filterSimulatorInput.addEventListener('blur', (e) => {
+            FiltersSimulator.updateEmoji(e.target.value);
+        });
+    },
 
-                  </div>
-              </vscode-panel-view>"""
+    setupTextAreaSync() {
+        const textAreas = [
+            document.getElementById('incPaths'),
+            document.getElementById('incExts'),
+            document.getElementById('excPaths'),
+            document.getElementById('excExts')
+        ].filter(Boolean);
 
-    text = re.sub(pattern, reconstructed_view_terminal, text)
-    with open(filepath, 'w', encoding='utf-8') as f:
-        f.write(text)
+        let isSynchronizing = false;
+
+        const synchronizeHeights = (targetHeight) => {
+            if (isSynchronizing) return;
+            isSynchronizing = true;
+
+            let maxHeight = targetHeight;
+
+            if (!maxHeight) {
+                const heights = textAreas.map(ta => {
+                    const inner = ta.shadowRoot?.querySelector('textarea');
+                    return inner ? inner.offsetHeight : ta.offsetHeight;
+                });
+                maxHeight = Math.max(...heights);
+            }
+
+            textAreas.forEach(ta => {
+                ta.style.height = `${maxHeight}px`;
+                const inner = ta.shadowRoot?.querySelector('textarea');
+                if (inner) {
+                    inner.style.height = '100%';
+                }
+            });
+
+            isSynchronizing = false;
+        };
+
+        if (typeof ResizeObserver !== 'undefined' && textAreas.length > 0) {
+            const observer = new ResizeObserver((entries) => {
+                if (isSynchronizing) return;
+
+                let highest = 0;
+                for (const entry of entries) {
+                    const height = entry.borderBoxSize?.[0]?.blockSize || entry.target.offsetHeight;
+                    if (height > highest) {
+                        highest = height;
+                    }
+                }
+
+                if (highest > 0) {
+                    synchronizeHeights(highest);
+                }
+            });
+
+            textAreas.forEach(ta => {
+                observer.observe(ta);
+                const inner = ta.shadowRoot?.querySelector('textarea');
+                if (inner) {
+                    observer.observe(inner);
+                } else {
+                    setTimeout(() => {
+                        const dynamicInner = ta.shadowRoot?.querySelector('textarea');
+                        if (dynamicInner) observer.observe(dynamicInner);
+                    }, 100);
+                }
+            });
+        }
+
+        setTimeout(() => synchronizeHeights(), 100);
+    },
+
+    init(tabs) {
+        window.reportTab = tabs.reportTab;
+        window.filesTab = tabs.filesTab;
+        window.treeViewTab = tabs.treeViewTab;
+        window.terminalTab = tabs.terminalTab;
+
+        UIController.injectShadowDomStyles();
+        UIController.initCursorTooltipTracker();
+
+        if (tabs.helpTab) tabs.helpTab.render();
+
+        const allBlocks = [
+            'block-history', 'block-sourcepaths', 'block-filters', 'block-destination', 'block-options',
+            'costEstimationSection', 'reportTableSection', 'reportGraphSection',
+            'section-exported-files', 'section-logs-block', 'section-reports-block',
+            'section-terminal-cmd', 'section-terminal-logs'
+        ];
+
+        const collapsedByDefault = ['costEstimationSection'];
+
+        allBlocks.forEach(blockId => {
+            const blockEl = document.getElementById(blockId);
+            if (!blockEl) return;
+
+            const header = blockEl.querySelector('.collapsible-block-header');
+            const content = blockEl.querySelector('.collapsible-block-content');
+            const icon = document.getElementById(`icon-${blockId}`) || blockEl.querySelector('.collapsible-title-group .codicon');
+
+            if (header && content && icon) {
+                const shouldCollapse = collapsedByDefault.includes(blockId);
+                content.style.display = shouldCollapse ? 'none' : 'block';
+                icon.className = shouldCollapse ? 'codicon codicon-chevron-right' : 'codicon codicon-chevron-down';
+                this.refreshBlockSummaryUI(blockId, shouldCollapse);
+
+                header.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const isClosed = content.style.display === 'none';
+                    content.style.display = isClosed ? 'block' : 'none';
+                    icon.className = isClosed ? 'codicon codicon-chevron-down' : 'codicon codicon-chevron-right';
+                    this.refreshBlockSummaryUI(blockId, !isClosed);
+                };
+            }
+        });
+
+        window.forceGlobalSummariesUpdate = () => {
+            allBlocks.forEach(id => {
+                const content = document.getElementById(`content-${id}`);
+                if (content && content.style.display === 'none') {
+                    this.refreshBlockSummaryUI(id, true);
+                }
+            });
+        };
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Control' || e.key === 'Meta') {
+                if (!isModifierPressed) {
+                    isModifierPressed = true;
+                    FiltersManager.updateMenuHotkeysLayout(isModifierPressed);
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'Control' || e.key === 'Meta') {
+                if (isModifierPressed) {
+                    isModifierPressed = false;
+                    FiltersManager.updateMenuHotkeysLayout(isModifierPressed);
+                }
+            }
+        });
+
+        document.getElementById('btn-sort-incPaths')?.addEventListener('click', () => FiltersManager.sortTextAreaLines('incPaths'));
+        document.getElementById('btn-sort-excPaths')?.addEventListener('click', () => FiltersManager.sortTextAreaLines('excPaths'));
+        document.getElementById('btn-sort-incExts')?.addEventListener('click', () => FiltersManager.sortTextAreaLines('incExts'));
+        document.getElementById('btn-sort-excExts')?.addEventListener('click', () => FiltersManager.sortTextAreaLines('excExts'));
+
+        document.getElementById('btn-explode-incExts')?.addEventListener('click', () => FiltersManager.explodeTextAreaRegex('incExts'));
+        document.getElementById('btn-explode-incPaths')?.addEventListener('click', () => FiltersManager.explodeTextAreaRegex('incPaths'));
+        document.getElementById('btn-explode-excPaths')?.addEventListener('click', () => FiltersManager.explodeTextAreaRegex('excPaths'));
+        document.getElementById('btn-explode-excExts')?.addEventListener('click', () => FiltersManager.explodeTextAreaRegex('excExts'));
+
+        document.getElementById('btn-clear-incPaths')?.addEventListener('click', () => FiltersManager.clearTextArea('incPaths'));
+        document.getElementById('btn-clear-excPaths')?.addEventListener('click', () => FiltersManager.clearTextArea('excPaths'));
+        document.getElementById('btn-clear-incExts')?.addEventListener('click', () => FiltersManager.clearTextArea('incExts'));
+        document.getElementById('btn-clear-excExts')?.addEventListener('click', () => FiltersManager.clearTextArea('excExts'));
+
+        document.getElementById('btn-group-incExts')?.addEventListener('click', () => FiltersManager.groupTextAreaExtensions('incExts'));
+        document.getElementById('btn-group-excExts')?.addEventListener('click', () => FiltersManager.groupTextAreaExtensions('excExts'));
+
+        document.getElementById('btn-predefined-inclusions')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const menu = document.getElementById('predefined-inclusions-menu');
+            if (menu) {
+                const isOpening = menu.style.display !== 'block';
+                if (isOpening) {
+                    FiltersManager.renderPredefinedMenu('predefined-inclusions-menu', 'incExts', 'includeExtsMenuEnabled', isModifierPressed);
+                    menu.style.display = 'block';
+                } else {
+                    menu.style.display = 'none';
+                }
+            }
+        });
+
+        document.getElementById('btn-predefined-exclusions')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const menu = document.getElementById('predefined-exclusions-menu');
+            if (menu) {
+                const isOpening = menu.style.display !== 'block';
+                if (isOpening) {
+                    FiltersManager.renderPredefinedMenu('predefined-exclusions-menu', 'excExts', 'excludeExtsMenuEnabled', isModifierPressed);
+                    menu.style.display = 'block';
+                } else {
+                    menu.style.display = 'none';
+                }
+            }
+        });
+
+        document.addEventListener('click', () => {
+            const incMenu = document.getElementById('predefined-inclusions-menu');
+            const excMenu = document.getElementById('predefined-exclusions-menu');
+            if (incMenu) incMenu.style.display = 'none';
+            if (excMenu) excMenu.style.display = 'none';
+        });
+
+        document.getElementById('btn-toggle-history-view')?.addEventListener('click', () => {
+            state.historyViewMode = state.historyViewMode === 'scope-current-repo' ? 'scope-all-repo' : 'scope-current-repo';
+            HistoryManager.updateHistoryViewToggleButton();
+            HistoryManager.updateHistoryCombo(state.currentSelectedId);
+            bridge.postMessage('updateHistoryViewMode', { mode: state.historyViewMode });
+        });
+
+        document.getElementById('historyCombo')?.addEventListener('change', (e) => {
+            const val = e.target.value;
+            if (!val || state.isInitializing) return;
+            state.currentSelectedId = val;
+            HistoryManager.applyHistorySelection(val);
+            UIController.syncButtonsState(val);
+            ValidatorService.clearAllValidationStyles();
+            UIController.checkSyncStatus();
+            setTimeout(window.forceGlobalSummariesUpdate, 60);
+        });
+
+        document.getElementById('btn-freeze-history')?.addEventListener('click', () => {
+            if (state.currentSelectedId && state.currentSelectedId !== 'default') {
+                const entry = state.historyList.find(h => h.id === state.currentSelectedId);
+                if (entry) bridge.postMessage('toggleFreezeHistory', { id: state.currentSelectedId, frozen: !entry.frozen });
+            }
+        });
+
+        document.getElementById('btn-reset-config')?.addEventListener('click', () => {
+            HistoryManager.resetCurrentConfigFields();
+            setTimeout(window.forceGlobalSummariesUpdate, 20);
+        });
+
+        document.getElementById('btn-edit-history')?.addEventListener('click', HistoryManager.enterInlineRenameMode);
+
+        document.getElementById('historyRenameInput')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const val = e.target.value.trim();
+                if (val && state.currentSelectedId && state.currentSelectedId !== 'default') {
+                    bridge.postMessage('editHistoryName', { id: state.currentSelectedId, newName: val });
+                }
+                HistoryManager.cancelInlineHistoryRename();
+            } else if (e.key === 'Escape') {
+                HistoryManager.cancelInlineHistoryRename();
+            }
+        });
+
+        document.getElementById('historyRenameInput')?.addEventListener('blur', () => {
+            setTimeout(() => { HistoryManager.cancelInlineHistoryRename(); }, 180);
+        });
+
+        document.getElementById('btn-duplicate-history')?.addEventListener('click', () => {
+            const getVal = (id) => document.getElementById(id)?.value || '';
+            const getCheck = (id) => !!document.getElementById(id)?.checked;
+            const pathsStr = (document.getElementById('pathList')?.value || '').split('\n').map(p => p.trim()).filter(p => p).join(', ');
+
+            const screenConfig = {
+                src: pathsStr, dest: getVal('destDir'), format: getVal('format'),
+                max_file: getVal('maxFile'), max_chunk: getVal('maxChunk'),
+                groupByExt: getCheck('splitChunkByFileExtension'),
+                copyGeneratedFilesToClipboard: getCheck('copyGeneratedFilesToClipboard'),
+                generateTreeView: getCheck('generateTreeView'),
+                logConsole: getCheck('generateLogConsole'), logFile: getCheck('generateLogFile'),
+                inc_paths: getVal('incPaths'), exc_paths: getVal('excPaths'),
+                inc_ext: getVal('incExts'), exc_ext: getVal('excExts')
+            };
+
+            let customDisplayName = null;
+            if (state.currentSelectedId && state.currentSelectedId !== 'default') {
+                const selectedEntry = state.historyList.find(h => h.id === state.currentSelectedId);
+                if (selectedEntry) customDisplayName = `${selectedEntry.display} - copy`;
+            }
+
+            bridge.postMessage('addNewConfigProfile', { duplicateConfig: screenConfig, customName: customDisplayName });
+        });
+
+        document.getElementById('btn-add-history')?.addEventListener('click', () => bridge.postMessage('addNewConfigProfile'));
+        document.getElementById('btn-open-history-file')?.addEventListener('click', () => bridge.postMessage('openHistoryInVSCode'));
+        document.getElementById('btn-reveal-history-folder')?.addEventListener('click', () => bridge.postMessage('revealHistoryInOS'));
+        document.getElementById('btn-clear-history')?.addEventListener('click', () => bridge.postMessage('clearHistory', { selectedId: state.currentSelectedId }));
+
+        document.getElementById('btn-clear-paths')?.addEventListener('click', () => {
+            SourcePathsManager.clearPaths();
+            setTimeout(window.forceGlobalSummariesUpdate, 20);
+        });
+        document.getElementById('btn-add-open-files')?.addEventListener('click', SourcePathsManager.addOpenFiles);
+        document.getElementById('btn-add-git-diff')?.addEventListener('click', SourcePathsManager.addGitDiffFiles);
+        document.getElementById('btn-add-error-files')?.addEventListener('click', () => ErrorFilesModalComponent.render());
+
+        const pathListTextArea = document.getElementById('pathList');
+        if (pathListTextArea) {
+            const targetTextarea = pathListTextArea.shadowRoot?.querySelector('textarea') || pathListTextArea;
+            targetTextarea.addEventListener('blur', SourcePathsManager.saveActiveTextareaCursorIndex);
+            targetTextarea.addEventListener('keyup', SourcePathsManager.saveActiveTextareaCursorIndex);
+            targetTextarea.addEventListener('click', SourcePathsManager.saveActiveTextareaCursorIndex);
+        }
+
+        document.getElementById('btn-open-cursor-line')?.addEventListener('click', SourcePathsManager.openPathAtCursor);
+        document.getElementById('btn-run')?.addEventListener('click', () => ExportManager.runExport());
+
+        document.getElementById('btn-copy-cmd')?.addEventListener('click', () => tabs.terminalTab?.copyCommand());
+        document.getElementById('btn-copy-terminal-logs')?.addEventListener('click', () => { const term = document.getElementById('terminal'); if (term && term.innerText) { navigator.clipboard.writeText(term.innerText).then(() => { bridge.postMessage('showNotification', { type: 'info', text: 'Terminal content successfully copied to clipboard.' }); }); } });
+        document.getElementById('btn-clear-terminal-logs')?.addEventListener('click', () => { const term = document.getElementById('terminal'); if (term) term.innerText = ''; });
+        document.getElementById('btn-copy-latest-files')?.addEventListener('click', DestinationManager.copyLatestExportedFiles);
+        document.getElementById('btn-open-finder-dest')?.addEventListener('click', DestinationManager.openFinder);
+        document.getElementById('btn-clear-dest')?.addEventListener('click', DestinationManager.clearDestDirectory);
+
+        document.getElementById('btn-filter-files')?.addEventListener('click', () => {
+            if (!state.lastGeneratedFilesPayload) return;
+            bridge.postMessage('applyFileFilter', {
+                data: {
+                    fileNameRegex: document.getElementById('filterFileName').value,
+                    fileContentRegex: document.getElementById('filterFileContent').value,
+                    destDir: document.getElementById('destDir').value,
+                    files: state.lastGeneratedFilesPayload.exports || []
+                }
+            });
+        });
+
+        document.getElementById('btn-reset-filter')?.addEventListener('click', () => {
+            if (document.getElementById('filterFileName')) document.getElementById('filterFileName').value = '';
+            if (document.getElementById('filterFileContent')) document.getElementById('filterFileContent').value = '';
+            if (state.lastGeneratedFilesPayload && tabs.filesTab) {
+                tabs.filesTab.render(
+                    state.lastGeneratedFilesPayload,
+                    document.getElementById('destDir').value,
+                    (p) => bridge.postMessage('openFile', {path:p}),
+                    (p) => bridge.postMessage('openFinder', {path:p}),
+                    document.getElementById('splitChunkByFileExtension').checked,
+                    state.totalExportedSourceFiles
+                );
+            }
+            if (state.lastReportPayload && tabs.treeViewTab) {
+                tabs.treeViewTab.render(state.lastReportPayload, (p) => bridge.postMessage('openFile',{path:p}), (p) => bridge.postMessage('openFinder',{path:p}));
+            }
+        });
+
+        const observedFields = ['pathList', 'destDir', 'maxFile', 'maxChunk', 'incPaths', 'excPaths', 'incExts', 'excExts', 'format', 'splitChunkByFileExtension', 'copyGeneratedFilesToClipboard', 'generateTreeView', 'generateLogConsole', 'generateLogFile'];
+        observedFields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('blur', () => {
+                    ValidatorService.executeFieldValidation(id);
+                    UIController.checkSyncStatus();
+                    window.forceGlobalSummariesUpdate();
+                });
+                el.addEventListener('input', () => {
+                    ValidatorService.executeFieldValidation(id);
+                    UIController.checkSyncStatus();
+                    window.forceGlobalSummariesUpdate();
+                });
+                el.addEventListener('change', () => {
+                    window.forceGlobalSummariesUpdate();
+                });
+            }
+        });
+
+        // Shared cross-extension real-time bidirectional input synchronization hook
+        document.getElementById('pathList')?.addEventListener('input', (e) => {
+            const currentLines = e.target.value.split('\n').map(p => p.trim()).filter(p => p);
+            bridge.postMessage('syncPaths', { paths: currentLines });
+        });
+
+        console.log("[Simulation B UI] Initializing tracing controls...");
+        const simuBtn = document.getElementById('btn-simu-push');
+        if (!simuBtn) {
+            console.error("[Simulation B UI] CRITICAL ERROR: Target button '#btn-simu-push' is missing from the active DOM context layout structure!");
+        } else {
+            console.log("[Simulation B UI] Target button '#btn-simu-push' discovered. Binding verbose event listener trace hooks.");
+            simuBtn.addEventListener('click', () => {
+                console.log("[Simulation B UI] Click event successfully captured on '#btn-simu-push'.");
+                const inputEl = document.getElementById('simuPaths');
+                const val = inputEl?.value || '';
+                const paths = val.split('\n').map(p => p.trim()).filter(p => p);
+                if (paths.length > 0) {
+                    bridge.postMessage('simulateExtensionBPush', { paths });
+                    if (inputEl) {
+                        console.info("[Simulation B UI] Contenu de la liste partagée AVANT clean :", inputEl.value);
+                        inputEl.value = '';
+                        inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+                        inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+                        console.info("[Simulation B UI] Contenu de la liste partagée APRÈS clean :", inputEl.value);
+                        console.log("[Simulation B UI] Shared list component has been fully flushed and visually cleared via lifecycle events.");
+                    }
+                } else {
+                    console.warn("[Simulation B UI] Action aborted: The simulation textarea payload matrix is completely empty.");
+                }
+            });
+        }
+
+        this.setupTextAreaSync();
+        this.setupFilterSimulator();
+        bridge.postMessage('webviewReady');
+    },
+
+    handleMessage(message, tabs) {
+        switch (message.command) {
+            case 'excludeExplorerPathSelection': HandlerManager.handleExcludeExplorerPathSelection(message, tabs); break;
+            case 'checkPathsResult': HandlerManager.handleCheckPathsResult(message, tabs); break;
+            case 'updatePaths': HandlerManager.handleUpdatePaths(message, tabs); break;
+            case 'initSettings':
+                HandlerManager.handleInitSettings(message, tabs, isModifierPressed);
+                setTimeout(() => { if (typeof window.forceGlobalSummariesUpdate === 'function') window.forceGlobalSummariesUpdate(); }, 120);
+                break;
+            case 'updateFileExtsCategoryGroups': HandlerManager.handleUpdateFileExtsCategoryGroups(message, tabs, isModifierPressed); break;
+            case 'updateHistory': HandlerManager.handleUpdateHistory(message, tabs); break;
+            case 'terminalLog': HandlerManager.handleTerminalLog(message, tabs); break;
+            case 'updateCommand': HandlerManager.handleUpdateCommand(message, tabs); break;
+            case 'updateExportReport': HandlerManager.handleUpdateExportReport(message, tabs); break;
+            case 'filteredFilesResult': HandlerManager.handleFilteredFilesResult(message, tabs); break;
+            case 'showRichNotification': HandlerManager.handleShowRichNotification(message); break;
+            case 'analyzeErrorStackResult': if (typeof window.handleErrorAnalysisResponse === 'function') window.handleErrorAnalysisResponse(message.paths); break;
+            case 'simulateFiltersResult':
+                import('../services/filters-simulator.js').then(module => {
+                    module.FiltersSimulator.updateEmojiResult(message.code);
+                });
+                break;
+        }
+    }
+};
 EOF
 
-## ✅ Script modified. Layout regressions and broken closing div elements inside the terminal panel views have been completely resolved, restoring beautiful structural symmetry!
+echo "✅ Script rewritten: Regular expression syntax error fully resolved inside initialization.manager.js by safely abstracting line split operations into literal string handlers!"

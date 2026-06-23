@@ -1,11 +1,2 @@
-python3 '/Users/mac-SGUISS21/01-work/01-projects/10-tools/01-plugins/01-vscode/vscode-files-exporter/scripts/files-exporter.py' \
---src '/Users/mac-SGUISS21/90-temp/rental-book-shop' \
---dest '/Users/mac-SGUISS21/90-temp/rental-book-shop/exported-files' \
---format 'yaml' \
---max-file '239' \
---max-chunk '500' \
---log-console \
---tree-view \
---inc-paths '.*' \
---exc-paths '.*/node_modules/.*|.*/target/.*|.*/\.git/.*|.*/dist/.*|.*/.idea/.*|.*/.vscode/.*|.*/.history/.*|.*/exported-files/.*' \
---inc-ext '.*\.(java|ts|tsx|js|html|css|json|xml|yaml|yml|py|md|properties)$'
+/Users/mac-SGUISS21/90-temp/rental-book-shop/exported-files/export-2026-06-23_18-28-51_01.yaml
+/Users/mac-SGUISS21/90-temp/rental-book-shop/exported-files/export-2026-06-23_18-28-51_01.yaml

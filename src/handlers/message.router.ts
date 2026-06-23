@@ -106,8 +106,28 @@ export class MessageRouter {
                 await this.handleAnalyzeErrorStack(message);
                 break;
             case 'killErrorAnalysis':
-                this.handleKillErrorAnalysis();
-                break;
+                    this.handleKillErrorAnalysis();
+                    break;
+                case 'simulateExtensionBPush':
+                    this.panel.webview.postMessage({ command: 'terminalLog', text: `
+🧪 [Backend Router] Intercepted 'simulateExtensionBPush' signal context containing ${message.paths.length} records.
+` });
+                    message.paths.forEach((p: string) => {
+                        if (!this.state.selectedPaths.includes(p)) {
+                            this.state.selectedPaths.push(p);
+                            this.panel.webview.postMessage({ command: 'terminalLog', text: `   [+] Appended source reference to shared memory layout state: ${p}
+` });
+                        } else {
+                            this.panel.webview.postMessage({ command: 'terminalLog', text: `   [x] Ignored duplicate resource source location: ${p}
+` });
+                        }
+                    });
+                    this.panel.webview.postMessage({ command: 'terminalLog', text: `🧪 [Backend Router] Shared memory layout matrices synced. Broadcasting refreshed path matrix maps to UI views...
+` });
+                    this.panel.webview.postMessage({ command: 'updatePaths', paths: this.state.selectedPaths });
+                    this.panel.webview.postMessage({ command: 'terminalLog', text: `🧪 [Backend Router] Shared cross-extension list has been successfully processed and completely emptied.\n` });
+                    vscode.window.showInformationMessage(`[Simulation B] ${message.paths.length} chemin(s) injecté(s) avec succès !`);
+                    break;
         }
     }
 

@@ -15,7 +15,6 @@ import { FiltersSimulator } from '../services/filters-simulator.js';
 let isModifierPressed = false;
 
 export const InitializationManager = {
-    // Computes and toggles headers summary metadata metrics
     refreshBlockSummaryUI(blockId, isCollapsed) {
         const summaryElement = document.getElementById(`summary-${blockId}`);
         if (!summaryElement) return;
@@ -29,24 +28,16 @@ export const InitializationManager = {
         }
     },
 
-    /**
-     * Initialize the filter simulator functionality
-     */
     setupFilterSimulator() {
         const filterSimulatorInput = document.getElementById('filters-simulator-input');
-
-        // Add event listener to update emoji on input
         filterSimulatorInput.addEventListener('input', (e) => {
             FiltersSimulator.updateEmoji(e.target.value);
         });
-
-        // Add event listener to clear emoji when focus is lost
         filterSimulatorInput.addEventListener('blur', (e) => {
             FiltersSimulator.updateEmoji(e.target.value);
         });
     },
 
-    // Dedicated method to handle Shadow DOM textareas structural height synchronization
     setupTextAreaSync() {
         const textAreas = [
             document.getElementById('incPaths'),
@@ -63,7 +54,6 @@ export const InitializationManager = {
 
             let maxHeight = targetHeight;
 
-            // If no target height is provided, calculate the maximum current height across blocks
             if (!maxHeight) {
                 const heights = textAreas.map(ta => {
                     const inner = ta.shadowRoot?.querySelector('textarea');
@@ -72,13 +62,10 @@ export const InitializationManager = {
                 maxHeight = Math.max(...heights);
             }
 
-            // Apply identical height boundaries to all parent host and inner native elements
             textAreas.forEach(ta => {
                 ta.style.height = `${maxHeight}px`;
-
                 const inner = ta.shadowRoot?.querySelector('textarea');
                 if (inner) {
-                    // Force the inner native textarea layout to track 100% of the container component
                     inner.style.height = '100%';
                 }
             });
@@ -86,7 +73,6 @@ export const InitializationManager = {
             isSynchronizing = false;
         };
 
-        // Use ResizeObserver to intercept manual UI cursor drag adjustments instantly
         if (typeof ResizeObserver !== 'undefined' && textAreas.length > 0) {
             const observer = new ResizeObserver((entries) => {
                 if (isSynchronizing) return;
@@ -104,15 +90,12 @@ export const InitializationManager = {
                 }
             });
 
-            // Observe both the component host and its underlying native node
             textAreas.forEach(ta => {
                 observer.observe(ta);
-
                 const inner = ta.shadowRoot?.querySelector('textarea');
                 if (inner) {
                     observer.observe(inner);
                 } else {
-                    // Fallback polling macro-task execution queue if hydration is delayed
                     setTimeout(() => {
                         const dynamicInner = ta.shadowRoot?.querySelector('textarea');
                         if (dynamicInner) observer.observe(dynamicInner);
@@ -121,7 +104,6 @@ export const InitializationManager = {
             });
         }
 
-        // Initial setup execution timeout buffer allowing VS Code styles injection
         setTimeout(() => synchronizeHeights(), 100);
     },
 
@@ -334,7 +316,7 @@ export const InitializationManager = {
         });
         document.getElementById('btn-add-open-files')?.addEventListener('click', SourcePathsManager.addOpenFiles);
         document.getElementById('btn-add-git-diff')?.addEventListener('click', SourcePathsManager.addGitDiffFiles);
-            document.getElementById('btn-add-error-files')?.addEventListener('click', () => ErrorFilesModalComponent.render());
+        document.getElementById('btn-add-error-files')?.addEventListener('click', () => ErrorFilesModalComponent.render());
 
         const pathListTextArea = document.getElementById('pathList');
         if (pathListTextArea) {
@@ -348,8 +330,8 @@ export const InitializationManager = {
         document.getElementById('btn-run')?.addEventListener('click', () => ExportManager.runExport());
 
         document.getElementById('btn-copy-cmd')?.addEventListener('click', () => tabs.terminalTab?.copyCommand());
-              document.getElementById('btn-copy-terminal-logs')?.addEventListener('click', () => { const term = document.getElementById('terminal'); if (term && term.innerText) { navigator.clipboard.writeText(term.innerText).then(() => { bridge.postMessage('showNotification', { type: 'info', text: 'Terminal content successfully copied to clipboard.' }); }); } });
-              document.getElementById('btn-clear-terminal-logs')?.addEventListener('click', () => { const term = document.getElementById('terminal'); if (term) term.innerText = ''; });
+        document.getElementById('btn-copy-terminal-logs')?.addEventListener('click', () => { const term = document.getElementById('terminal'); if (term && term.innerText) { navigator.clipboard.writeText(term.innerText).then(() => { bridge.postMessage('showNotification', { type: 'info', text: 'Terminal content successfully copied to clipboard.' }); }); } });
+        document.getElementById('btn-clear-terminal-logs')?.addEventListener('click', () => { const term = document.getElementById('terminal'); if (term) term.innerText = ''; });
         document.getElementById('btn-copy-latest-files')?.addEventListener('click', DestinationManager.copyLatestExportedFiles);
         document.getElementById('btn-open-finder-dest')?.addEventListener('click', DestinationManager.openFinder);
         document.getElementById('btn-clear-dest')?.addEventListener('click', DestinationManager.clearDestDirectory);
@@ -384,7 +366,6 @@ export const InitializationManager = {
             }
         });
 
-        // Add validation triggers to web components inputs elements
         const observedFields = ['pathList', 'destDir', 'maxFile', 'maxChunk', 'incPaths', 'excPaths', 'incExts', 'excExts', 'format', 'splitChunkByFileExtension', 'copyGeneratedFilesToClipboard', 'generateTreeView', 'generateLogConsole', 'generateLogFile'];
         observedFields.forEach(id => {
             const el = document.getElementById(id);
@@ -405,11 +386,41 @@ export const InitializationManager = {
             }
         });
 
-        // Initialize synchronized textareas dimensional heights
+        // Shared cross-extension real-time bidirectional input synchronization hook
+        document.getElementById('pathList')?.addEventListener('input', (e) => {
+            const currentLines = e.target.value.split('\n').map(p => p.trim()).filter(p => p);
+            bridge.postMessage('syncPaths', { paths: currentLines });
+        });
+
+        console.log("[Simulation B UI] Initializing tracing controls...");
+        const simuBtn = document.getElementById('btn-simu-push');
+        if (!simuBtn) {
+            console.error("[Simulation B UI] CRITICAL ERROR: Target button '#btn-simu-push' is missing from the active DOM context layout structure!");
+        } else {
+            console.log("[Simulation B UI] Target button '#btn-simu-push' discovered. Binding verbose event listener trace hooks.");
+            simuBtn.addEventListener('click', () => {
+                console.log("[Simulation B UI] Click event successfully captured on '#btn-simu-push'.");
+                const inputEl = document.getElementById('simuPaths');
+                const val = inputEl?.value || '';
+                const paths = val.split('\n').map(p => p.trim()).filter(p => p);
+                if (paths.length > 0) {
+                    bridge.postMessage('simulateExtensionBPush', { paths });
+                    if (inputEl) {
+                        console.info("[Simulation B UI] Contenu de la liste partagée AVANT clean :", inputEl.value);
+                        inputEl.value = '';
+                        inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+                        inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+                        console.info("[Simulation B UI] Contenu de la liste partagée APRÈS clean :", inputEl.value);
+                        console.log("[Simulation B UI] Shared list component has been fully flushed and visually cleared via lifecycle events.");
+                    }
+                } else {
+                    console.warn("[Simulation B UI] Action aborted: The simulation textarea payload matrix is completely empty.");
+                }
+            });
+        }
+
         this.setupTextAreaSync();
-
         this.setupFilterSimulator();
-
         bridge.postMessage('webviewReady');
     },
 
@@ -430,7 +441,7 @@ export const InitializationManager = {
             case 'filteredFilesResult': HandlerManager.handleFilteredFilesResult(message, tabs); break;
             case 'showRichNotification': HandlerManager.handleShowRichNotification(message); break;
             case 'analyzeErrorStackResult': if (typeof window.handleErrorAnalysisResponse === 'function') window.handleErrorAnalysisResponse(message.paths); break;
-                  case 'simulateFiltersResult':
+            case 'simulateFiltersResult':
                 import('../services/filters-simulator.js').then(module => {
                     module.FiltersSimulator.updateEmojiResult(message.code);
                 });

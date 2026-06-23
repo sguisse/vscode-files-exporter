@@ -7,7 +7,6 @@ import { FiltersManager } from './filters-manager.js';
 import { ExportManager } from './export-manager.js';
 
 export const HandlerManager = {
-    // Réintégration exacte de l'implémentation originale (Boutons images 64x64 + openBrowserTab)
     buildExchangeButtons(exchangeItems) {
         const container = document.getElementById('exchange-buttons-container');
         if (!container) return;
@@ -91,11 +90,20 @@ export const HandlerManager = {
     },
 
     handleUpdatePaths(message, tabs) {
+        console.log("[HandlerManager UI] Intercepted incoming 'updatePaths' synchronization payload from backend:", message.paths);
         state.selectedPaths = message.paths || [];
         const pathListEl = document.getElementById('pathList');
-        if (pathListEl) pathListEl.value = state.selectedPaths.join('\n');
+        if (pathListEl) {
+            pathListEl.value = state.selectedPaths.join('\n');
+            console.log("[HandlerManager UI] Successfully updated parent macro-container element '#pathList' textarea value layout.");
+        } else {
+            console.error("[HandlerManager UI] CRITICAL HOOK ERROR: Visual container component element '#pathList' was not located in the visible view tree hierarchy!");
+        }
         UIController.checkSyncStatus();
         ValidatorService.executeFieldValidation('pathList');
+        if (typeof window.forceGlobalSummariesUpdate === 'function') {
+            window.forceGlobalSummariesUpdate();
+        }
     },
 
     handleInitSettings(message, tabs, isModifierPressed) {
@@ -229,7 +237,6 @@ export const HandlerManager = {
         }
         html += `<div class="toast-body">${text}</div>`;
 
-        // Render Action Buttons
         if (actions && actions.length > 0) {
             html += `<div class="toast-actions">`;
             actions.forEach((act, idx) => {
@@ -242,7 +249,6 @@ export const HandlerManager = {
         toast.innerHTML = html;
         document.body.appendChild(toast);
 
-        // Bind Button Click Events
         if (actions && actions.length > 0) {
             toast.querySelectorAll('vscode-button').forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -251,22 +257,18 @@ export const HandlerManager = {
 
                     if (cmd !== 'close_notification') {
                         const act = actions[idx];
-                        // Dispatch back to the extension router
                         bridge.postMessage('richNotificationCallback', { actionCommand: cmd, data: act.data });
                     }
 
-                    // Dismiss the toast
                     toast.style.opacity = '0';
                     setTimeout(() => toast.remove(), 300);
                 });
             });
         }
 
-        // Animate In
         void toast.offsetWidth;
         toast.style.opacity = '1';
 
-        // Auto-dismiss ONLY if there are no buttons. If there are buttons, wait for the user to click.
         if (!actions || actions.length === 0) {
             setTimeout(() => {
                 if (toast.parentElement) {

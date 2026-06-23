@@ -10,7 +10,7 @@ export const ExportManager = {
         if (btn) {
             btn.classList.add('loading');
             btn.disabled = false;
-            btn.innerHTML = '<span class="codicon codicon-sync spin-anim"></span> EXPORT IN PROGRESS... <span id="btn-kill-task" title="Kill active export process immediately" style="margin-left: 12px; background: #b71c1c; color: #ffffff; padding: 2px 6px; border-radius: 3px; font-size: 11px; display: inline-flex; align-items: center; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.4); cursor: pointer !important;">🛑 KILL</span>';
+            btn.innerHTML = '<span class="codicon codicon-sync spin-anim" style="font-size: 16px;"></span><div style="display: flex; flex-direction: column; align-items: center; gap: 2px;"><span>EXPORTING...</span></div><span id="btn-kill-task" title="Kill active export process immediately" style="margin-left: 12px; background: #b71c1c; color: #ffffff; padding: 2px 6px; border-radius: 3px; font-size: 11px; display: inline-flex; align-items: center; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.4); cursor: pointer !important;">🛑 KILL</span>';
 
             setTimeout(() => {
                 document.getElementById('btn-kill-task')?.addEventListener('click', (e) => {
@@ -26,7 +26,7 @@ export const ExportManager = {
         if (btn) {
             btn.classList.remove('loading');
             btn.disabled = false;
-            btn.innerHTML = '<span class="codicon codicon-play"></span> RUN EXPORT';
+            btn.innerHTML = '<span class="codicon codicon-play" style="font-size: 16px;"></span><div style="display: flex; flex-direction: column; align-items: center; gap: 2px;"><span>RUN</span><span>EXPORT</span></div>';
             UIController.checkSyncStatus();
         }
     },

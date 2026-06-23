@@ -26,7 +26,21 @@ export class ExporterWebviewPanel {
         this._panel?.webview.postMessage({ command: 'excludeExplorerPathSelection', path: fsPath });
     }
 
-public show(launchType: 'open' | 'add') {
+    public addExternalPaths(paths: string[]) {
+        paths.forEach(p => {
+            if (p && !this.state.selectedPaths.includes(p)) {
+                this.state.selectedPaths.push(p);
+            }
+        });
+        if (this._panel) {
+            this._panel.reveal(vscode.ViewColumn.One);
+            this.updatePaths();
+        } else {
+            this.show('add');
+        }
+    }
+
+    public show(launchType: 'open' | 'add') {
         this._currentLaunchType = launchType;
 
         if (this._panel) {
