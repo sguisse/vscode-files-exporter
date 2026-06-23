@@ -16,6 +16,41 @@
          ".continue/**/*.yaml"
       ]
    },
-   "commentTranslate.multiLineMerge": true
+   "commentTranslate.multiLineMerge": true,
+
+   "filesExporter.exchange": [
+      {
+         "icon": "assets/brands/gemini.svg",
+         "url": "https://gemini.google.com/",
+         "tooltip": "Open Gemini",
+         "height": "45px",
+         "width": "45px",
+         "openInVSCode": true
+      },
+      {
+         "icon": "https://storage.googleapis.com/support-kms-prod/zY0QaDiBw6WBTWdpCduEnUxFkrkLwFvpc405",
+         "url": "https://gemini.google.com/gem/62027f9ad252",
+         "tooltip": "Open Gems",
+         "height": "65px",
+         "width": "65px",
+         "openInVSCode": true
+      },
+      {
+         "icon": "assets/brands/notebookLM.svg",
+         "url": "https://notebooklm.google.com/",
+         "tooltip": "Open NotebookLM",
+         "height": "45px",
+         "width": "45px",
+         "openInVSCode": false
+      },
+      {
+        "icon": "https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/light/claude-color.png",
+        "url": "http://127.0.0.1:8082/admin/",
+        "tooltip": "Open Free Claude Code Admin",
+        "height": "45px",
+        "width": "45px",
+        "openInVSCode": false
+      }
+   ],
 
 }

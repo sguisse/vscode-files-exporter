@@ -23,7 +23,12 @@ export function registerCommands(
         handleHeadlessExportSelectedPaths(uri, selectedUris, context, configService, processRunner, webviewPanelManager)
     );
 
-    context.subscriptions.push(openCmd, addCmd, excludeCmd, exportPathsCmd);
+    // Command to recursively copy selected file/folder entities straight to clipboard
+    const copyFilesCmd = vscode.commands.registerCommand('files-exporter.copySelectedFilesToClipboard', (uri: vscode.Uri, selectedUris: vscode.Uri[]) =>
+        handleCopySelectedFilesToClipboard(uri, selectedUris, configService, processRunner)
+    );
+
+    context.subscriptions.push(openCmd, addCmd, excludeCmd, exportPathsCmd, copyFilesCmd);
 }
 
 function handleOpenTool(webviewPanelManager: ExporterWebviewPanel) {
@@ -45,6 +50,89 @@ function handleExcludeFromExplorer(uri: vscode.Uri, selectedUris: vscode.Uri[], 
     uris.forEach(u => {
         if (u) {
             webviewPanelManager.excludePathFromExplorer(u.fsPath);
+        }
+    });
+}
+
+// Handler implementing recursive filesystem discovery, threshold guardrails, and clipboard sync
+async function handleCopySelectedFilesToClipboard(
+    uri: vscode.Uri,
+    selectedUris: vscode.Uri[],
+    configService: ConfigService,
+    processRunner: ProcessRunnerService
+) {
+    const uris = selectedUris || (uri ? [uri] : []);
+    const rootPaths = uris.map(u => u.fsPath).filter(Boolean);
+
+    if (rootPaths.length === 0) {
+        vscode.window.showWarningMessage("No files or directories selected.");
+        return;
+    }
+
+    vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: "Scanning file paths...",
+        cancellable: false
+    }, async () => {
+        try {
+            const absoluteFilePaths: string[] = [];
+            let totalSizeBytes = 0;
+
+            // Local helper function to sweep through directory hierarchies recursively
+            function resolveFilesRecursively(currentPath: string) {
+                if (!fs.existsSync(currentPath)) return;
+
+                const stat = fs.statSync(currentPath);
+                if (stat.isFile()) {
+                    absoluteFilePaths.push(currentPath);
+                    totalSizeBytes += stat.size;
+                } else if (stat.isDirectory()) {
+                    const children = fs.readdirSync(currentPath);
+                    for (const child of children) {
+                        resolveFilesRecursively(path.join(currentPath, child));
+                    }
+                }
+            }
+
+            // Run processing loop on items chosen by user selection
+            for (const rootPath of rootPaths) {
+                resolveFilesRecursively(rootPath);
+            }
+
+            if (absoluteFilePaths.length === 0) {
+                vscode.window.showWarningMessage("No files discovered within selected paths.");
+                return;
+            }
+
+            // ✨ Threshold validation guardrail (File limit: 50 OR size limit: 5MB)
+            const FIVE_MEGABYTES = 5 * 1024 * 1024;
+            if (absoluteFilePaths.length > 50 || totalSizeBytes > FIVE_MEGABYTES) {
+                // Human-readable size strings conversion formatter
+                const formattedSize = totalSizeBytes >= 1024 * 1024
+                    ? `${(totalSizeBytes / (1024 * 1024)).toFixed(2)} MB`
+                    : `${(totalSizeBytes / 1024).toFixed(2)} KB`;
+
+                const confirmation = await vscode.window.showWarningMessage(
+                    `⚠️ Large Clipboard Payload Warning\n\nYou are attempting to copy ${absoluteFilePaths.length} files totaling ${formattedSize} directly into your OS clipboard. Large copy transfers can occasionally cause micro-stuttering. Do you want to continue?`,
+                    { modal: true },
+                    "Copy Anyway"
+                );
+
+                if (confirmation !== "Copy Anyway") {
+                    return; // Gracefully halt execution pipeline
+                }
+            }
+
+            // Retrieve tracking timeout value set in system preferences configurations
+            const extensionConfig = configService.getConfiguration();
+            const timeoutMs = extensionConfig.get<number>('copyFilesToClipboardTimeout') ?? 10000;
+
+            // Hand over files arrays collection to the Python clipboard agent script execution runtime
+            await processRunner.copyFilesToClipboard(absoluteFilePaths, timeoutMs);
+            vscode.window.showInformationMessage(`📋 Successfully copied ${absoluteFilePaths.length} file(s) to the OS clipboard cache.`);
+
+        } catch (err: any) {
+            vscode.window.showErrorMessage(`Clipboard pipeline error: ${err.message}`);
         }
     });
 }
@@ -85,19 +173,16 @@ async function handleHeadlessExportSelectedPaths(
         ];
 
         if (groupByExt) args.push('--group-ext');
-
-        // Pass the paths dynamically
         args.push('--src', ...paths);
 
         try {
             const { code, stdout, stderr } = await processRunner.executePython(
                 script, args,
-                () => {}, // Suppress live stdout
-                () => {}  // Suppress live stderr
+                () => {},
+                () => {}
             );
 
             if (code === 0) {
-                // Parse the timestamp outputted by Python to locate the report
                 const lines = stdout.split('\n');
                 let timestamp: string | undefined;
 
@@ -119,7 +204,6 @@ async function handleHeadlessExportSelectedPaths(
                         const createdCount = reportData.results?.summary?.chunks_generated || 0;
                         const generatedFiles: string[] = reportData.results?.generated_files?.exports || [];
 
-                        // 1. Copy the generated files directly into the OS Clipboard
                         if (generatedFiles.length > 0) {
                             const timeoutMs = extensionConfig.get<number>('copyFilesToClipboardTimeout') ?? 10000;
                             await processRunner.copyFilesToClipboard(generatedFiles, timeoutMs).catch(err => {
@@ -127,18 +211,14 @@ async function handleHeadlessExportSelectedPaths(
                             });
                         }
 
-                        // 2. Create a detailed plain-text fallback string
                         const fallbackMessage = `✅ Export Pipeline Completed: Aggregated ${exportedCount} source file(s) into ${createdCount} output chunk(s). Generated files copied to clipboard!`;
-
-                        // 3. Display the rich HTML success notification
                         const notificationService = new RichNotificationService(webviewPanelManager.panel);
                         notificationService.show(
-                            fallbackMessage, // Used when Webview is closed
+                            fallbackMessage,
                             {
                                 type: "success",
                                 position: "bottom-right",
                                 header: "Export Pipeline Completed",
-                                // Used ONLY when Webview is actively open
                                 message: `
                                     Successfully aggregated <b>${exportedCount}</b> source file(s) into <b>${createdCount}</b> output chunk(s).<br/><br/>
                                     📋 <b>Generated files</b> have been successfully copied to your OS clipboard.<br/><br/>
@@ -153,13 +233,11 @@ async function handleHeadlessExportSelectedPaths(
                             },
                             (command: string, payload: any) => {
                                 if (command === "open_report_file" && payload?.path) {
-                                    // Automatically open the generated report file in VS Code editor grid
                                     vscode.workspace.openTextDocument(payload.path).then(
                                         doc => vscode.window.showTextDocument(doc, vscode.ViewColumn.Active),
                                         err => vscode.window.showErrorMessage(`Failed to open report file: ${err.message}`)
                                     );
                                 } else if (command === "copy_source_paths" && payload?.pathsToCopy) {
-                                    // Copy the source paths to the clipboard when the user clicks the button
                                     vscode.env.clipboard.writeText(payload.pathsToCopy.join('\n')).then(() => {
                                         vscode.window.showInformationMessage("Source paths successfully copied to clipboard!");
                                     });
@@ -168,15 +246,12 @@ async function handleHeadlessExportSelectedPaths(
                         );
                     }
                 } else {
-                    // Catch missing timestamp
                     vscode.window.showErrorMessage(`Files Exporter: Could not extract completion timestamp.`);
                 }
             } else {
-                // Catch Python non-zero exit codes
                 vscode.window.showErrorMessage(`Files Exporter failed with code ${code}: ${stderr.trim()}`);
             }
         } catch (err: any) {
-            // Catch spawn/process execution errors
             vscode.window.showErrorMessage(`Files Exporter Error: ${err.message}`);
         }
     });

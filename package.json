@@ -43,6 +43,11 @@
                 "command": "files-exporter.exportSelectedPaths",
                 "title": "Files Exporter - 04 --> 📥 Export selected paths",
                 "icon": "$(export)"
+            },
+            {
+                "command": "files-exporter.copySelectedFilesToClipboard",
+                "title": "Files Exporter - 05 --> 📋 Copy selected files",
+                "icon": "$(copy)"
             }
         ],
         "menus": {
@@ -68,6 +73,10 @@
                 },
                 {
                     "command": "files-exporter.exportSelectedPaths",
+                    "group": "navigation@0"
+                },
+                {
+                    "command": "files-exporter.copySelectedFilesToClipboard",
                     "group": "navigation@0"
                 }
             ]
@@ -102,8 +111,8 @@
                 },
                 "filesExporter.excludePathsRegex": {
                     "type": "string",
-                    "default": ".*/node_modules/.*|.*/target/.*|.*/\\.git/.*|.*/dist/.*|.*/.idea/.*|.*/.vscode/.*|.*/.history/.*|.*/exported-files/.*",
-                    "description": "Regex to exclude paths containing specific directories (e.g., node_modules, target, .git, dist)."
+                    "default": ".*/node_modules/.*|.*/target/.*|.*/\\.git/.*|.*/dist/.*|.*/.idea/.*|.*/.vscode/.*|.*/.history/.*|.*/exported-files/.*,\/\\.[^\/]+",
+                    "description": "Regex to exclude paths containing specific directories (e.g., node_modules, target, .git, dist, \/\\.[^\/]+)."
                 },
                 "filesExporter.excludeExtensionsRegex": {
                     "type": "string",
