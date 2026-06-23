@@ -25,7 +25,7 @@
          "tooltip": "Open Gemini",
          "height": "45px",
          "width": "45px",
-         "openInVSCode": true
+         "openInVSCode": false
       },
       {
          "icon": "https://storage.googleapis.com/support-kms-prod/zY0QaDiBw6WBTWdpCduEnUxFkrkLwFvpc405",
@@ -33,7 +33,7 @@
          "tooltip": "Open Gems",
          "height": "65px",
          "width": "65px",
-         "openInVSCode": true
+         "openInVSCode": false
       },
       {
          "icon": "assets/brands/notebookLM.svg",
