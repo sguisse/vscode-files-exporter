@@ -72,6 +72,10 @@ The UI adheres strictly to SOLID principles, isolating logic into dedicated modu
 * `split-pane.js`: A lightweight, standalone utility managing the horizontal resize logic between the Report Table and the Tree View.
 * `popup-extension-conflict.js`: An externalized modal component specifically handling the "Move vs Add" conflict resolution when users contradict inclusion/exclusion extension lists.
 * `filters-simulator.js`: Manages user input debouncing and delegates Regex evaluation via the VS Code bridge to the actual Python engine.
+* `files-tab.js`: Handles file presentation lists, content pattern queries, and routes native filesystem workspace opening tasks.
+* `terminal-tab.js`: Dedicated streaming window mapping raw CLI feedback and manual subprocess orchestration operations.
+* `help-tab.js`: Powers inline user manual presentation layouts and interactive clipboard prompt reference builders.
+* `pricing-service.js`: Aggregates modular sub-calculators (`pricing-gemini-service.js`, `pricing-gpt-service.js`, `pricing-claude-service.js`) to parse input character matrices into actionable developer financial projections.
 
 ### ⚙️ Backend (Extension Host Services)
 * **`ExportOrchestratorService`:** The core commander. It builds the arguments, manages the `python3` process spawning for both real exports AND the `simulateFilters` dry-run, and parses the physical file outputs to calculate tokens.

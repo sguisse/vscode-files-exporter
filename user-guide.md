@@ -34,6 +34,9 @@ Think of this section as your "Saved Configuration Slots." Once you create perfe
 * **Max Chunk (KB)**: Set this to `500` to automatically split a large export into multiple files of 500KB each. Set to `0` to keep everything in one single file.
 * **Split by Ext**: Check this if you want different file types saved in separate files.
 * **Tree view**: It generate a file storing only the folder structure of exported files, used by the tab `Tree View` to display more efficiently exported files.
+* **Copy to clip**: Automatically copies generated export files directly to your OS clipboard after each successful export run.
+* **Log Console**: Toggles streaming log outputs directly into the extension webview terminal view interface.
+* **Log File**: Enables saving a physical log tracking tracing file inside your configured destination folder.
 
 ---
 
@@ -74,10 +77,11 @@ The Tree View provides powerful shortcuts to manipulate your source files direct
 
 ### 🖱️ Explorer Context Menu
 Right-clicking files/folders in the VS Code Explorer provides quick access to the tool:
-* **Files Exporter --> Open UI:** Launches the interface.
-* **Files Exporter --> Add from Explorer:** Appends selected files to the Source Paths list.
-* **Files Exporter --> 🚫 Exclude paths:** Automatically generates and adds exclusion regex patterns for the selected items. *(Note: To keep your context menu clean, this option is only visible when the Files Exporter UI tab is actively open).*
-* **Files Exporter --> 📤 Export selected paths:** Triggers a "Headless" background export.
+* **Files Exporter - 01 --> 🎛️ Open UI:** Launches the interface.
+* **Files Exporter - 02 --> ➕ Sources Paths:** Appends selected files to the Source Paths list.
+* **Files Exporter - 03 --> 🚫 Exclude paths:** Automatically generates and adds exclusion regex patterns for the selected items. *(Note: To keep your context menu clean, this option is only visible when the Files Exporter UI tab is actively open).*
+* **Files Exporter - 04 --> 📥 Export selected paths:** Triggers a "Headless" background export.
+* **Files Exporter - 05 --> 📋 Copy selected files:** Recursively harvests all absolute paths within your selection to copy them to the clipboard. Automatically prompts a safety warning popup if payload exceeds 50 files or 5MB.
   * **Clipboard Behavior:** Upon success, the actual *generated output files* (chunks) are copied directly to your OS clipboard, ready to be pasted into your LLM.
   * **Notifications:** You will receive a rich notification with the export metrics and a button to quickly copy the source paths if needed.
 

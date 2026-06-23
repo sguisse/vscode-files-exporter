@@ -37,4 +37,6 @@ This extension is distributed under the open-source MIT License.
 Right-click any folder or file in the VS Code Explorer to access quick tools:
 * **🎛️ Open UI / Add from Explorer:** Launch the tool or append paths to your active selection.
 * **🚫 Exclude paths:** Automatically generate and inject regex exclusions. *(Note: To keep your IDE clean, this menu item dynamically hides itself when the Files Exporter UI is closed).*
-* **📤 Export selected paths:** Runs a silent headless export. A rich notification will pop up upon completion, and the generated files are instantly copied to your clipboard.
+* **Files Exporter - 04 --> 📥 Export selected paths:** Runs a silent headless export. A rich notification will pop up upon completion, and the generated files are instantly copied to your clipboard.
+* **Files Exporter - 05 --> 📋 Copy selected files:** Performs a deep recursive file discovery walk across chosen folders to stage absolute paths onto your clipboard. Governed by a safety modal guardrail warning triggering at 50+ files or 5MB+ size constraints.
+* **📋 Copy selected files:** Sweeps through your selections recursively to harvest all underlying absolute paths and copy them directly to the OS clipboard cache. Features a safety warning popup if you exceed 50 files or 5MB to ensure optimal performance.
