@@ -15,6 +15,9 @@ import { FileSystemService } from '../services/file-system.service';
 export class MessageRouter {
     private exportHandler!: ExportHandler;
     private historyCommandHandler!: HistoryCommandHandler;
+    private gitService = new GitService();
+    private fileSystemService = new FileSystemService();
+
     constructor(
         private panel: vscode.WebviewPanel,
         private historyService: HistoryService,
@@ -99,7 +102,94 @@ export class MessageRouter {
                     await vscode.commands.executeCommand('revealInExplorer', vscode.Uri.file(message.path));
                 }
                 break;
+            case 'analyzeErrorStack':
+                await this.handleAnalyzeErrorStack(message);
+                break;
+            case 'killErrorAnalysis':
+                this.handleKillErrorAnalysis();
+                break;
         }
+    }
+
+    private async handleOpenHistoryInVSCode() {
+        try {
+            const historyPath = this.configService.getHistoryFilePath();
+            if (fs.existsSync(historyPath)) {
+                const doc = await vscode.workspace.openTextDocument(historyPath);
+                await vscode.window.showTextDocument(doc);
+            } else {
+                vscode.window.showWarningMessage("History log file does not exist yet.");
+            }
+        } catch (err: any) { vscode.window.showErrorMessage(`Unable to open history file: ${err.message}`); }
+    }
+
+    private async handleRevealHistory() {
+        try {
+            const historyPath = this.configService.getHistoryFilePath();
+            if (fs.existsSync(historyPath)) {
+                await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(historyPath));
+            } else {
+                const parentDir = path.dirname(historyPath);
+                await fs.promises.mkdir(parentDir, { recursive: true });
+                await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(parentDir));
+            }
+        } catch (err: any) { vscode.window.showErrorMessage(`Unable to open targeted file location: ${err.message}`); }
+    }
+
+    private handleKillErrorAnalysis() {
+        let currentDir = __dirname;
+        let scriptPath = '';
+        while (currentDir !== path.dirname(currentDir)) {
+            const testPath = path.join(currentDir, 'scripts', 'error-parser.py');
+            if (fs.existsSync(testPath)) { scriptPath = testPath; break; }
+            currentDir = path.dirname(currentDir);
+        }
+        if (scriptPath) {
+            const killed = this.processRunner.killActivePythonScript(scriptPath);
+            if (killed) {
+                this.panel.webview.postMessage({ command: 'analyzeErrorStackResult', paths: [] });
+                this.panel.webview.postMessage({ command: 'terminalLog', text: `\n🛑 Error log scanning process killed manually via interface selection parameters.\n` });
+                vscode.window.showWarningMessage("Error Analysis Process Terminated Successfully.");
+            }
+        }
+    }
+
+    private async handleAnalyzeErrorStack(message: any) {
+        const { stackType, content, includeOutWorkspace } = message;
+        const wsPath = this.configService.getWorkspaceRootPath();
+
+        this.panel.webview.postMessage({ command: 'terminalLog', text: `\n⏳ [Backend Analysis] Starting extraction for stack type: ${stackType} (Include out workspace: ${includeOutWorkspace ? 'Yes' : 'No'})\n` });
+
+        let currentDir = __dirname;
+        let scriptPath = '';
+        while (currentDir !== path.dirname(currentDir)) {
+            const testPath = path.join(currentDir, 'scripts', 'error-parser.py');
+            if (fs.existsSync(testPath)) { scriptPath = testPath; break; }
+            currentDir = path.dirname(currentDir);
+        }
+
+        let paths: string[] = [];
+        try {
+            const logCallback = (err: string) => {
+                this.panel.webview.postMessage({ command: 'terminalLog', text: `\x1b[94m${err}\x1b[0m` });
+            };
+
+            if (stackType === 'Java') {
+                const { JavaErrorIdentifierService } = require('../services/error-identifiers/java-error-identifier.service');
+                paths = await new JavaErrorIdentifierService(this.processRunner, scriptPath).searchFiles(content, wsPath, logCallback, includeOutWorkspace);
+            } else if (stackType === 'Browser console') {
+                const { BrowserErrorIdentifierService } = require('../services/error-identifiers/browser-error-identifier.service');
+                paths = await new BrowserErrorIdentifierService(this.processRunner, scriptPath).searchFiles(content, wsPath, logCallback, includeOutWorkspace);
+            } else if (stackType === 'python') {
+                const { PythonErrorIdentifierService } = require('../services/error-identifiers/python-error-identifier.service');
+                paths = await new PythonErrorIdentifierService(this.processRunner, scriptPath).searchFiles(content, wsPath, logCallback, includeOutWorkspace);
+            }
+
+            this.panel.webview.postMessage({ command: 'terminalLog', text: `✨ [Backend Analysis] Service completed. Found ${paths.length} matching file path(s).\n` });
+        } catch (e: any) {
+            this.panel.webview.postMessage({ command: 'terminalLog', text: `\x1b[91m❌ [Backend Analysis] Error: ${e.message}\x1b[0m\n` });
+        }
+        this.panel.webview.postMessage({ command: 'analyzeErrorStackResult', paths });
     }
 
     private async handleOpenPathAtCursor(message: any) {
@@ -212,9 +302,6 @@ export class MessageRouter {
         this.panel.webview.postMessage({ command: 'updatePaths', paths: this.state.selectedPaths });
     }
 
-    private gitService = new GitService();
-    private fileSystemService = new FileSystemService();
-
     private async handleAddGitDiffFiles(message: any) {
         const existingPaths: string[] = message.currentPaths || [];
         const wsPath = this.configService.getWorkspaceRootPath();
@@ -234,7 +321,7 @@ export class MessageRouter {
         const gitFiles = [...existingPaths];
         let additionsCount = 0;
 
-        result.files.forEach(fullPath => {
+        result.files.forEach((fullPath: string) => {
             if (!gitFiles.includes(fullPath)) {
                 gitFiles.push(fullPath);
                 additionsCount++;
@@ -245,6 +332,7 @@ export class MessageRouter {
         this.panel.webview.postMessage({ command: 'updatePaths', paths: this.state.selectedPaths });
         this.panel.webview.postMessage({ command: 'terminalLog', text: `\n🌿 [Git Diff Sync Complete]: Injected ${additionsCount} remote delta file(s) into Source Manifest layout.\n` });
     }
+
     private async handleCopyLatestExportedFiles(message: any) {
         try {
             const destDir = message.path;
@@ -304,59 +392,13 @@ export class MessageRouter {
         } catch (err: any) { vscode.window.showErrorMessage(`Failed to clean destination directory: ${err.message}`); }
     }
 
-    private getDefaultSettings() {
-        const workspacePath = this.configService.getWorkspaceRootPath();
-        const extensionConfig = this.configService.getConfiguration();
-        return {
-            src: workspacePath,
-            dest: path.join(workspacePath, "exported-files"),
-            format: extensionConfig.get<string>('defaultFormat') || 'yaml',
-            max_file: (extensionConfig.get<number>('maxFileSizeKb') ?? 50).toString(),
-            max_chunk: (extensionConfig.get<number>('maxChunkSizeKb') ?? 0).toString(),
-            groupByExt: extensionConfig.get<boolean>('splitChunkByFileExtension') ?? false,
-            copyGeneratedFilesToClipboard: extensionConfig.get<boolean>('copyGeneratedFilesToClipboard') ?? true,
-            generateTreeView: extensionConfig.get<boolean>('generateTreeView') ?? true,
-            logConsole: extensionConfig.get<boolean>('generateLogConsole') ?? true,
-            logFile: extensionConfig.get<boolean>('generateLogFile') ?? false,
-            inc_paths: extensionConfig.get<string>('includePathsRegex') || '.*',
-            exc_paths: extensionConfig.get<string>('excludePathsRegex') || '',
-            inc_ext: extensionConfig.get<string>('includeExtensionsRegex') || '',
-            exc_ext: extensionConfig.get<string>('excludeExtensionsRegex') || ''
-        };
-    }
-
-    private async handleOpenHistoryInVSCode() {
-        try {
-            const historyPath = this.configService.getHistoryFilePath();
-            if (fs.existsSync(historyPath)) {
-                const doc = await vscode.workspace.openTextDocument(historyPath);
-                await vscode.window.showTextDocument(doc);
-            } else {
-                vscode.window.showWarningMessage("History log file does not exist yet.");
-            }
-        } catch (err: any) { vscode.window.showErrorMessage(`Unable to open history file: ${err.message}`); }
-    }
-
-    private async handleRevealHistory() {
-        try {
-            const historyPath = this.configService.getHistoryFilePath();
-            if (fs.existsSync(historyPath)) {
-                await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(historyPath));
-            } else {
-                const parentDir = path.dirname(historyPath);
-                await fs.promises.mkdir(parentDir, { recursive: true });
-                await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(parentDir));
-            }
-        } catch (err: any) { vscode.window.showErrorMessage(`Unable to open targeted file location: ${err.message}`); }
-    }
-
     private async handleApplyFileFilter(message: any) {
         try {
             const { fileNameRegex, fileContentRegex, destDir, files } = message.data;
             let filteredList = [...files];
             if (fileNameRegex && fileNameRegex.trim()) {
                 const nameReg = new RegExp(fileNameRegex.trim());
-                filteredList = filteredList.filter(fileItem => nameReg.test(fileItem.split(/[\\/]/).pop() || ''));
+                filteredList = filteredList.filter((fileItem: string) => nameReg.test(fileItem.split(/[\\/]/).pop() || ''));
             }
             if (fileContentRegex && fileContentRegex.trim() && filteredList.length > 0) {
                 const contentReg = new RegExp(fileContentRegex.trim());

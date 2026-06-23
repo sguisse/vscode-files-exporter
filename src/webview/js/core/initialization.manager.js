@@ -1,3 +1,4 @@
+import { ErrorFilesModalComponent } from '../components/error-files-modal.component.js';
 import { bridge } from './vscode.bridge.js';
 import { state } from './state.manager.js';
 import { ValidatorService } from '../services/validator.service.js';
@@ -333,6 +334,7 @@ export const InitializationManager = {
         });
         document.getElementById('btn-add-open-files')?.addEventListener('click', SourcePathsManager.addOpenFiles);
         document.getElementById('btn-add-git-diff')?.addEventListener('click', SourcePathsManager.addGitDiffFiles);
+            document.getElementById('btn-add-error-files')?.addEventListener('click', () => ErrorFilesModalComponent.render());
 
         const pathListTextArea = document.getElementById('pathList');
         if (pathListTextArea) {
@@ -346,6 +348,8 @@ export const InitializationManager = {
         document.getElementById('btn-run')?.addEventListener('click', () => ExportManager.runExport());
 
         document.getElementById('btn-copy-cmd')?.addEventListener('click', () => tabs.terminalTab?.copyCommand());
+              document.getElementById('btn-copy-terminal-logs')?.addEventListener('click', () => { const term = document.getElementById('terminal'); if (term && term.innerText) { navigator.clipboard.writeText(term.innerText).then(() => { bridge.postMessage('showNotification', { type: 'info', text: 'Terminal content successfully copied to clipboard.' }); }); } });
+              document.getElementById('btn-clear-terminal-logs')?.addEventListener('click', () => { const term = document.getElementById('terminal'); if (term) term.innerText = ''; });
         document.getElementById('btn-copy-latest-files')?.addEventListener('click', DestinationManager.copyLatestExportedFiles);
         document.getElementById('btn-open-finder-dest')?.addEventListener('click', DestinationManager.openFinder);
         document.getElementById('btn-clear-dest')?.addEventListener('click', DestinationManager.clearDestDirectory);
@@ -425,7 +429,8 @@ export const InitializationManager = {
             case 'updateExportReport': HandlerManager.handleUpdateExportReport(message, tabs); break;
             case 'filteredFilesResult': HandlerManager.handleFilteredFilesResult(message, tabs); break;
             case 'showRichNotification': HandlerManager.handleShowRichNotification(message); break;
-            case 'simulateFiltersResult':
+            case 'analyzeErrorStackResult': if (typeof window.handleErrorAnalysisResponse === 'function') window.handleErrorAnalysisResponse(message.paths); break;
+                  case 'simulateFiltersResult':
                 import('../services/filters-simulator.js').then(module => {
                     module.FiltersSimulator.updateEmojiResult(message.code);
                 });

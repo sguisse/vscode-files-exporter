@@ -28,7 +28,6 @@
         .icon-btn, .history-actions-container vscode-button { width: 26px !important; height: 26px !important; min-width: 26px !important; padding: 0px !important; --button-padding-horizontal: 0px !important; --button-padding-vertical: 0px !important; }
 
         .vertical-divider { width: 1px; height: 18px; background-color: var(--vscode-panel-border); margin: 0 3px; flex-shrink: 0; }
-        #btn-copy-cmd { color: var(--vscode-button-foreground, #ffffff) !important; }
 
         .tree-folder > .tree-children { display: none; padding-left: 14px; border-left: 1px solid var(--vscode-panel-border); margin-left: 5px; margin-top: 2px;}
         .tree-folder.expanded > .tree-children { display: block; }
@@ -196,18 +195,18 @@
         </div>
         <div class="collapsible-block-content" id="content-block-history">
             <div class="history-actions-container">
-                <vscode-button id="btn-toggle-history-view" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Toggle history scope:<br/> - 🏠 Current Repo<br/> - 🌐 All Repos">🏠</vscode-button>
+                <vscode-button id="btn-toggle-history-view" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Toggle history scope:<br/> - 🏠 Current Repo<br/> - 🌐 All Repos">🏠</vscode-button>
                 <vscode-dropdown id="historyCombo" style="flex-grow: 1;"></vscode-dropdown>
                 <vscode-text-field id="historyRenameInput" style="display: none; flex-grow: 1;" placeholder="Enter profile name display identifier..." data-tooltip="Press 'Enter' to confirm or 'Escape' to cancel layout edits"></vscode-text-field>
-                <vscode-button id="btn-freeze-history" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Freeze or unfreeze profile. Unfreezing allows overwriting and re-naming configurations" disabled><span class="codicon codicon-unlock"></span></vscode-button>
-                <vscode-button id="btn-reset-config" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Reset configuration to last saved values." disabled><span class="codicon codicon-debug-restart"></span></vscode-button>
-                <vscode-button id="btn-edit-history" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Rename the selected profile item display name" disabled><span class="codicon codicon-edit"></span></vscode-button>
-                <vscode-button id="btn-duplicate-history" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Duplicate current screen configuration elements parameters values"><span class="codicon codicon-files"></span></vscode-button>
-                <vscode-button id="btn-add-history" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Create a new fresh profile configuration from default settings"><span class="codicon codicon-add"></span></vscode-button>
+                <vscode-button id="btn-freeze-history" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Freeze or unfreeze profile. Unfreezing allows overwriting and re-naming configurations" disabled><span class="codicon codicon-unlock"></span></vscode-button>
+                <vscode-button id="btn-reset-config" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Reset configuration to last saved values." disabled><span class="codicon codicon-debug-restart"></span></vscode-button>
+                <vscode-button id="btn-edit-history" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Rename the selected profile item display name" disabled><span class="codicon codicon-edit"></span></vscode-button>
+                <vscode-button id="btn-duplicate-history" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Duplicate current screen configuration elements parameters values"><span class="codicon codicon-files"></span></vscode-button>
+                <vscode-button id="btn-add-history" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Create a new fresh profile configuration from default settings"><span class="codicon codicon-add"></span></vscode-button>
                 <div class="vertical-divider"></div>
-                <vscode-button id="btn-open-history-file" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Open history log file config directly in VS Code"><span class="codicon codicon-file"></span></vscode-button>
-                <vscode-button id="btn-reveal-history-folder" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Reveal the physical history log file database in OS Finder / Explorer"><span class="codicon codicon-folder-opened"></span></vscode-button>
-                <vscode-button id="btn-clear-history" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Remove items or clear all saved configuration history entries"><span class="codicon codicon-trash"></span></vscode-button>
+                <vscode-button id="btn-open-history-file" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Open history log file config directly in VS Code"><span class="codicon codicon-file"></span></vscode-button>
+                <vscode-button id="btn-reveal-history-folder" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Reveal the physical history log file database in OS Finder / Explorer"><span class="codicon codicon-folder-opened"></span></vscode-button>
+                <vscode-button id="btn-clear-history" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Remove items or clear all saved configuration history entries"><span class="codicon codicon-trash"></span></vscode-button>
             </div>
         </div>
     </div>
@@ -223,10 +222,11 @@
         <div class="collapsible-block-content" id="content-block-sourcepaths">
             <div style="display: flex; gap: 5px; align-items: center;">
                 <vscode-text-area id="pathList" rows="4" resize="vertical" placeholder="Enter source paths (one per line)" style="flex-grow: 1; width: 100%;"></vscode-text-area>
-                <vscode-button id="btn-add-open-files" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Add all currently open files to source path selection"><span class="codicon-go-to-file codicon"></span></vscode-button>
-                <vscode-button id="btn-add-git-diff" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Use <strong>git-diff</strong> to add modified files since <strong>last commit</strong> to source path selection"><span class="codicon codicon-git-compare"></span></vscode-button>
-                <vscode-button id="btn-open-cursor-line" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Open path defined by current text cursor line index selection context"><span class="codicon codicon-link-external"></span></vscode-button>
-                <vscode-button id="btn-clear-paths" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Clear current source paths selection"><span class="codicon-clear-all codicon"></span></vscode-button>
+                <vscode-button id="btn-add-open-files" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Add all currently open files to source path selection"><span class="codicon-go-to-file codicon"></span></vscode-button>
+                <vscode-button id="btn-add-git-diff" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Use <strong>git-diff</strong> to add modified files since <strong>last commit</strong> to source path selection"><span class="codicon codicon-git-compare"></span></vscode-button>
+                    <vscode-button id="btn-add-error-files" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Identify and extract absolute references from raw crash logs / trace contexts"><span class="codicon codicon-bug"></span></vscode-button>
+                <vscode-button id="btn-open-cursor-line" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Open path defined by current text cursor line index selection context"><span class="codicon codicon-link-external"></span></vscode-button>
+                <vscode-button id="btn-clear-paths" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Clear current source paths selection"><span class="codicon-clear-all codicon"></span></vscode-button>
             </div>
         </div>
     </div>
@@ -323,9 +323,9 @@
         <div class="collapsible-block-content" id="content-block-destination">
             <div style="display: flex; gap: 5px; align-items: center;">
                 <vscode-text-field id="destDir" class="full-width" placeholder="/absolute/path/to/output"></vscode-text-field>
-                <vscode-button id="btn-copy-latest-files" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Copy last exported files to OS clipboard"><span class="codicon codicon-clippy"></span></vscode-button>
-                <vscode-button id="btn-open-finder-dest" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Open destination directory in OS Finder / Explorer"><span class="codicon codicon-folder-opened"></span></vscode-button>
-                <vscode-button id="btn-clear-dest" appearance="secondary" class="tooltip-right icon-btn" data-tooltip="Clean destination directory content"><span class="codicon codicon-trash"></span></vscode-button>
+                <vscode-button id="btn-copy-latest-files" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Copy last exported files to OS clipboard"><span class="codicon codicon-clippy"></span></vscode-button>
+                <vscode-button id="btn-open-finder-dest" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Open destination directory in OS Finder / Explorer"><span class="codicon codicon-folder-opened"></span></vscode-button>
+                <vscode-button id="btn-clear-dest" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Clean destination directory content"><span class="codicon codicon-trash"></span></vscode-button>
             </div>
         </div>
     </div>
@@ -489,7 +489,7 @@
                                 <vscode-text-field id="filterFileContent" placeholder="Regex pattern" class="full-width"></vscode-text-field>
                             </div>
                             <vscode-button id="btn-filter-files" appearance="primary">Filter</vscode-button>
-                            <vscode-button id="btn-reset-filter" appearance="secondary"><span class="codicon codicon-debug-restart"></span></vscode-button>
+                            <vscode-button id="btn-reset-filter" appearance="icon"><span class="codicon codicon-debug-restart"></span></vscode-button>
                         </div>
                         <div id="exportedFilesList" class="paths-list" style="margin-bottom: 15px;"></div>
                     </div>
@@ -524,37 +524,53 @@
         </vscode-panel-view>
 
         <vscode-panel-view id="view-terminal">
-            <div class="terminal-container" style="width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 0px;">
-                <div class="collapsible-block" id="section-terminal-cmd" style="width: 100%;">
-                    <div class="collapsible-block-header">
-                        <div class="collapsible-title-group">
-                            <span class="codicon codicon-chevron-down" id="icon-section-terminal-cmd"></span>
-                            <span>⚙️ Bash command run by the tool</span>
-                        </div>
-                        <span class="collapsible-summary-text" id="summary-section-terminal-cmd"></span>
-                    </div>
-                    <div class="collapsible-block-content" id="content-section-terminal-cmd" style="padding-top: 5px;">
-                        <div style="display: flex; flex-direction: row; align-items: flex-start; background: #1e1e1e; padding: 4px; border-radius: 4px; border: 1px solid var(--vscode-panel-border); box-sizing: border-box; width: 100%; margin-bottom: 15px;">
-                            <vscode-text-area id="terminal-cmd" rows="6" resize="vertical" readonly style="flex-grow: 1; font-family: var(--vscode-editor-font-family, 'Menlo', monospace); font-size: 11px; margin: 0; --background-color: #1e1e1e; --input-background: #1e1e1e; --border-width: 0;"></vscode-text-area>
-                            <div style="background: #1e1e1e; display: flex; align-items: flex-start; justify-content: center; padding: 4px 8px 0 4px;"><vscode-button id="btn-copy-cmd" appearance="icon" class="tooltip-right icon-btn"><span class="codicon codicon-copy"></span></vscode-button></div>
-                        </div>
-                    </div>
-                </div>
+                  <div class="terminal-container" style="width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 0px;">
 
-                <div class="collapsible-block" id="section-terminal-logs" style="width: 100%;">
-                    <div class="collapsible-block-header">
-                        <div class="collapsible-title-group">
-                            <span class="codicon codicon-chevron-down" id="icon-section-terminal-logs"></span>
-                            <span>🐍 Python script Logs</span>
-                        </div>
-                        <span class="collapsible-summary-text" id="summary-section-terminal-logs"></span>
-                    </div>
-                    <div class="collapsible-block-content" id="content-section-terminal-logs" style="padding-top: 5px;">
-                        <div class="terminal" id="terminal" style="width: 100%; box-sizing: border-box; background: #1e1e1e; color: #d4d4d4; border-radius: 4px; border: 1px solid var(--vscode-panel-border); padding: 12px; min-height: 150px; height: 240px; resize: vertical; overflow: auto; font-family: var(--vscode-editor-font-family, 'Menlo', monospace); font-size: 12px;"></div>
-                    </div>
-                </div>
-            </div>
-        </vscode-panel-view>
+                      <div class="collapsible-block" id="section-terminal-cmd" style="width: 100%;">
+                          <div class="collapsible-block-header">
+                              <div class="collapsible-title-group">
+                                  <span class="codicon codicon-chevron-down" id="icon-section-terminal-cmd"></span>
+                                  <span>⚙️ Bash command run by the tool</span>
+                              </div>
+                              <span class="collapsible-summary-text" id="summary-section-terminal-cmd"></span>
+                          </div>
+                          <div class="collapsible-block-content" id="content-section-terminal-cmd" style="padding-top: 5px;">
+                              <div style="display: flex; flex-direction: row; align-items: flex-start; gap: 8px; width: 100%; box-sizing: border-box;">
+                                  <div class="terminal" id="terminal-cmd" style="flex: 1; min-width: 0; box-sizing: border-box; background: #1e1e1e; color: #d4d4d4; border-radius: 4px; border: 1px solid var(--vscode-panel-border); padding: 12px; min-height: 150px; height: 240px; resize: vertical; overflow: auto; font-family: var(--vscode-editor-font-family, 'Menlo', monospace); font-size: 12px; margin: 0;"></div>
+                                  <div style="flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 2px;">
+                                      <vscode-button id="btn-copy-cmd" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Copy terminal cmd to clipboard">
+                                          <span class="codicon codicon-copy"></span>
+                                      </vscode-button>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+
+                      <div class="collapsible-block" id="section-terminal-logs" style="width: 100%;">
+                          <div class="collapsible-block-header">
+                              <div class="collapsible-title-group">
+                                  <span class="codicon codicon-chevron-down" id="icon-section-terminal-logs"></span>
+                                  <span>🐍 Python script Logs</span>
+                              </div>
+                              <span class="collapsible-summary-text" id="summary-section-terminal-logs"></span>
+                          </div>
+                          <div class="collapsible-block-content" id="content-section-terminal-logs" style="padding-top: 5px;">
+                              <div style="display: flex; flex-direction: row; align-items: flex-start; gap: 8px; width: 100%; box-sizing: border-box;">
+                                  <div class="terminal" id="terminal" style="flex: 1; min-width: 0; box-sizing: border-box; background: #1e1e1e; color: #d4d4d4; border-radius: 4px; border: 1px solid var(--vscode-panel-border); padding: 12px; min-height: 150px; height: 240px; resize: vertical; overflow: auto; font-family: var(--vscode-editor-font-family, 'Menlo', monospace); font-size: 12px; margin: 0;"></div>
+                                  <div style="flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 2px;">
+                                      <vscode-button id="btn-copy-terminal-logs" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Copy terminal logs to clipboard">
+                                          <span class="codicon codicon-copy"></span>
+                                      </vscode-button>
+                                      <vscode-button id="btn-clear-terminal-logs" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Clear terminal logs">
+                                          <span class="codicon codicon-trash"></span>
+                                      </vscode-button>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+
+                  </div>
+              </vscode-panel-view>
 
         <vscode-panel-view id="view-help"></vscode-panel-view>
     </vscode-panels>
