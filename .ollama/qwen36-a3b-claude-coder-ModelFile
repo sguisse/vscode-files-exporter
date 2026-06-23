@@ -1,0 +1,7 @@
+FROM rafw007/qwen36-a3b-claude-coder
+
+# Règle la température très bas pour éviter les hallucinations
+PARAMETER temperature 0.2
+
+# Augmente la fenêtre de contexte à 64K tokens (65536)
+PARAMETER num_ctx 65536
