@@ -137,6 +137,7 @@ export class HelpTab {
                             </ul>
                             <li><strong>Output</strong></li>
                             <ul>
+                                <li>All code, comment, label, doc are provided in English.</li>
                                 <li>Does not give any theoretical explanation, introduction or textual conclusion outside of the script. Output ONLY the Bash script block.</li>
                                 <li>Provide the entire output as a <strong>SINGLE</strong>, self-contained, and production-ready Bash script ('<em>*.sh</em>') actionable at the workspace root.</li>
                                 <li>The script must manage the creation of the necessary folders ('<em>mkdir -p</em>').</li>
@@ -144,7 +145,7 @@ export class HelpTab {
                                 <li>For the <strong>EXISTING</strong> related files, DO NOT overwrite them completely. Instead, write precise automated modification commands (using <em>sed</em>, <em>awk</em>, or robust line-matching replacements) to inject only the necessary delta (the new tab import and navigation link).</li>
                                 <li><strong>CRITICAL</strong>: Safely manage the syntax conflict between the triple-backticks of the LLM chat GUI Markdown and any backticks or template literals that the Bash script must write to the JavaScript/HTML files. Ensure the generated shell script does not prematurely close the LLM's code block response.</li>
                                 <li>Ensure that the script is 100% compliant, complete, and directly executable locally in workspace root after a '<em>chmod +x</em>'.</li>
-                                <li>At the end of the script, you should provide a summary of changes in one short line started with emoji of the changes made and any next steps for the user.<br/> Like : <em>✅ Script created/modified. Hovering over the KILL capsule now correctly shows the interactive hand pointer cursor!</em></li>
+                                <li>At the end of the script, you should provide a summary of changes in one short line started with emoji of the changes made and any next steps for the user.<br/> Like : <em>echo "✅ Script created/modified. Hovering over the KILL capsule now correctly shows the interactive hand pointer cursor!"</em></li>
                             </ul>
                         </ul>
                             <li>Then <strong>copy/paste</strong> the generated Bash script into a file named '<strong><em>patch.sh</em></strong>' in workspace root and execute it!</li>
@@ -189,7 +190,10 @@ export class HelpTab {
                             <li>To use for settings, config, development</li>
                             <ul>
                             <li><a href="https://zonalogo.com/" target="_blank">Zonalogo - Find other brand icons to use in exchange config</a></li>
+                            <li><a href="https://simpleicons.org/" target="_blank">SimpleIcons - 3446 SVG icons for popular brands</a></li>
                             <li><a href="https://github.com/microsoft/vscode-codicons" target="_blank">VSCode specific icons - codicons</a></li>
+                            <li><a href="https://primer.style/octicons/" target="_blank">Octicons - A scalable set of icons handcrafted by GitHub</a></li>
+                            <li><a href="https://icon-sets.iconify.design/" target="_blank">iconify Design - Search 295307 icons from 212 icon sets...</a></li>
                             </ul>
                         </ul>
                     </div>
