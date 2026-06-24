@@ -1,4 +1,5 @@
 import { bridge } from '../core/vscode.bridge.js';
+import { PopupModalUtils } from './popup-modal-utils.js';
 
 export const ErrorFilesModalComponent = {
     render() {
@@ -9,7 +10,7 @@ export const ErrorFilesModalComponent = {
         backdrop.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999999; display: flex; align-items: center; justify-content: center; font-family: var(--vscode-font-family);';
 
         backdrop.innerHTML = `
-            <div style="background: var(--vscode-editor-background, #1e1e1e); color: var(--vscode-foreground, #ccc); padding: 20px; border-radius: 6px; border: 1px solid var(--vscode-panel-border); width: 600px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+            <div style="background: var(--vscode-editor-background, #1e1e1e); color: var(--vscode-foreground, #ccc); padding: 20px; border-radius: 6px; border: 1px solid var(--vscode-panel-border); width: 600px; min-height: 480px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); box-sizing: border-box;">
                 <div style="font-weight: 600; color: #00bcd4; font-size: 14px; border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: 6px;">⚠️ Error files identification</div>
 
                 <div>
@@ -45,7 +46,7 @@ export const ErrorFilesModalComponent = {
                     </div>
                 </div>
 
-                <div style="display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid var(--vscode-panel-border); padding-top: 10px; margin-top: 5px;">
+                <div style="display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid var(--vscode-panel-border); padding-top: 10px; margin-top: auto;">
                     <vscode-button id="btn-error-add" appearance="primary">Add Paths</vscode-button>
                     <vscode-button id="btn-error-cancel" appearance="secondary">Cancel</vscode-button>
                 </div>
@@ -53,6 +54,11 @@ export const ErrorFilesModalComponent = {
         `;
 
         document.body.appendChild(backdrop);
+
+        if (backdrop.firstElementChild) {
+            PopupModalUtils.makeResizable(backdrop.firstElementChild);
+        }
+
         this.initListeners(backdrop);
     },
 
@@ -72,7 +78,7 @@ export const ErrorFilesModalComponent = {
                 contentTextArea.value = clipboardText;
             }
         } catch (err) {
-            console.warn('Clipboard read operations bypassed via layout definitions:', err);
+            console.warn("Clipboard read operations bypassed via layout definitions:", err);
         }
 
         const closePopup = () => {
@@ -105,7 +111,6 @@ export const ErrorFilesModalComponent = {
                 });
             }, 20);
 
-            console.info('[Error Identifier UI] 📤 Dispatching stack trace to backend:', { stackType, contentLength: content.length, includeOutWorkspace });
             bridge.postMessage('analyzeErrorStack', { stackType, content, includeOutWorkspace });
         });
 
@@ -114,8 +119,6 @@ export const ErrorFilesModalComponent = {
             if (pathsContent.trim()) {
                 navigator.clipboard.writeText(pathsContent.trim()).then(() => {
                     bridge.postMessage('showNotification', { type: 'info', text: 'Identified paths successfully copied to clipboard.' });
-                }).catch(err => {
-                    console.error('Failed to copy text: ', err);
                 });
             }
         });
@@ -133,7 +136,6 @@ export const ErrorFilesModalComponent = {
         });
 
         window.handleErrorAnalysisResponse = (paths) => {
-            console.info('[Error Identifier UI] 📥 Received identified paths from backend:', paths);
             if (analyzeBtn) {
                 analyzeBtn.innerHTML = '🔍 Analyze Stack Trace';
             }

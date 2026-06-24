@@ -105,19 +105,31 @@ export const UIController = {
 
         if (resetBtn) resetBtn.disabled = isSync;
 
-        // Dynamically update the RUN EXPORT button icon composition based on frozen/sync state
-        const runBtn = document.getElementById('btn-run');
-        if (runBtn && !runBtn.classList.contains('loading')) {
-            let iconHtml = '<span class="codicon codicon-play"></span>';
-            if (!isSync) {
-                if (!isFrozen) {
-                    iconHtml = '<span class="codicon codicon-save" data-tooltip="Configuration is modified and will be auto-saved on run." style="margin-right: 6px; cursor: help;"></span>' + iconHtml;
-                } else {
-                    iconHtml = '<span class="codicon codicon-beaker" data-tooltip="Profile is locked. Modifications will not be saved (Test/Tuning mode)." style="margin-right: 6px; cursor: help;"></span>' + iconHtml;
+        // Defer dynamic button alterations to completely insulate ongoing mouse up/down events from DOM replacement cycles
+        setTimeout(() => {
+            const runBtn = document.getElementById('btn-run');
+            if (runBtn && !runBtn.classList.contains('loading')) {
+                const currentSyncAttr = runBtn.getAttribute('data-last-sync');
+                const currentFrozenAttr = runBtn.getAttribute('data-last-frozen');
+                const isSyncStr = String(isSync);
+                const isFrozenStr = String(isFrozen);
+
+                if (currentSyncAttr !== isSyncStr || currentFrozenAttr !== isFrozenStr) {
+                    runBtn.setAttribute('data-last-sync', isSyncStr);
+                    runBtn.setAttribute('data-last-frozen', isFrozenStr);
+
+                    let iconHtml = '<span class="codicon codicon-play" style="font-size: 16px;"></span>';
+                    if (!isSync) {
+                        if (!isFrozen) {
+                            iconHtml = '<span class="codicon codicon-save" data-tooltip="Configuration is modified and will be auto-saved on run." style="margin-right: 6px; cursor: help;"></span>' + iconHtml;
+                        } else {
+                            iconHtml = '<span class="codicon codicon-beaker" data-tooltip="Profile is locked. Modifications will not be saved (Test/Tuning mode)." style="margin-right: 6px; cursor: help;"></span>' + iconHtml;
+                        }
+                    }
+                    runBtn.innerHTML = iconHtml + '<div style="display: flex; flex-direction: column; align-items: center; gap: 2px;"><span>RUN</span><span>EXPORT</span></div>';
                 }
             }
-            runBtn.innerHTML = iconHtml + '<div style="display: flex; flex-direction: column; align-items: center; gap: 2px;"><span>RUN</span><span>EXPORT</span></div>';
-        }
+        }, 150);
 
         return isSync;
     },
@@ -130,12 +142,12 @@ export const UIController = {
         if (btnDup) btnDup.disabled = false;
 
         if (!val || val === 'default') {
-                btnFreeze.disabled = true;
-                btnFreeze.innerHTML = '<span class="codicon codicon-lock" style="cursor: not-allowed;"></span>';
-                btnFreeze.setAttribute('data-tooltip', 'Default config can only be modified from settings!<br/>You can create a new configuration:<br/> - From settings with <span class="codicon codicon-add"></span><br/> - Adapt any config and duplicate it with <span class="codicon codicon-files"></span>');
-                btnFreeze.style.cursor = 'not-allowed';
+            btnFreeze.disabled = true;
+            btnFreeze.innerHTML = '<span class="codicon codicon-lock" style="cursor: not-allowed;"></span>';
+            btnFreeze.setAttribute('data-tooltip', 'Default config can only be modified from settings!<br/>You can create a new configuration:<br/> - From settings with <span class="codicon codicon-add"></span><br/> - Adapt any config and duplicate it with <span class="codicon codicon-files"></span>');
+            btnFreeze.style.cursor = 'not-allowed';
 
-                if(btnEdit) btnEdit.disabled = true;
+            if(btnEdit) btnEdit.disabled = true;
         } else {
             if(btnFreeze) {
                 btnFreeze.disabled = false;

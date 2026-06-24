@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { ConfigService } from '../services/config.service';
 import { HistoryService } from '../services/history.service';
@@ -164,7 +165,8 @@ export class ExporterWebviewPanel {
             historyViewMode,
             currentRepo,
             exchange,
-            fileExtsCategoryGroups
+            fileExtsCategoryGroups,
+            osHome: os.homedir()
         });
     }
 

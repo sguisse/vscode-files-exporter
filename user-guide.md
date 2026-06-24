@@ -18,7 +18,7 @@ Think of this section as your "Saved Configuration Slots." Once you create perfe
 
 ### 2. Path & Source File Selectors
 
-* **Source Paths Textbox (`pathList`)**: Type or paste the folders or files you want to combine. You can separate paths using newlines, commas, or semicolons. If you type a path that does not exist on your computer, the textbox instantly flashes in a red pastel color to warn you.
+* **Source Paths Textbox (`pathList`)**: Type or paste the folders or files you want to combine. You can separate paths using newlines, commas, or semicolons. If you type a path that does not exist on your computer, the textbox instantly flashes in a red color to warn you.
 * **Active Tabs File Inserter (`codicon-go-to-file`)**: Click this to automatically read the paths of all code files you currently have open in your active VS Code tabs.
 * **Git Sync Delta Button (`codicon-git-compare`)**: Automatically checks which files have changed between your computer and the remote repository, adding only those modified files to the list. Great for asking an AI: *"Can you review my recent code changes?"*
 

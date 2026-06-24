@@ -1,462 +1,286 @@
 #!/bin/bash
 set -e
 
-# Ensure target directories exist
-mkdir -p src/webview/js/core
+# Ensure target directory exists
+mkdir -p src/webview/js/components
 
-# Fully rewrite src/webview/js/core/initialization.manager.js to eliminate regular expression literal toolchain syntax bugs
-cat << 'EOF' > src/webview/js/core/initialization.manager.js
-import { ErrorFilesModalComponent } from '../components/error-files-modal.component.js';
-import { bridge } from './vscode.bridge.js';
-import { state } from './state.manager.js';
-import { ValidatorService } from '../services/validator.service.js';
-import { UIController } from './ui.controller.js';
-import { HistoryManager } from '../services/history-manager.js';
-import { SourcePathsManager } from '../services/source-paths-manager.js';
-import { FiltersManager } from '../services/filters-manager.js';
-import { DestinationManager } from '../services/destination-manager.js';
-import { ExportManager } from '../services/export-manager.js';
-import { HandlerManager } from '../services/handler-manager.js';
-import { BlockSummaryBuilder } from '../services/block-summary-builder.js';
-import { FiltersSimulator } from '../services/filters-simulator.js';
+# 1. Create the new mutualized utility file: src/webview/js/components/popup-modal-utils.js
+cat << 'EOF' > src/webview/js/components/popup-modal-utils.js
+export const PopupModalUtils = {
+    makeResizable(modal) {
+        modal.style.position = 'relative';
+        modal.style.overflow = 'hidden';
+        modal.style.display = 'flex';
+        modal.style.flexDirection = 'column';
 
-let isModifierPressed = false;
+        const handle = document.createElement('div');
+        handle.style.cssText = 'position: absolute; right: 4px; bottom: 4px; width: 10px; height: 10px; cursor: se-resize; border-right: 2px solid var(--vscode-panel-border); border-bottom: 2px solid var(--vscode-panel-border); opacity: 0.6; z-index: 1000000;';
+        modal.appendChild(handle);
 
-export const InitializationManager = {
-    refreshBlockSummaryUI(blockId, isCollapsed) {
-        const summaryElement = document.getElementById(`summary-${blockId}`);
-        if (!summaryElement) return;
+        let isResizing = false;
+        let startWidth, startHeight, startX, startY;
 
-        if (isCollapsed) {
-            summaryElement.innerHTML = BlockSummaryBuilder.computeBlockSummary(blockId);
-            summaryElement.style.display = 'inline-block';
-        } else {
-            summaryElement.innerHTML = '';
-            summaryElement.style.display = 'none';
-        }
-    },
+        handle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            startWidth = modal.getBoundingClientRect().width;
+            startHeight = modal.getBoundingClientRect().height;
 
-    setupFilterSimulator() {
-        const filterSimulatorInput = document.getElementById('filters-simulator-input');
-        filterSimulatorInput.addEventListener('input', (e) => {
-            FiltersSimulator.updateEmoji(e.target.value);
-        });
-        filterSimulatorInput.addEventListener('blur', (e) => {
-            FiltersSimulator.updateEmoji(e.target.value);
-        });
-    },
+            modal.style.width = `${startWidth}px`;
+            modal.style.height = `${startHeight}px`;
 
-    setupTextAreaSync() {
-        const textAreas = [
-            document.getElementById('incPaths'),
-            document.getElementById('incExts'),
-            document.getElementById('excPaths'),
-            document.getElementById('excExts')
-        ].filter(Boolean);
-
-        let isSynchronizing = false;
-
-        const synchronizeHeights = (targetHeight) => {
-            if (isSynchronizing) return;
-            isSynchronizing = true;
-
-            let maxHeight = targetHeight;
-
-            if (!maxHeight) {
-                const heights = textAreas.map(ta => {
-                    const inner = ta.shadowRoot?.querySelector('textarea');
-                    return inner ? inner.offsetHeight : ta.offsetHeight;
-                });
-                maxHeight = Math.max(...heights);
-            }
-
-            textAreas.forEach(ta => {
-                ta.style.height = `${maxHeight}px`;
-                const inner = ta.shadowRoot?.querySelector('textarea');
-                if (inner) {
-                    inner.style.height = '100%';
-                }
-            });
-
-            isSynchronizing = false;
-        };
-
-        if (typeof ResizeObserver !== 'undefined' && textAreas.length > 0) {
-            const observer = new ResizeObserver((entries) => {
-                if (isSynchronizing) return;
-
-                let highest = 0;
-                for (const entry of entries) {
-                    const height = entry.borderBoxSize?.[0]?.blockSize || entry.target.offsetHeight;
-                    if (height > highest) {
-                        highest = height;
-                    }
-                }
-
-                if (highest > 0) {
-                    synchronizeHeights(highest);
-                }
-            });
-
-            textAreas.forEach(ta => {
-                observer.observe(ta);
-                const inner = ta.shadowRoot?.querySelector('textarea');
-                if (inner) {
-                    observer.observe(inner);
-                } else {
-                    setTimeout(() => {
-                        const dynamicInner = ta.shadowRoot?.querySelector('textarea');
-                        if (dynamicInner) observer.observe(dynamicInner);
-                    }, 100);
-                }
-            });
-        }
-
-        setTimeout(() => synchronizeHeights(), 100);
-    },
-
-    init(tabs) {
-        window.reportTab = tabs.reportTab;
-        window.filesTab = tabs.filesTab;
-        window.treeViewTab = tabs.treeViewTab;
-        window.terminalTab = tabs.terminalTab;
-
-        UIController.injectShadowDomStyles();
-        UIController.initCursorTooltipTracker();
-
-        if (tabs.helpTab) tabs.helpTab.render();
-
-        const allBlocks = [
-            'block-history', 'block-sourcepaths', 'block-filters', 'block-destination', 'block-options',
-            'costEstimationSection', 'reportTableSection', 'reportGraphSection',
-            'section-exported-files', 'section-logs-block', 'section-reports-block',
-            'section-terminal-cmd', 'section-terminal-logs'
-        ];
-
-        const collapsedByDefault = ['costEstimationSection'];
-
-        allBlocks.forEach(blockId => {
-            const blockEl = document.getElementById(blockId);
-            if (!blockEl) return;
-
-            const header = blockEl.querySelector('.collapsible-block-header');
-            const content = blockEl.querySelector('.collapsible-block-content');
-            const icon = document.getElementById(`icon-${blockId}`) || blockEl.querySelector('.collapsible-title-group .codicon');
-
-            if (header && content && icon) {
-                const shouldCollapse = collapsedByDefault.includes(blockId);
-                content.style.display = shouldCollapse ? 'none' : 'block';
-                icon.className = shouldCollapse ? 'codicon codicon-chevron-right' : 'codicon codicon-chevron-down';
-                this.refreshBlockSummaryUI(blockId, shouldCollapse);
-
-                header.onclick = (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const isClosed = content.style.display === 'none';
-                    content.style.display = isClosed ? 'block' : 'none';
-                    icon.className = isClosed ? 'codicon codicon-chevron-down' : 'codicon codicon-chevron-right';
-                    this.refreshBlockSummaryUI(blockId, !isClosed);
-                };
-            }
-        });
-
-        window.forceGlobalSummariesUpdate = () => {
-            allBlocks.forEach(id => {
-                const content = document.getElementById(`content-${id}`);
-                if (content && content.style.display === 'none') {
-                    this.refreshBlockSummaryUI(id, true);
-                }
-            });
-        };
-
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'Control' || e.key === 'Meta') {
-                if (!isModifierPressed) {
-                    isModifierPressed = true;
-                    FiltersManager.updateMenuHotkeysLayout(isModifierPressed);
-                }
-            }
-        });
-
-        window.addEventListener('keyup', (e) => {
-            if (e.key === 'Control' || e.key === 'Meta') {
-                if (isModifierPressed) {
-                    isModifierPressed = false;
-                    FiltersManager.updateMenuHotkeysLayout(isModifierPressed);
-                }
-            }
-        });
-
-        document.getElementById('btn-sort-incPaths')?.addEventListener('click', () => FiltersManager.sortTextAreaLines('incPaths'));
-        document.getElementById('btn-sort-excPaths')?.addEventListener('click', () => FiltersManager.sortTextAreaLines('excPaths'));
-        document.getElementById('btn-sort-incExts')?.addEventListener('click', () => FiltersManager.sortTextAreaLines('incExts'));
-        document.getElementById('btn-sort-excExts')?.addEventListener('click', () => FiltersManager.sortTextAreaLines('excExts'));
-
-        document.getElementById('btn-explode-incExts')?.addEventListener('click', () => FiltersManager.explodeTextAreaRegex('incExts'));
-        document.getElementById('btn-explode-incPaths')?.addEventListener('click', () => FiltersManager.explodeTextAreaRegex('incPaths'));
-        document.getElementById('btn-explode-excPaths')?.addEventListener('click', () => FiltersManager.explodeTextAreaRegex('excPaths'));
-        document.getElementById('btn-explode-excExts')?.addEventListener('click', () => FiltersManager.explodeTextAreaRegex('excExts'));
-
-        document.getElementById('btn-clear-incPaths')?.addEventListener('click', () => FiltersManager.clearTextArea('incPaths'));
-        document.getElementById('btn-clear-excPaths')?.addEventListener('click', () => FiltersManager.clearTextArea('excPaths'));
-        document.getElementById('btn-clear-incExts')?.addEventListener('click', () => FiltersManager.clearTextArea('incExts'));
-        document.getElementById('btn-clear-excExts')?.addEventListener('click', () => FiltersManager.clearTextArea('excExts'));
-
-        document.getElementById('btn-group-incExts')?.addEventListener('click', () => FiltersManager.groupTextAreaExtensions('incExts'));
-        document.getElementById('btn-group-excExts')?.addEventListener('click', () => FiltersManager.groupTextAreaExtensions('excExts'));
-
-        document.getElementById('btn-predefined-inclusions')?.addEventListener('click', (e) => {
+            e.preventDefault();
             e.stopPropagation();
-            const menu = document.getElementById('predefined-inclusions-menu');
-            if (menu) {
-                const isOpening = menu.style.display !== 'block';
-                if (isOpening) {
-                    FiltersManager.renderPredefinedMenu('predefined-inclusions-menu', 'incExts', 'includeExtsMenuEnabled', isModifierPressed);
-                    menu.style.display = 'block';
-                } else {
-                    menu.style.display = 'none';
-                }
-            }
-        });
 
-        document.getElementById('btn-predefined-exclusions')?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const menu = document.getElementById('predefined-exclusions-menu');
-            if (menu) {
-                const isOpening = menu.style.display !== 'block';
-                if (isOpening) {
-                    FiltersManager.renderPredefinedMenu('predefined-exclusions-menu', 'excExts', 'excludeExtsMenuEnabled', isModifierPressed);
-                    menu.style.display = 'block';
-                } else {
-                    menu.style.display = 'none';
-                }
-            }
-        });
-
-        document.addEventListener('click', () => {
-            const incMenu = document.getElementById('predefined-inclusions-menu');
-            const excMenu = document.getElementById('predefined-exclusions-menu');
-            if (incMenu) incMenu.style.display = 'none';
-            if (excMenu) excMenu.style.display = 'none';
-        });
-
-        document.getElementById('btn-toggle-history-view')?.addEventListener('click', () => {
-            state.historyViewMode = state.historyViewMode === 'scope-current-repo' ? 'scope-all-repo' : 'scope-current-repo';
-            HistoryManager.updateHistoryViewToggleButton();
-            HistoryManager.updateHistoryCombo(state.currentSelectedId);
-            bridge.postMessage('updateHistoryViewMode', { mode: state.historyViewMode });
-        });
-
-        document.getElementById('historyCombo')?.addEventListener('change', (e) => {
-            const val = e.target.value;
-            if (!val || state.isInitializing) return;
-            state.currentSelectedId = val;
-            HistoryManager.applyHistorySelection(val);
-            UIController.syncButtonsState(val);
-            ValidatorService.clearAllValidationStyles();
-            UIController.checkSyncStatus();
-            setTimeout(window.forceGlobalSummariesUpdate, 60);
-        });
-
-        document.getElementById('btn-freeze-history')?.addEventListener('click', () => {
-            if (state.currentSelectedId && state.currentSelectedId !== 'default') {
-                const entry = state.historyList.find(h => h.id === state.currentSelectedId);
-                if (entry) bridge.postMessage('toggleFreezeHistory', { id: state.currentSelectedId, frozen: !entry.frozen });
-            }
-        });
-
-        document.getElementById('btn-reset-config')?.addEventListener('click', () => {
-            HistoryManager.resetCurrentConfigFields();
-            setTimeout(window.forceGlobalSummariesUpdate, 20);
-        });
-
-        document.getElementById('btn-edit-history')?.addEventListener('click', HistoryManager.enterInlineRenameMode);
-
-        document.getElementById('historyRenameInput')?.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                const val = e.target.value.trim();
-                if (val && state.currentSelectedId && state.currentSelectedId !== 'default') {
-                    bridge.postMessage('editHistoryName', { id: state.currentSelectedId, newName: val });
-                }
-                HistoryManager.cancelInlineHistoryRename();
-            } else if (e.key === 'Escape') {
-                HistoryManager.cancelInlineHistoryRename();
-            }
-        });
-
-        document.getElementById('historyRenameInput')?.addEventListener('blur', () => {
-            setTimeout(() => { HistoryManager.cancelInlineHistoryRename(); }, 180);
-        });
-
-        document.getElementById('btn-duplicate-history')?.addEventListener('click', () => {
-            const getVal = (id) => document.getElementById(id)?.value || '';
-            const getCheck = (id) => !!document.getElementById(id)?.checked;
-            const pathsStr = (document.getElementById('pathList')?.value || '').split('\n').map(p => p.trim()).filter(p => p).join(', ');
-
-            const screenConfig = {
-                src: pathsStr, dest: getVal('destDir'), format: getVal('format'),
-                max_file: getVal('maxFile'), max_chunk: getVal('maxChunk'),
-                groupByExt: getCheck('splitChunkByFileExtension'),
-                copyGeneratedFilesToClipboard: getCheck('copyGeneratedFilesToClipboard'),
-                generateTreeView: getCheck('generateTreeView'),
-                logConsole: getCheck('generateLogConsole'), logFile: getCheck('generateLogFile'),
-                inc_paths: getVal('incPaths'), exc_paths: getVal('excPaths'),
-                inc_ext: getVal('incExts'), exc_ext: getVal('excExts')
+            const doResize = (moveEvent) => {
+                if (!isResizing) return;
+                modal.style.width = `${startWidth + (moveEvent.clientX - startX)}px`;
+                modal.style.height = `${startHeight + (moveEvent.clientY - startY)}px`;
             };
 
-            let customDisplayName = null;
-            if (state.currentSelectedId && state.currentSelectedId !== 'default') {
-                const selectedEntry = state.historyList.find(h => h.id === state.currentSelectedId);
-                if (selectedEntry) customDisplayName = `${selectedEntry.display} - copy`;
-            }
+            const stopResize = () => {
+                isResizing = false;
+                window.removeEventListener('mousemove', doResize);
+                window.removeEventListener('mouseup', stopResize);
+            };
 
-            bridge.postMessage('addNewConfigProfile', { duplicateConfig: screenConfig, customName: customDisplayName });
+            window.addEventListener('mousemove', doResize);
+            window.addEventListener('mouseup', stopResize);
         });
-
-        document.getElementById('btn-add-history')?.addEventListener('click', () => bridge.postMessage('addNewConfigProfile'));
-        document.getElementById('btn-open-history-file')?.addEventListener('click', () => bridge.postMessage('openHistoryInVSCode'));
-        document.getElementById('btn-reveal-history-folder')?.addEventListener('click', () => bridge.postMessage('revealHistoryInOS'));
-        document.getElementById('btn-clear-history')?.addEventListener('click', () => bridge.postMessage('clearHistory', { selectedId: state.currentSelectedId }));
-
-        document.getElementById('btn-clear-paths')?.addEventListener('click', () => {
-            SourcePathsManager.clearPaths();
-            setTimeout(window.forceGlobalSummariesUpdate, 20);
-        });
-        document.getElementById('btn-add-open-files')?.addEventListener('click', SourcePathsManager.addOpenFiles);
-        document.getElementById('btn-add-git-diff')?.addEventListener('click', SourcePathsManager.addGitDiffFiles);
-        document.getElementById('btn-add-error-files')?.addEventListener('click', () => ErrorFilesModalComponent.render());
-
-        const pathListTextArea = document.getElementById('pathList');
-        if (pathListTextArea) {
-            const targetTextarea = pathListTextArea.shadowRoot?.querySelector('textarea') || pathListTextArea;
-            targetTextarea.addEventListener('blur', SourcePathsManager.saveActiveTextareaCursorIndex);
-            targetTextarea.addEventListener('keyup', SourcePathsManager.saveActiveTextareaCursorIndex);
-            targetTextarea.addEventListener('click', SourcePathsManager.saveActiveTextareaCursorIndex);
-        }
-
-        document.getElementById('btn-open-cursor-line')?.addEventListener('click', SourcePathsManager.openPathAtCursor);
-        document.getElementById('btn-run')?.addEventListener('click', () => ExportManager.runExport());
-
-        document.getElementById('btn-copy-cmd')?.addEventListener('click', () => tabs.terminalTab?.copyCommand());
-        document.getElementById('btn-copy-terminal-logs')?.addEventListener('click', () => { const term = document.getElementById('terminal'); if (term && term.innerText) { navigator.clipboard.writeText(term.innerText).then(() => { bridge.postMessage('showNotification', { type: 'info', text: 'Terminal content successfully copied to clipboard.' }); }); } });
-        document.getElementById('btn-clear-terminal-logs')?.addEventListener('click', () => { const term = document.getElementById('terminal'); if (term) term.innerText = ''; });
-        document.getElementById('btn-copy-latest-files')?.addEventListener('click', DestinationManager.copyLatestExportedFiles);
-        document.getElementById('btn-open-finder-dest')?.addEventListener('click', DestinationManager.openFinder);
-        document.getElementById('btn-clear-dest')?.addEventListener('click', DestinationManager.clearDestDirectory);
-
-        document.getElementById('btn-filter-files')?.addEventListener('click', () => {
-            if (!state.lastGeneratedFilesPayload) return;
-            bridge.postMessage('applyFileFilter', {
-                data: {
-                    fileNameRegex: document.getElementById('filterFileName').value,
-                    fileContentRegex: document.getElementById('filterFileContent').value,
-                    destDir: document.getElementById('destDir').value,
-                    files: state.lastGeneratedFilesPayload.exports || []
-                }
-            });
-        });
-
-        document.getElementById('btn-reset-filter')?.addEventListener('click', () => {
-            if (document.getElementById('filterFileName')) document.getElementById('filterFileName').value = '';
-            if (document.getElementById('filterFileContent')) document.getElementById('filterFileContent').value = '';
-            if (state.lastGeneratedFilesPayload && tabs.filesTab) {
-                tabs.filesTab.render(
-                    state.lastGeneratedFilesPayload,
-                    document.getElementById('destDir').value,
-                    (p) => bridge.postMessage('openFile', {path:p}),
-                    (p) => bridge.postMessage('openFinder', {path:p}),
-                    document.getElementById('splitChunkByFileExtension').checked,
-                    state.totalExportedSourceFiles
-                );
-            }
-            if (state.lastReportPayload && tabs.treeViewTab) {
-                tabs.treeViewTab.render(state.lastReportPayload, (p) => bridge.postMessage('openFile',{path:p}), (p) => bridge.postMessage('openFinder',{path:p}));
-            }
-        });
-
-        const observedFields = ['pathList', 'destDir', 'maxFile', 'maxChunk', 'incPaths', 'excPaths', 'incExts', 'excExts', 'format', 'splitChunkByFileExtension', 'copyGeneratedFilesToClipboard', 'generateTreeView', 'generateLogConsole', 'generateLogFile'];
-        observedFields.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.addEventListener('blur', () => {
-                    ValidatorService.executeFieldValidation(id);
-                    UIController.checkSyncStatus();
-                    window.forceGlobalSummariesUpdate();
-                });
-                el.addEventListener('input', () => {
-                    ValidatorService.executeFieldValidation(id);
-                    UIController.checkSyncStatus();
-                    window.forceGlobalSummariesUpdate();
-                });
-                el.addEventListener('change', () => {
-                    window.forceGlobalSummariesUpdate();
-                });
-            }
-        });
-
-        // Shared cross-extension real-time bidirectional input synchronization hook
-        document.getElementById('pathList')?.addEventListener('input', (e) => {
-            const currentLines = e.target.value.split('\n').map(p => p.trim()).filter(p => p);
-            bridge.postMessage('syncPaths', { paths: currentLines });
-        });
-
-        console.log("[Simulation B UI] Initializing tracing controls...");
-        const simuBtn = document.getElementById('btn-simu-push');
-        if (!simuBtn) {
-            console.error("[Simulation B UI] CRITICAL ERROR: Target button '#btn-simu-push' is missing from the active DOM context layout structure!");
-        } else {
-            console.log("[Simulation B UI] Target button '#btn-simu-push' discovered. Binding verbose event listener trace hooks.");
-            simuBtn.addEventListener('click', () => {
-                console.log("[Simulation B UI] Click event successfully captured on '#btn-simu-push'.");
-                const inputEl = document.getElementById('simuPaths');
-                const val = inputEl?.value || '';
-                const paths = val.split('\n').map(p => p.trim()).filter(p => p);
-                if (paths.length > 0) {
-                    bridge.postMessage('simulateExtensionBPush', { paths });
-                    if (inputEl) {
-                        console.info("[Simulation B UI] Contenu de la liste partagée AVANT clean :", inputEl.value);
-                        inputEl.value = '';
-                        inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-                        inputEl.dispatchEvent(new Event('change', { bubbles: true }));
-                        console.info("[Simulation B UI] Contenu de la liste partagée APRÈS clean :", inputEl.value);
-                        console.log("[Simulation B UI] Shared list component has been fully flushed and visually cleared via lifecycle events.");
-                    }
-                } else {
-                    console.warn("[Simulation B UI] Action aborted: The simulation textarea payload matrix is completely empty.");
-                }
-            });
-        }
-
-        this.setupTextAreaSync();
-        this.setupFilterSimulator();
-        bridge.postMessage('webviewReady');
-    },
-
-    handleMessage(message, tabs) {
-        switch (message.command) {
-            case 'excludeExplorerPathSelection': HandlerManager.handleExcludeExplorerPathSelection(message, tabs); break;
-            case 'checkPathsResult': HandlerManager.handleCheckPathsResult(message, tabs); break;
-            case 'updatePaths': HandlerManager.handleUpdatePaths(message, tabs); break;
-            case 'initSettings':
-                HandlerManager.handleInitSettings(message, tabs, isModifierPressed);
-                setTimeout(() => { if (typeof window.forceGlobalSummariesUpdate === 'function') window.forceGlobalSummariesUpdate(); }, 120);
-                break;
-            case 'updateFileExtsCategoryGroups': HandlerManager.handleUpdateFileExtsCategoryGroups(message, tabs, isModifierPressed); break;
-            case 'updateHistory': HandlerManager.handleUpdateHistory(message, tabs); break;
-            case 'terminalLog': HandlerManager.handleTerminalLog(message, tabs); break;
-            case 'updateCommand': HandlerManager.handleUpdateCommand(message, tabs); break;
-            case 'updateExportReport': HandlerManager.handleUpdateExportReport(message, tabs); break;
-            case 'filteredFilesResult': HandlerManager.handleFilteredFilesResult(message, tabs); break;
-            case 'showRichNotification': HandlerManager.handleShowRichNotification(message); break;
-            case 'analyzeErrorStackResult': if (typeof window.handleErrorAnalysisResponse === 'function') window.handleErrorAnalysisResponse(message.paths); break;
-            case 'simulateFiltersResult':
-                import('../services/filters-simulator.js').then(module => {
-                    module.FiltersSimulator.updateEmojiResult(message.code);
-                });
-                break;
-        }
     }
 };
 EOF
 
-echo "✅ Script rewritten: Regular expression syntax error fully resolved inside initialization.manager.js by safely abstracting line split operations into literal string handlers!"
+# 2. Fully rewrite src/webview/js/components/modal.component.js to import and use the shared utility
+cat << 'EOF' > src/webview/js/components/modal.component.js
+import { state } from '../core/state.manager.js';
+import { PopupModalUtils } from './popup-modal-utils.js';
+
+export const ModalComponent = {
+    triggerGuardrailValidationFlow(pathsArray, onSuccess, onCancel) {
+        let outUserHome = false; let homeRootBare = false;
+        const normalizedHome = '/users/mac-sguiss21';
+        pathsArray.forEach(p => {
+            let clean = p.replace(/^['"]|['"]$/g, '').trim().toLowerCase().replace(/\\/g, '/').replace(/\/+$/, '');
+            if (!clean) return;
+            if (!clean.startsWith(normalizedHome)) outUserHome = true;
+            if (clean === normalizedHome) homeRootBare = true;
+        });
+        if (!outUserHome && !homeRootBare) { onSuccess(); return; }
+        const backdrop = document.createElement('div');
+        backdrop.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999999; display: flex; align-items: center; justify-content: center;';
+        backdrop.innerHTML = `<div style="background: var(--panel-view-background); padding: 20px; border-radius: 6px; border: 1px solid var(--vscode-panel-border); min-width: 450px; min-height: 160px; box-sizing: border-box;">
+            <div style="font-weight:600; color:#ffc107; margin-bottom:12px;">⚠️ Performance & Scope Warning</div>
+            <div style="margin-bottom:20px; font-size:12px;">Crawling risk detected. Proceed?</div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top: auto;">
+                <vscode-button id="btn-guardrail-proceed" appearance="primary">Proceed Anyway</vscode-button>
+                <vscode-button id="btn-guardrail-cancel" appearance="secondary">Cancel Run</vscode-button>
+            </div>
+        </div>`;
+        document.body.appendChild(backdrop);
+
+        if (backdrop.firstElementChild) {
+            PopupModalUtils.makeResizable(backdrop.firstElementChild);
+        }
+
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') {
+                closeGuardrail();
+                onCancel();
+            }
+        };
+        window.addEventListener('keydown', handleEsc);
+
+        const closeGuardrail = () => {
+            if (backdrop.parentElement) document.body.removeChild(backdrop);
+            window.removeEventListener('keydown', handleEsc);
+        };
+
+        document.getElementById('btn-guardrail-cancel')?.addEventListener('click', () => { closeGuardrail(); onCancel(); });
+        document.getElementById('btn-guardrail-proceed')?.addEventListener('click', () => { closeGuardrail(); onSuccess(); });
+    },
+    triggerValidationErrorModal(errorText) {
+        const backdrop = document.createElement('div');
+        backdrop.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999999; display: flex; align-items: center; justify-content: center;';
+        backdrop.innerHTML = `<div style="background: var(--vscode-editor-background, #1e1e1e); padding: 20px; border-radius: 6px; border: 1px solid var(--vscode-panel-border); min-width: 400px; min-height: 140px; box-sizing: border-box;">
+            <div style="font-weight:600; color:#f44336; margin-bottom:12px;">🛑 Validation Failure</div>
+            <div style="margin-bottom:20px; font-size:12px;">${errorText}</div>
+            <div style="display:flex; justify-content:flex-end; margin-top: auto;"><vscode-button id="btn-validation-error-close" appearance="primary">Close</vscode-button></div>
+        </div>`;
+        document.body.appendChild(backdrop);
+
+        if (backdrop.firstElementChild) {
+            PopupModalUtils.makeResizable(backdrop.firstElementChild);
+        }
+
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') {
+                closeError();
+            }
+        };
+        window.addEventListener('keydown', handleEsc);
+
+        const closeError = () => {
+            if (backdrop.parentElement) document.body.removeChild(backdrop);
+            window.removeEventListener('keydown', handleEsc);
+        };
+
+        document.getElementById('btn-validation-error-close')?.addEventListener('click', closeError);
+    }
+};
+EOF
+
+# 3. Fully rewrite src/webview/js/components/error-files-modal.component.js to use the shared utility
+cat << 'EOF' > src/webview/js/components/error-files-modal.component.js
+import { bridge } from '../core/vscode.bridge.js';
+import { PopupModalUtils } from './popup-modal-utils.js';
+
+export const ErrorFilesModalComponent = {
+    render() {
+        if (document.getElementById('error-files-modal-backdrop')) return;
+
+        const backdrop = document.createElement('div');
+        backdrop.id = 'error-files-modal-backdrop';
+        backdrop.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999999; display: flex; align-items: center; justify-content: center; font-family: var(--vscode-font-family);';
+
+        backdrop.innerHTML = `
+            <div style="background: var(--vscode-editor-background, #1e1e1e); color: var(--vscode-foreground, #ccc); padding: 20px; border-radius: 6px; border: 1px solid var(--vscode-panel-border); width: 600px; min-height: 480px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); box-sizing: border-box;">
+                <div style="font-weight: 600; color: #00bcd4; font-size: 14px; border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: 6px;">⚠️ Error files identification</div>
+
+                <div>
+                    <label style="display: block; margin-bottom: 4px; font-size: 12px; font-weight: 500;">Stack Type / Engine Runtime Selection:</label>
+                    <div style="display: flex; gap: 15px; align-items: center; width: 100%;">
+                        <vscode-dropdown id="error-stack-type" style="flex-grow: 1;">
+                            <vscode-option value="Java">Java</vscode-option>
+                            <vscode-option value="Browser console">Browser console</vscode-option>
+                            <vscode-option value="python">Python</vscode-option>
+                        </vscode-dropdown>
+                        <vscode-checkbox id="error-include-out-workspace" style="flex-shrink: 0;">Include out workspace files</vscode-checkbox>
+                    </div>
+                </div>
+
+                <div>
+                    <label style="display: block; margin-bottom: 4px; font-size: 12px; font-weight: 500;">Stack Trace Context Input logs:</label>
+                    <vscode-text-area id="error-stack-content" rows="6" style="width: 100%;" resize="vertical" placeholder="Logs matching standard engine dumps..."></vscode-text-area>
+                </div>
+
+                <div style="display: flex; justify-content: flex-start;">
+                    <button id="btn-error-analyze" class="btn-run-custom" style="padding: 6px 16px; font-size: 12px; height: auto;">🔍 Analyze Stack Trace</button>
+                </div>
+
+                <div>
+                    <label style="display: block; margin-bottom: 4px; font-size: 12px; font-weight: 500;">Identified Target Sources Paths Result Matrix:</label>
+                    <div style="display: flex; flex-direction: row; align-items: flex-start; gap: 8px; width: 100%; box-sizing: border-box;">
+                        <vscode-text-area id="error-analysis-result" rows="4" style="flex: 1; min-width: 0;" resize="vertical" placeholder="Discovered matching workspace paths files lists..."></vscode-text-area>
+                        <div style="flex-shrink: 0; display: flex; align-items: flex-start; justify-content: center; padding-top: 2px;">
+                            <vscode-button id="btn-copy-error-result" appearance="icon" class="tooltip-right icon-btn" data-tooltip="Copy result paths to clipboard">
+                                <span class="codicon codicon-copy"></span>
+                            </vscode-button>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid var(--vscode-panel-border); padding-top: 10px; margin-top: auto;">
+                    <vscode-button id="btn-error-add" appearance="primary">Add Paths</vscode-button>
+                    <vscode-button id="btn-error-cancel" appearance="secondary">Cancel</vscode-button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(backdrop);
+
+        if (backdrop.firstElementChild) {
+            PopupModalUtils.makeResizable(backdrop.firstElementChild);
+        }
+
+        this.initListeners(backdrop);
+    },
+
+    async initListeners(backdrop) {
+        const contentTextArea = document.getElementById('error-stack-content');
+        const resultTextArea = document.getElementById('error-analysis-result');
+        const stackTypeCombo = document.getElementById('error-stack-type');
+        const includeOutCb = document.getElementById('error-include-out-workspace');
+        const analyzeBtn = document.getElementById('btn-error-analyze');
+        const copyResultBtn = document.getElementById('btn-copy-error-result');
+        const addBtn = document.getElementById('btn-error-add');
+        const cancelBtn = document.getElementById('btn-error-cancel');
+
+        try {
+            const clipboardText = await navigator.clipboard.readText();
+            if (clipboardText && contentTextArea) {
+                contentTextArea.value = clipboardText;
+            }
+        } catch (err) {
+            console.warn("Clipboard read operations bypassed via layout definitions:", err);
+        }
+
+        const closePopup = () => {
+            if (backdrop.parentElement) document.body.removeChild(backdrop);
+            window.removeEventListener('keydown', handleEsc);
+        };
+
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') closePopup();
+        };
+
+        window.addEventListener('keydown', handleEsc);
+        cancelBtn?.addEventListener('click', closePopup);
+
+        analyzeBtn?.addEventListener('click', () => {
+            if (analyzeBtn.innerHTML.includes('spin-anim')) return;
+
+            const stackType = stackTypeCombo?.value || 'Java';
+            const content = contentTextArea?.value || '';
+            const includeOutWorkspace = !!includeOutCb?.checked;
+            if (!content.trim()) return;
+
+            analyzeBtn.innerHTML = '<span class="codicon codicon-sync spin-anim"></span> ANALYZING... <span id="btn-kill-analysis" title="Kill active analysis process immediately" style="margin-left: 12px; background: #b71c1c; color: #ffffff; padding: 2px 6px; border-radius: 3px; font-size: 11px; display: inline-flex; align-items: center; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.4); cursor: pointer !important;">🛑 KILL</span>';
+
+            setTimeout(() => {
+                document.getElementById('btn-kill-analysis')?.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    bridge.postMessage('killErrorAnalysis');
+                });
+            }, 20);
+
+            bridge.postMessage('analyzeErrorStack', { stackType, content, includeOutWorkspace });
+        });
+
+        copyResultBtn?.addEventListener('click', () => {
+            const pathsContent = resultTextArea?.value || '';
+            if (pathsContent.trim()) {
+                navigator.clipboard.writeText(pathsContent.trim()).then(() => {
+                    bridge.postMessage('showNotification', { type: 'info', text: 'Identified paths successfully copied to clipboard.' });
+                });
+            }
+        });
+
+        addBtn?.addEventListener('click', () => {
+            const targetPaths = resultTextArea?.value || '';
+            const pathListEl = document.getElementById('pathList');
+            if (targetPaths.trim() && pathListEl) {
+                const existingText = pathListEl.value.trim();
+                pathListEl.value = existingText ? `${existingText}\n${targetPaths.trim()}` : targetPaths.trim();
+                pathListEl.dispatchEvent(new Event('input', { bubbles: true }));
+                pathListEl.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            closePopup();
+        });
+
+        window.handleErrorAnalysisResponse = (paths) => {
+            if (analyzeBtn) {
+                analyzeBtn.innerHTML = '🔍 Analyze Stack Trace';
+            }
+            if (resultTextArea) {
+                resultTextArea.value = (paths || []).join('\n');
+                resultTextArea.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        };
+    }
+};
+EOF
+
+echo "✅ Refactoring complete: Created popup-modal-utils.js and successfully mutualized the resizable window logic across all modal components!"

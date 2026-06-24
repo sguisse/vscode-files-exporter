@@ -45,7 +45,7 @@ export const ExportManager = {
         if (state.pathListInvalid) isFormValid = false;
 
         if (!isFormValid) {
-            const message = "Export aborted: Please fix the highlighted fields in red pastel before running.";
+            const message = "Export aborted: Please fix the highlighted fields in RED before running.";
             bridge.postMessage("showNotification", { type: "error", text: "❌  " + message });
             ModalComponent.triggerValidationErrorModal("❌  " + message);
             if (window.terminalTab) window.terminalTab.append("\n❌  " + message + "\n");
