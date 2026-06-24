@@ -26,3 +26,5 @@ graphify-out
 zz-tmp
 .continue
 .cache
+.claude
+.ollama
