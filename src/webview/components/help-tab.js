@@ -145,7 +145,7 @@ export class HelpTab {
                                 <li>For the <strong>EXISTING</strong> related files, DO NOT overwrite them completely. Instead, write precise automated modification commands (using <em>sed</em>, <em>awk</em>, or robust line-matching replacements) to inject only the necessary delta (the new tab import and navigation link).</li>
                                 <li><strong>CRITICAL</strong>: Safely manage the syntax conflict between the triple-backticks of the LLM chat GUI Markdown and any backticks or template literals that the Bash script must write to the JavaScript/HTML files. Ensure the generated shell script does not prematurely close the LLM's code block response.</li>
                                 <li>Ensure that the script is 100% compliant, complete, and directly executable locally in workspace root after a '<em>chmod +x</em>'.</li>
-                                <li>At the end of the script, you should provide a summary of changes in one short line started with emoji of the changes made and any next steps for the user.<br/> Like : <em>echo "✅ Script created/modified. Hovering over the KILL capsule now correctly shows the interactive hand pointer cursor!"</em></li>
+                                <li>At the end of the script, you should provide a summary of changes in one short line started with emoji of the changes made and any next steps for the user.<br/> Like : <em>echo "✅ feat/fix: Hovering over the KILL capsule now correctly shows the interactive hand pointer cursor!"</em></li>
                             </ul>
                         </ul>
                             <li>Then <strong>copy/paste</strong> the generated Bash script into a file named '<strong><em>patch.sh</em></strong>' in workspace root and execute it!</li>
@@ -169,7 +169,7 @@ export class HelpTab {
                         <ul>
                             <li>For reminder actually (2026/06/10), only the following file types are supported by NotebookLM</li>
                             <ul>
-                                <li><strong>Text & Data : TXT, md, csv</strong></li>
+                                <li><strong>Text & Data : </strong> txt, md, csv</li>
                                 <li><strong>Documents & Presentations</strong> : pdf, docx, pptx, epub</li>
                                 <li><strong>Audio</strong> : aac, aif, aifc, aiff, amr, au, cda, m4a, mid, mp3, ogg, opus, ra, ram, snd, wav, wma</li>
                                 <li><strong>Video</strong> : 3g2, 3gp, avi, mp4, mpeg</li>
