@@ -7,3 +7,4 @@ node_modules
 exported-files
 *.bak*
 graphify-out
+.graph-rag-explorer
