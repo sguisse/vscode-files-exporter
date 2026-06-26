@@ -142,10 +142,18 @@ export class HelpTab {
                                 <li>Provide the entire output as a <strong>SINGLE</strong>, self-contained, and production-ready Bash script ('<em>*.sh</em>') actionable at the workspace root.</li>
                                 <li>The script must manage the creation of the necessary folders ('<em>mkdir -p</em>').</li>
                                 <li>For the <strong>NEW</strong> file, use a full '<em>cat << 'EOF' > path/to/file</em>' block. No snippets, no truncation comments, no \"...\".</li>
-                                <li>For the <strong>EXISTING</strong> related files, DO NOT overwrite them completely. Instead, write precise automated modification commands (using <em>sed</em>, <em>awk</em>, or robust line-matching replacements) to inject only the necessary delta (the new tab import and navigation link).</li>
+                                <li>For the <strong>EXISTING</strong> related files, DO NOT overwrite them completely. Instead, write precise automated modification commands (using <em>sed</em>, <em>awk</em>, or robust line-matching replacements) to inject only the necessary delta (the new tab import and navigation link).<br/>
+                                    But if the update is too complicated (scoring of the update to do), prefer provide the full file content!<br/>
+                                    If user include <strong>"/full"</strong> in his prompt, force providing full file content </li>
                                 <li><strong>CRITICAL</strong>: Safely manage the syntax conflict between the triple-backticks of the LLM chat GUI Markdown and any backticks or template literals that the Bash script must write to the JavaScript/HTML files. Ensure the generated shell script does not prematurely close the LLM's code block response.</li>
                                 <li>Ensure that the script is 100% compliant, complete, and directly executable locally in workspace root after a '<em>chmod +x</em>'.</li>
-                                <li>At the end of the script, you should provide a summary of changes in one short line started with emoji of the changes made and any next steps for the user.<br/> Like : <em>echo "✅ feat/fix: Hovering over the KILL capsule now correctly shows the interactive hand pointer cursor!"</em></li>
+                                <li>At the end of the script:</li>
+                                  <ul>
+                                    <li>You should provide a summary of changes in one short line started with emoji of the changes made and any next steps for the user.<br/> Like : <em>echo "✅ feat/fix: Hovering over the KILL capsule now correctly shows the interactive hand pointer cursor!"</em></li>
+                                    </li>
+                                    <li>You can also add command to rebuild the project like "<em>npm run compile</em>", "<em>mvn clean install</em>", ... depending on project type.
+                                    </li>
+                                  </ul>
                             </ul>
                         </ul>
                             <li>Then <strong>copy/paste</strong> the generated Bash script into a file named '<strong><em>patch.sh</em></strong>' in workspace root and execute it!</li>
