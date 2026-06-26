@@ -201,7 +201,7 @@ export class HelpTab {
                             <li><a href="https://simpleicons.org/" target="_blank">SimpleIcons - 3446 SVG icons for popular brands</a></li>
                             <li><a href="https://github.com/microsoft/vscode-codicons" target="_blank">VSCode specific icons - codicons</a></li>
                             <li><a href="https://primer.style/octicons/" target="_blank">Octicons - A scalable set of icons handcrafted by GitHub</a></li>
-                            <li><a href="https://icon-sets.iconify.design/" target="_blank">iconify Design - Search 295307 icons from 212 icon sets...</a></li>
+                            <li><a href="https://icon-sets.iconify.design/" target="_blank">Iconify Design - Search 295307 icons from 212 icon sets...</a></li>
                             </ul>
                         </ul>
                     </div>
