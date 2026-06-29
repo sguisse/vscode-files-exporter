@@ -1,6 +1,6 @@
 import { spawn, exec, ChildProcess } from 'child_process';
 import { existsSync } from 'fs';
-import { ClipboardService } from './clipboard.service';
+import { ClipboardService } from './clipboard/clipboard.service';
 
 export class ProcessRunnerService {
     private clipboardService = new ClipboardService();
