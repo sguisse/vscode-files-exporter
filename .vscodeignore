@@ -28,3 +28,4 @@ zz-tmp
 .cache
 .claude
 .ollama
+.graph-rag-explorer
