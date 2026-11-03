@@ -8,3 +8,4 @@ exported-files
 *.bak*
 graphify-out
 .graph-rag-explorer
+zz*
