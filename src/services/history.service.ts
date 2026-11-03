@@ -203,6 +203,7 @@ export class HistoryService {
         return {
             src: formData.paths.join(', '),
             dest: formData.destDir,
+            base_filename: formData.baseFilename?.trim() || '',
             format: formData.format,
             max_file: formData.maxFile,
             max_chunk: formData.maxChunk,

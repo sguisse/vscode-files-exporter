@@ -1,229 +1,251 @@
 #!/usr/bin/env bash
 set -e
 
-echo "🚀 Clipboard Engine v4 - Batch Mode + Platform Split + macOS safe verify"
-
-mkdir -p src/services/clipboard/windows
-mkdir -p src/services/clipboard/macos
-mkdir -p src/services/clipboard/linux
-
-############################################################
-# ROUTER
-############################################################
-
-cat << 'EOF' > src/services/clipboard/clipboard.service.ts
-import { WindowsClipboardService } from "./windows/windows-clipboard.service";
-import { MacOSClipboardService } from "./macos/macos-clipboard.service";
-import { LinuxClipboardService } from "./linux/linux-clipboard.service";
-
-export class ClipboardService {
-
-    private windows = new WindowsClipboardService();
-    private macos = new MacOSClipboardService();
-    private linux = new LinuxClipboardService();
-
-    public async copyFilesToClipboard(files: string[], timeoutMs: number = 10000): Promise<string> {
-
-        const platform = process.platform;
-
-        if (platform === "win32") return this.windows.copyFilesToClipboard(files, timeoutMs);
-        if (platform === "darwin") return this.macos.copyFilesToClipboard(files, timeoutMs);
-
-        return this.linux.copyFilesToClipboard(files, timeoutMs);
-    }
+# Update data-workflow.json to set the file:// icon URL on the 'others' node
+cat << 'EOF' > webview/src/features/explorer/workflow/data-workflow.json
+{
+  "workflow": {
+    "title": "Context Engineering Pipeline",
+    "description": "Interactive multi-branch document validation flow with automated decision checks.",
+    "initialStepId": "files_selection",
+    "nodes": [
+      {
+        "id": "start",
+        "label": "Context Engineering Pipeline",
+        "desc": "BPMN Start Event: Trigger point of the pipeline.",
+        "type": "start",
+        "x": 6,
+        "y": 101,
+        "status": "pending",
+        "clickEnabled": false
+      },
+      {
+        "id": "files_selection",
+        "label": "Files Selection",
+        "desc": "Select target source files in VS-Code Explorer.",
+        "type": "step",
+        "x": 139,
+        "y": 99,
+        "status": "current",
+        "clickEnabled": true
+      },
+      {
+        "id": "anonymizer",
+        "label": "Anonymize",
+        "desc": "Replaces sensitive information in the files.",
+        "type": "step",
+        "x": 237,
+        "y": 18,
+        "status": "pending",
+        "clickEnabled": true
+      },
+      {
+        "id": "prompt",
+        "label": "Prompt",
+        "desc": "Define what is expected.",
+        "type": "step",
+        "x": 339,
+        "y": 99,
+        "status": "pending",
+        "clickEnabled": true
+      },
+      {
+        "id": "llm",
+        "label": "Local LLM",
+        "desc": "Display LLM view prefilled with files context and prompt.",
+        "type": "step",
+        "x": 768,
+        "y": 35,
+        "status": "pending",
+        "clickEnabled": true
+      },
+      {
+        "id": "request_flow",
+        "label": "🚀 execution ?",
+        "desc": "Select the request flow to use files context and prompt.",
+        "type": "decision",
+        "x": 488,
+        "y": 97,
+        "status": "pending",
+        "clickEnabled": false
+      },
+      {
+        "id": "gemini",
+        "label": "Gemini",
+        "desc": "Display Gemini site in browser, with files context in clipboard ready to paste in the prompt.",
+        "type": "step",
+        "x": 645,
+        "y": 103,
+        "status": "pending",
+        "clickEnabled": true
+      },
+      {
+        "id": "gems_01",
+        "label": "Gems 01",
+        "desc": "Display Gemini Gems dedicated to Extension site in browser, with files context in clipboard ready to paste in the prompt.",
+        "type": "step",
+        "x": 768,
+        "y": 104,
+        "status": "pending",
+        "clickEnabled": true
+      },
+      {
+        "id": "notebookLM",
+        "label": "NotebookLM",
+        "desc": "Display NotebookLM site in browser, with files context in clipboard ready to paste in the prompt.",
+        "type": "step",
+        "x": 883,
+        "y": 104,
+        "status": "pending",
+        "clickEnabled": true
+      },
+      {
+        "id": "others",
+        "label": "Others",
+        "desc": "To be defined by customizing ...",
+        "type": "step",
+        "x": 768,
+        "y": 179,
+        "status": "pending",
+        "clickEnabled": true,
+        "icon": "file:///Users/mac-SGUISS21/01-work/01-projects/10-tools/01-plugins/01-vscode/vscode-files-exporter/assets/logo-50x50.png"
+      },
+      {
+        "id": "end",
+        "label": "Pipeline<br/>Completed",
+        "desc": "BPMN End Event: Context generated and ready.",
+        "type": "end",
+        "x": 1070,
+        "y": 95,
+        "status": "pending",
+        "clickEnabled": false
+      }
+    ],
+    "edges": [
+      {
+        "id": "e0",
+        "source": "start",
+        "target": "files_selection",
+        "label": "Start",
+        "lineStyle": "solid",
+        "curveStyle": "bezier",
+        "arrowShape": "triangle"
+      },
+      {
+        "id": "e1",
+        "source": "files_selection",
+        "target": "anonymizer",
+        "label": "Recommended",
+        "lineStyle": "dashed",
+        "curveStyle": "bezier",
+        "arrowShape": "triangle",
+        "color": "#10b981"
+      },
+      {
+        "id": "e1.1",
+        "source": "files_selection",
+        "target": "prompt",
+        "label": "",
+        "lineStyle": "solid",
+        "curveStyle": "bezier",
+        "arrowShape": "triangle"
+      },
+      {
+        "id": "e2",
+        "source": "anonymizer",
+        "target": "prompt",
+        "label": "",
+        "lineStyle": "solid",
+        "curveStyle": "bezier",
+        "arrowShape": "triangle"
+      },
+      {
+        "id": "e3",
+        "source": "prompt",
+        "target": "request_flow",
+        "label": "files\n+\nprompt",
+        "lineStyle": "solid",
+        "curveStyle": "bezier",
+        "arrowShape": "triangle"
+      },
+      {
+        "id": "e4",
+        "source": "request_flow",
+        "target": "llm",
+        "label": "standard",
+        "lineStyle": "solid",
+        "curveStyle": "bezier",
+        "arrowShape": "triangle"
+      },
+      {
+        "id": "e5",
+        "source": "request_flow",
+        "target": "gemini",
+        "label": "external",
+        "lineStyle": "solid",
+        "curveStyle": "bezier",
+        "arrowShape": "triangle"
+      },
+      {
+        "id": "e5.1",
+        "source": "gemini",
+        "target": "gems_01",
+        "label": "Or",
+        "lineStyle": "solid",
+        "curveStyle": "bezier",
+        "arrowShape": "triangle"
+      },
+      {
+        "id": "e5.2",
+        "source": "gems_01",
+        "target": "notebookLM",
+        "label": "Or",
+        "lineStyle": "solid",
+        "curveStyle": "bezier",
+        "arrowShape": "triangle"
+      },
+      {
+        "id": "e6",
+        "source": "request_flow",
+        "target": "others",
+        "label": "???",
+        "lineStyle": "dashed",
+        "curveStyle": "bezier",
+        "arrowShape": "triangle",
+        "color": "#f59e0b",
+        "textColor": "#d97706"
+      },
+      {
+        "id": "e10",
+        "source": "llm",
+        "target": "end",
+        "label": "Finish",
+        "lineStyle": "solid",
+        "curveStyle": "bezier",
+        "arrowShape": "triangle"
+      },
+      {
+        "id": "e11",
+        "source": "notebookLM",
+        "target": "end",
+        "label": "Finish",
+        "lineStyle": "solid",
+        "curveStyle": "bezier",
+        "arrowShape": "triangle"
+      },
+      {
+        "id": "e12",
+        "source": "others",
+        "target": "end",
+        "label": "Finish",
+        "lineStyle": "solid",
+        "curveStyle": "bezier",
+        "arrowShape": "triangle"
+      }
+    ]
+  }
 }
 EOF
 
-############################################################
-# WINDOWS BATCH MODE (OPTIMIZED SINGLE TRANSACTION)
-############################################################
-
-cat << 'EOF' > src/services/clipboard/windows/windows-clipboard.service.ts
-import { spawn } from "child_process";
-
-export class WindowsClipboardService {
-
-    public async copyFilesToClipboard(files: string[], timeoutMs: number = 10000): Promise<string> {
-
-        return new Promise((resolve, reject) => {
-
-            const ps = `
-Add-Type -AssemblyName System.Windows.Forms
-
-$files = @(
-${files.map(f => `"${f.replace(/"/g, '`"')}"`).join(",\n")}
-)
-
-$list = New-Object System.Collections.Specialized.StringCollection
-
-foreach ($f in $files) {
-    if ($f) { [void]$list.Add($f) }
-}
-
-# SINGLE BATCH CALL (CRITICAL PERFORMANCE FIX)
-[System.Windows.Forms.Clipboard]::SetFileDropList($list)
-[System.Windows.Forms.Clipboard]::Flush()
-
-Write-Host "TX_OK"
-`;
-
-            const child = spawn("powershell.exe", [
-                "-NoProfile",
-                "-STA",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-Command",
-                "-"
-            ]);
-
-            let out = "";
-            let err = "";
-
-            child.stdout.on("data", d => out += d.toString());
-            child.stderr.on("data", d => err += d.toString());
-
-            child.on("close", (code) => {
-                if (code === 0) resolve(out.trim());
-                else reject(new Error(err || "clipboard_windows_failed"));
-            });
-
-            child.stdin.write(ps);
-            child.stdin.end();
-
-            setTimeout(() => reject(new Error("clipboard_transaction_timeout")), timeoutMs);
-        });
-    }
-}
-EOF
-
-############################################################
-# MACOS (UNCHANGED + SAFE VERIFY OPTION KEPT)
-############################################################
-
-cat << 'EOF' > src/services/clipboard/macos/macos-clipboard.service.ts
-import { spawn } from "child_process";
-
-export class MacOSClipboardService {
-
-    public async copyFilesToClipboard(files: string[], timeoutMs: number = 10000): Promise<string> {
-
-        return new Promise((resolve, reject) => {
-
-            const jxa = `
-ObjC.import('AppKit');
-
-var pb = $.NSPasteboard.generalPasteboard;
-pb.clearContents;
-
-var paths = ${JSON.stringify(files)};
-var urls = $.NSMutableArray.alloc.init;
-
-for (var i = 0; i < paths.length; i++) {
-    urls.addObject($.NSURL.fileURLWithPath(paths[i]));
-}
-
-pb.writeObjects(urls);
-
-$.NSThread.sleepForTimeInterval(0.2);
-
-"TX_OK";
-`;
-
-            const child = spawn("osascript", ["-l", "JavaScript", "-"]);
-
-            let out = "";
-            let err = "";
-
-            child.stdout.on("data", d => out += d.toString());
-            child.stderr.on("data", d => err += d.toString());
-
-            child.on("close", code => {
-                if (code === 0) resolve(out.trim());
-                else reject(new Error(err || "clipboard_macos_failed"));
-            });
-
-            child.stdin.write(jxa);
-            child.stdin.end();
-
-            setTimeout(() => reject(new Error("clipboard_transaction_timeout")), timeoutMs);
-        });
-    }
-
-    // OPTIONAL SAFE VERIFY (kept)
-    public async verifyClipboard(expected: string[]): Promise<boolean> {
-
-        return new Promise(resolve => {
-
-            const script = `
-ObjC.import('AppKit');
-
-var pb = $.NSPasteboard.generalPasteboard;
-var items = pb.pasteboardItems;
-var res = [];
-
-if (items) {
-    for (var i = 0; i < items.count; i++) {
-        var it = items.objectAtIndex(i);
-        var str = it.stringForType("public.file-url");
-        if (str) res.push(str.toString());
-    }
-}
-
-JSON.stringify(res);
-`;
-
-            const child = spawn("osascript", ["-l", "JavaScript", "-"]);
-
-            let out = "";
-
-            child.stdout.on("data", d => out += d.toString());
-
-            child.on("close", () => {
-                try {
-                    const actual = JSON.parse(out || "[]");
-                    resolve(actual.length >= expected.length);
-                } catch {
-                    resolve(false);
-                }
-            });
-
-            child.stdin.write(script);
-            child.stdin.end();
-        });
-    }
-}
-EOF
-
-############################################################
-# LINUX (UNCHANGED SAFE)
-############################################################
-
-cat << 'EOF' > src/services/clipboard/linux/linux-clipboard.service.ts
-import { spawn } from "child_process";
-
-export class LinuxClipboardService {
-
-    public async copyFilesToClipboard(files: string[], timeoutMs: number = 10000): Promise<string> {
-
-        return new Promise((resolve, reject) => {
-
-            const payload = files.map(f => `file://${f}`).join("\n");
-
-            const child = spawn("xclip", ["-selection", "clipboard", "-t", "text/uri-list", "-i"]);
-
-            child.stdin.write(payload);
-            child.stdin.end();
-
-            child.on("close", code => {
-                if (code === 0) resolve("TX_OK");
-                else reject(new Error("clipboard_linux_failed"));
-            });
-
-            setTimeout(() => reject(new Error("clipboard_transaction_timeout")), timeoutMs);
-        });
-    }
-}
-EOF
-
-echo "✅ V4 batch clipboard installed (Windows batch STA + macOS stable + Linux safe)"
-echo "➡ next: npm run compile"
+# Rebuild workspace
+npm run build

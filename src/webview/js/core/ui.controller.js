@@ -67,6 +67,7 @@ export const UIController = {
 
         const screenConfig = {
             src: pathsStr, dest: getVal('destDir'), format: getVal('format'),
+            base_filename: getVal('baseFilename'),
             max_file: getVal('maxFile'), max_chunk: getVal('maxChunk'),
             groupByExt: getCheck('splitChunkByFileExtension'),
             copyGeneratedFilesToClipboard: getCheck('copyGeneratedFilesToClipboard'),
@@ -79,6 +80,7 @@ export const UIController = {
         const targetConfig = {
             src: currentConfig.src || '', dest: currentConfig.dest || '',
             format: currentConfig.format || 'yaml', max_file: currentConfig.max_file || '50',
+            base_filename: currentConfig.base_filename || '',
             max_chunk: currentConfig.max_chunk || '0', groupByExt: !!currentConfig.groupByExt,
             copyGeneratedFilesToClipboard: !!currentConfig.copyGeneratedFilesToClipboard,
             generateTreeView: currentConfig.generateTreeView !== false,
@@ -167,7 +169,7 @@ export const UIController = {
         const style = document.createElement('style');
         style.id = 'qa-validation-styles';
         style.innerHTML = `
-            .field-invalid { border: 2px solid #d32f2f !important; --input-background: #ffcdd2 !important; --background-color: #ffcdd2 !important; }
+            .field-invalid { outline: 2px solid #d32f2f !important; outline-offset: -2px; --input-background: #ffcdd2 !important; --background-color: #ffcdd2 !important; }
             .field-invalid::part(control), .field-invalid::part(root) { background-color: #ffcdd2 !important; color: #1e1e1e !important; }
             .combo-warning { border: 2px solid #fbc02d !important; --dropdown-background: #fff9c4 !important; --background-color: #fff9c4 !important; }
             .combo-warning::part(control), .combo-warning::part(indicator) { background-color: #fff9c4 !important; color: #1e1e1e !important; }

@@ -83,7 +83,10 @@ export const BlockSummaryBuilder = {
                 });
             }
             case 'block-destination': {
-                return collectAndFormatValues({ Folder: document.getElementById('destDir')?.value || 'Not configured' });
+                return collectAndFormatValues({
+                    Folder: document.getElementById('destDir')?.value || 'Not configured',
+                    Filename: document.getElementById('baseFilename')?.value || 'export'
+                });
             }
             case 'block-options': {
                 const chunk = document.getElementById('maxChunk')?.value || null;

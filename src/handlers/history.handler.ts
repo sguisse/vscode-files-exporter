@@ -42,6 +42,7 @@ export class HistoryCommandHandler {
         this.defaultConfig = {
             src: workspacePath,
             dest: path.join(workspacePath, "exported-files"),
+            base_filename: '',
             format: extensionConfig.get<string>('defaultFormat') || 'yaml',
             max_file: (extensionConfig.get<number>('maxFileSizeKb') ?? 50).toString(),
             max_chunk: (extensionConfig.get<number>('maxChunkSizeKb') ?? 0).toString(),

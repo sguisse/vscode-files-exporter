@@ -79,6 +79,7 @@ export const HistoryManager = {
         const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
         const setCheck = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
         setVal('destDir', cfg.dest); setVal('format', cfg.format || 'yaml');
+        setVal('baseFilename', cfg.base_filename);
         setVal('maxFile', cfg.max_file || '50'); setVal('maxChunk', cfg.max_chunk || '0');
         setCheck('splitChunkByFileExtension', !!cfg.groupByExt);
         setCheck('copyGeneratedFilesToClipboard', !!cfg.copyGeneratedFilesToClipboard);

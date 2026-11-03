@@ -366,7 +366,7 @@ export const InitializationManager = {
             }
         });
 
-        const observedFields = ['pathList', 'destDir', 'maxFile', 'maxChunk', 'incPaths', 'excPaths', 'incExts', 'excExts', 'format', 'splitChunkByFileExtension', 'copyGeneratedFilesToClipboard', 'generateTreeView', 'generateLogConsole', 'generateLogFile'];
+        const observedFields = ['pathList', 'destDir', 'baseFilename', 'maxFile', 'maxChunk', 'incPaths', 'excPaths', 'incExts', 'excExts', 'format', 'splitChunkByFileExtension', 'copyGeneratedFilesToClipboard', 'generateTreeView', 'generateLogConsole', 'generateLogFile'];
         observedFields.forEach(id => {
             const el = document.getElementById(id);
             if (el) {
@@ -391,33 +391,6 @@ export const InitializationManager = {
             const currentLines = e.target.value.split('\n').map(p => p.trim()).filter(p => p);
             bridge.postMessage('syncPaths', { paths: currentLines });
         });
-
-        console.log("[Simulation B UI] Initializing tracing controls...");
-        const simuBtn = document.getElementById('btn-simu-push');
-        if (!simuBtn) {
-            console.error("[Simulation B UI] CRITICAL ERROR: Target button '#btn-simu-push' is missing from the active DOM context layout structure!");
-        } else {
-            console.log("[Simulation B UI] Target button '#btn-simu-push' discovered. Binding verbose event listener trace hooks.");
-            simuBtn.addEventListener('click', () => {
-                console.log("[Simulation B UI] Click event successfully captured on '#btn-simu-push'.");
-                const inputEl = document.getElementById('simuPaths');
-                const val = inputEl?.value || '';
-                const paths = val.split('\n').map(p => p.trim()).filter(p => p);
-                if (paths.length > 0) {
-                    bridge.postMessage('simulateExtensionBPush', { paths });
-                    if (inputEl) {
-                        console.info("[Simulation B UI] Contenu de la liste partagée AVANT clean :", inputEl.value);
-                        inputEl.value = '';
-                        inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-                        inputEl.dispatchEvent(new Event('change', { bubbles: true }));
-                        console.info("[Simulation B UI] Contenu de la liste partagée APRÈS clean :", inputEl.value);
-                        console.log("[Simulation B UI] Shared list component has been fully flushed and visually cleared via lifecycle events.");
-                    }
-                } else {
-                    console.warn("[Simulation B UI] Action aborted: The simulation textarea payload matrix is completely empty.");
-                }
-            });
-        }
 
         this.setupTextAreaSync();
         this.setupFilterSimulator();

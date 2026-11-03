@@ -1,6 +1,7 @@
 export interface ExportConfig {
     src: string;
     dest: string;
+    base_filename: string;
     format: string;
     max_file: string;
     max_chunk: string;

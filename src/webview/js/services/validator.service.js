@@ -39,6 +39,12 @@ export const ValidatorService = {
     validators: {
         pathList: (val) => ValidatorService.validatePathList(val),
         destDir: (val) => val.trim().length > 0 ? null : "Destination directory path is required.",
+        baseFilename: (val) => {
+            const name = val.trim();
+            return name && (/[\\/:*?"<>|\u0000-\u001f]/.test(name) || name === '.' || name === '..' || /[. ]$/.test(name))
+                ? "Use a filename without path separators or characters unsupported by common filesystems."
+                : null;
+        },
         maxFile: (val) => {
             const cleanVal = val.trim();
             if (!cleanVal || isNaN(Number(cleanVal))) return "Must be a strict positive number. No letters allowed.";

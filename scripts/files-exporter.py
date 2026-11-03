@@ -23,6 +23,7 @@ GENERATE_LOG_CONSOLE = True
 GENERATE_LOG_FILE = False
 GENERATE_TREE_VIEW = False
 TIMESTAMP = None
+BASE_FILENAME = "export"
 LOG_FILE_HANDLE = None
 GENERATED_FILES = {"exports": [], "logs": [], "reports": []}
 PROCESSED_MANIFEST = []
@@ -182,7 +183,7 @@ class FileScanner:
 
     def _open_new_chunk(self, index, ext=""):
         ext_part = f"_{ext}" if GROUP_BY_EXT and ext else ""
-        out_filepath = os.path.join(DEST_DIR, f"export-{TIMESTAMP}{ext_part}_{index:02d}.{OUTPUT_FORMAT}")
+        out_filepath = os.path.join(DEST_DIR, f"{BASE_FILENAME}-{TIMESTAMP}{ext_part}_{index:02d}.{OUTPUT_FORMAT}")
         out_file = open(out_filepath, "w", encoding="utf-8")
         GENERATED_FILES["exports"].append(out_filepath)
         exporter = StreamExporter(OUTPUT_FORMAT, out_file)
@@ -319,7 +320,7 @@ def create_tree_manifest():
                         }
                     current = current["children"][part]
 
-        tree_path = os.path.join(DEST_DIR, f"export-{TIMESTAMP}-tree.json")
+        tree_path = os.path.join(DEST_DIR, f"{BASE_FILENAME}-{TIMESTAMP}-tree.json")
         with open(tree_path, "w", encoding="utf-8") as f:
             json.dump({"timestamp": TIMESTAMP, "root": root_node}, f, indent=4)
 
@@ -331,7 +332,7 @@ def create_tree_manifest():
 
 def create_json_report(config_data, results_data):
     global DEST_DIR, TIMESTAMP
-    report_path = os.path.join(DEST_DIR, f"export-{TIMESTAMP}-report.json")
+    report_path = os.path.join(DEST_DIR, f"{BASE_FILENAME}-{TIMESTAMP}-report.json")
     try:
         with open(report_path, "w", encoding="utf-8") as f:
             json.dump({"timestamp": TIMESTAMP, "configuration": config_data, "results": results_data}, f, indent=4)
@@ -451,6 +452,7 @@ def parse_arguments():
     parser.add_argument("--paths-to-check", nargs="+", default=[], help="Paths to test in filter-check mode.")
     parser.add_argument("--src", nargs="+", default=HARDCODED_DEFAULTS['src'])
     parser.add_argument("--dest", default=HARDCODED_DEFAULTS['dest'])
+    parser.add_argument("--base-filename", default="export")
     parser.add_argument("--format", default=HARDCODED_DEFAULTS['format'])
     parser.add_argument("--max-file", type=float, default=HARDCODED_DEFAULTS['max_file'])
     parser.add_argument("--max-chunk", type=float, default=HARDCODED_DEFAULTS['max_chunk'])
@@ -502,6 +504,7 @@ def execute_standard_export(filters):
     config_data = {
         "source_dirs": DIRS_TO_PARSE,
         "dest_dir": DEST_DIR,
+        "base_filename": BASE_FILENAME,
         "format": OUTPUT_FORMAT,
         "max_file_size_kb": MAX_SIZE_BYTES / 1024,
         "max_output_size_kb": MAX_OUTPUT_SIZE_BYTES / 1024,
@@ -556,7 +559,7 @@ def execute_standard_export(filters):
 def main():
     global HARDCODED_DEFAULTS, DIRS_TO_PARSE, DEST_DIR, OUTPUT_FORMAT, MAX_SIZE_BYTES
     global MAX_OUTPUT_SIZE_BYTES, GROUP_BY_EXT, GENERATE_LOG_CONSOLE, GENERATE_LOG_FILE
-    global GENERATE_TREE_VIEW, TIMESTAMP, LOG_FILE_HANDLE
+    global GENERATE_TREE_VIEW, TIMESTAMP, LOG_FILE_HANDLE, BASE_FILENAME
 
     args = parse_arguments()
 
@@ -592,6 +595,14 @@ def main():
 
     DIRS_TO_PARSE = [os.path.abspath(os.path.expanduser(d)) for d in split_srcs if d]
     DEST_DIR = os.path.abspath(os.path.expanduser(args.dest))
+    BASE_FILENAME = args.base_filename.strip() or "export"
+    if (
+        BASE_FILENAME in {".", ".."}
+        or re.search(r'[\\/:*?"<>|\x00-\x1f]', BASE_FILENAME)
+        or BASE_FILENAME.endswith((".", " "))
+    ):
+        print("Base filename contains characters unsupported by common filesystems.", file=sys.stderr)
+        sys.exit(2)
 
     # Safe to create directories now
     os.makedirs(DEST_DIR, exist_ok=True)
@@ -605,7 +616,7 @@ def main():
     GENERATE_TREE_VIEW = args.tree_view
 
     TIMESTAMP = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    LOG_FILE_PATH = os.path.join(DEST_DIR, f"export-{TIMESTAMP}.log")
+    LOG_FILE_PATH = os.path.join(DEST_DIR, f"{BASE_FILENAME}-{TIMESTAMP}.log")
     LOG_FILE_HANDLE = open(LOG_FILE_PATH, 'w', encoding='utf-8') if GENERATE_LOG_FILE else None
 
     # 4. ─── Dispatch Standard Export Modes ───

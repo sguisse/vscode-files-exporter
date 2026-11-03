@@ -53,7 +53,7 @@ export class FilesTab {
                 const fullPath = `${cleanDestDir}${sep}${fileName}`;
                 const escapedPath = fullPath.replace(/\\/g, '\\\\');
 
-                const match = fileName.match(/export-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_(.+)_\d+\.\w+$/);
+                const match = fileName.match(/.+-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_(.+)_\d+\.\w+$/);
                 const currentSemanticType = match ? match[1] : 'unknown';
 
                 if (isSplitActive && key === 'exports') {

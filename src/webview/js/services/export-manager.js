@@ -63,6 +63,7 @@ export const ExportManager = {
                 data: {
                     paths: pathsArray,
                     destDir: document.getElementById('destDir')?.value || '',
+                    baseFilename: document.getElementById('baseFilename')?.value?.trim() || '',
                     format: document.getElementById('format')?.value || 'yaml',
                     maxFile: document.getElementById('maxFile')?.value || '50',
                     maxChunk: document.getElementById('maxChunk')?.value || '0',

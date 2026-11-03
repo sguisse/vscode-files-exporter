@@ -63,10 +63,12 @@ export class ExportOrchestratorService {
         const absoluteSourcesArray = this.makePathsAbsolute(formData.paths || [], workspaceRoot);
         const absoluteDestDirectory = this.makeSinglePathAbsolute(formData.destDir, workspaceRoot);
         const concatenatedSources = absoluteSourcesArray.join(',');
+        const baseFilename = formData.baseFilename?.trim() || 'export';
 
         const runtimeTransmittedData = {
             ...formData,
-            destDir: absoluteDestDirectory
+            destDir: absoluteDestDirectory,
+            baseFilename
         };
 
         const execArgs = this.buildArgs(runtimeTransmittedData, concatenatedSources);
@@ -90,7 +92,7 @@ export class ExportOrchestratorService {
             if (code === 0) {
                 this.webviewPanel.webview.postMessage({ command: 'terminalLog', text: `\n✅ Process exited safely.\n` });
                 vscode.window.showInformationMessage("Export Complete!");
-                const generatedFiles = this.parseAndSendReport(stdout, runtimeTransmittedData.destDir);
+                const generatedFiles = this.parseAndSendReport(stdout, runtimeTransmittedData.destDir, runtimeTransmittedData.baseFilename);
                 // Use verified readiness before copying
                 const isReady = await this.verifyFilesReady(generatedFiles);
                 if (isReady && runtimeTransmittedData.copyGeneratedFilesToClipboard) {
@@ -111,7 +113,7 @@ export class ExportOrchestratorService {
     }
 
     private buildArgs(formData: any, sources: string): string[] {
-        const args: string[] = ['--src', sources, '--dest', formData.destDir, '--format', formData.format];
+        const args: string[] = ['--src', sources, '--dest', formData.destDir, '--base-filename', formData.baseFilename || 'export', '--format', formData.format];
         if (formData.mode) args.push('--mode', formData.mode); // Inject Mode
         if (formData.maxFile) args.push('--max-file', formData.maxFile.toString());
         if (formData.maxChunk) args.push('--max-chunk', formData.maxChunk.toString());
@@ -129,7 +131,7 @@ export class ExportOrchestratorService {
     }
 
     private buildDisplayArgs(formData: any, sources: string): string[] {
-        const args: string[] = ['--src', `'${sources}'`, '--dest', `'${formData.destDir}'`, '--format', `'${formData.format}'`];
+        const args: string[] = ['--src', `'${sources}'`, '--dest', `'${formData.destDir}'`, '--base-filename', `'${formData.baseFilename || 'export'}'`, '--format', `'${formData.format}'`];
         if (formData.mode) args.push('--mode', `'${formData.mode}'`); // Inject Mode
         if (formData.maxFile) args.push('--max-file', `'${formData.maxFile}'`);
         if (formData.maxChunk) args.push('--max-chunk', `'${formData.maxChunk}'`);
@@ -146,7 +148,7 @@ export class ExportOrchestratorService {
         return args;
     }
 
-    private parseAndSendReport(stdout: string, destDirOverride: string): string[] {
+    private parseAndSendReport(stdout: string, destDirOverride: string, baseFilename: string): string[] {
         const lines = stdout.split('\n');
         let timestamp: string | undefined;
         for (let i = lines.length - 1; i >= 0; i--) {
@@ -157,16 +159,16 @@ export class ExportOrchestratorService {
         }
         if (timestamp) {
             const destDir = destDirOverride || path.join(this.configService.getWorkspaceRootPath(), "exported-files");
-            const reportFileName = `export-${timestamp}-report.json`;
+            const reportFileName = `${baseFilename}-${timestamp}-report.json`;
             const reportPath = path.join(destDir, reportFileName);
             if (fs.existsSync(reportPath)) {
                 const reportContent = fs.readFileSync(reportPath, 'utf8');
                 const reportData = JSON.parse(reportContent);
                 if (!reportData.results.generated_files) reportData.results.generated_files = {};
                 reportData.results.generated_files.reports = [reportFileName];
-                reportData.results.generated_files.logs = fs.existsSync(path.join(destDir, `export-${timestamp}.log`)) ? [`export-${timestamp}.log`] : [];
+                reportData.results.generated_files.logs = fs.existsSync(path.join(destDir, `${baseFilename}-${timestamp}.log`)) ? [`${baseFilename}-${timestamp}.log`] : [];
 
-                const treeFileName = `export-${timestamp}-tree.json`;
+                const treeFileName = `${baseFilename}-${timestamp}-tree.json`;
                 const treePath = path.join(destDir, treeFileName);
                 if (fs.existsSync(treePath)) {
                     reportData.results.tree_manifest = JSON.parse(fs.readFileSync(treePath, 'utf8'));
